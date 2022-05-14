@@ -1,0 +1,6 @@
+[submodule "td"]
+	path = td
+	url = https://github.com/tdlib/td.git
+[submodule "third-party/libtickit"]
+	path = third-party/libtickit
+	url = git@github.com:vysheng/libtickit.git
