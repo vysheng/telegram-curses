@@ -1,12 +1,15 @@
 #include "windows/window-layout.h"
 #include "windows/window.h"
+#include "telegram-curses-window-root.h"
 #include <memory>
 
 namespace tdcurses {
 
-class Layout : public windows::WindowLayout {
+class Layout
+    : public windows::WindowLayout
+    , public TdcursesWindowBase {
  public:
-  Layout() {
+  Layout(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : TdcursesWindowBase(root, std::move(root_actor)) {
     log_window_ = std::make_shared<windows::EmptyWindow>();
     dialog_list_window_ = std::make_shared<windows::EmptyWindow>();
     chat_window_ = std::make_shared<windows::EmptyWindow>();
@@ -45,7 +48,7 @@ class Layout : public windows::WindowLayout {
     }
   }
   void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
-    auto h = (td::int32)(height() * dialog_list_window_height_);
+    auto h = log_window_enabled_ ? (td::int32)(height() * dialog_list_window_height_) : height();
     auto w = (td::int32)(width() * dialog_list_window_width_);
     dialog_list_window_->resize(w, h);
     if (!compose_window_) {
@@ -55,7 +58,9 @@ class Layout : public windows::WindowLayout {
       chat_window_->resize(width() - 1 - w, h2);
       compose_window_->resize(width() - 1 - w, h - 1 - h2);
     }
-    log_window_->resize(width(), height() - 1 - h);
+    if (log_window_enabled_) {
+      log_window_->resize(width(), height() - 1 - h);
+    }
     update_windows_list();
   }
 
@@ -68,7 +73,9 @@ class Layout : public windows::WindowLayout {
       windows.emplace_back(
           std::make_unique<WindowInfo>(dialog_list_window_->width() + 1, chat_window_->height() + 1, compose_window_));
     }
-    windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 1, log_window_));
+    if (log_window_enabled_) {
+      windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 1, log_window_));
+    }
     set_subwindow_list(std::move(windows));
   }
 
@@ -97,7 +104,35 @@ class Layout : public windows::WindowLayout {
     on_resize(width(), height(), width(), height());
   }
 
+  void handle_input(TickitKeyEventInfo *info) override {
+    if (info->type == TICKIT_KEYEV_KEY) {
+      if (!strcmp(info->str, "F9")) {
+        root()->show_config_window();
+        return;
+      }
+    }
+    return windows::WindowLayout::handle_input(info);
+  }
+
+  void enable_log_window() {
+    if (!log_window_enabled_) {
+      log_window_enabled_ = true;
+      on_resize(width(), height(), width(), height());
+      set_need_refresh();
+    }
+  }
+
+  void disable_log_window() {
+    if (log_window_enabled_) {
+      log_window_enabled_ = false;
+      on_resize(width(), height(), width(), height());
+      set_need_refresh();
+    }
+  }
+
  private:
+  bool log_window_enabled_{true};
+
   std::shared_ptr<windows::Window> log_window_;
   std::shared_ptr<windows::Window> dialog_list_window_;
   std::shared_ptr<windows::Window> chat_window_;

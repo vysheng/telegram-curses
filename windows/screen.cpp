@@ -86,6 +86,18 @@ td::int32 Screen::height() {
   return lines;
 }
 
+bool Screen::has_popup_window(Window *window) const {
+  if (!tickit_term_ || finished_) {
+    return false;
+  }
+  for (auto it = popup_windows_.begin(); it != popup_windows_.end(); it++) {
+    if (it->second.get() == window) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority) {
   if (!tickit_term_ || finished_) {
     return;

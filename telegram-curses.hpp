@@ -4,6 +4,7 @@
 #include "windows/screen.h"
 #include "windows/log-window.h"
 #include "windows/window.h"
+#include <vector>
 
 namespace tdcurses {
 
@@ -11,8 +12,43 @@ class Layout;
 class DialogListWindow;
 class ChatWindow;
 class ComposeWindow;
+class ConfigWindow;
 
 class Tdcurses : public TdcursesInterface {
+ public:
+  struct Option {
+    Option(std::string name, std::vector<std::string> values, std::function<void(std::string)> on_change)
+        : name(std::move(name)), values(std::move(values)), on_change(on_change) {
+    }
+    Option(std::string name, std::vector<std::string> n_values, std::function<void(std::string)> on_change,
+           std::string f)
+        : name(std::move(name)), values(std::move(n_values)), on_change(on_change) {
+      for (td::uint32 i = 0; i < values.size(); i++) {
+        if (values[i] == f) {
+          cur_selected = i;
+          return;
+        }
+      }
+    }
+    std::string name;
+    std::vector<std::string> values;
+    std::function<void(std::string)> on_change;
+    td::uint32 cur_selected{0};
+
+    void update() {
+      if (!values.size()) {
+        return;
+      }
+      cur_selected++;
+      if (cur_selected >= values.size()) {
+        cur_selected = 0;
+      }
+      on_change(values[cur_selected]);
+    }
+  };
+
+  void initialize_options();
+
  private:
   td::ActorId<Tdcurses> self_;
   std::unique_ptr<windows::Screen> screen_;
@@ -23,9 +59,13 @@ class Tdcurses : public TdcursesInterface {
   std::shared_ptr<DialogListWindow> dialog_list_window_;
   std::shared_ptr<ChatWindow> chat_window_;
   std::shared_ptr<ComposeWindow> compose_window_;
+  std::shared_ptr<windows::Window> config_window_;
+
+  std::vector<Option> options_;
 
  public:
   Tdcurses() {
+    initialize_options();
   }
 
   void start_curses();
@@ -56,6 +96,9 @@ class Tdcurses : public TdcursesInterface {
   void open_chat(td::int64 chat_id);
   void open_compose_window();
   void close_compose_window();
+
+  void hide_config_window();
+  void show_config_window();
 
   void loop() override;
   void refresh();

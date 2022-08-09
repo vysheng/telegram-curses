@@ -36,6 +36,7 @@
 #include "dialog-list-window.h"
 #include "compose-window.h"
 #include "chat-window.h"
+#include "config-window.h"
 #include "windows/window.h"
 #include "windows/log-window.h"
 #include "print.h"
@@ -1241,7 +1242,7 @@ void Tdcurses::start_curses() {
   screen_->init();
   td::Scheduler::subscribe(td::Stdin().get_poll_info().extract_pollable_fd(this), td::PollFlags::Read());
   loop();
-  layout_ = std::make_shared<Layout>();
+  layout_ = std::make_shared<Layout>(this, actor_id(this));
   log_window_ = std::make_shared<windows::LogWindow>();
   log_interface_ = std::make_unique<windows::WindowLogInterface<Tdcurses>>(log_window_, actor_id(this));
   dialog_list_window_ = std::make_shared<DialogListWindow>(this, actor_id(this));
@@ -1250,6 +1251,9 @@ void Tdcurses::start_curses() {
   layout_->replace_log_window(log_window_);
   layout_->replace_dialog_list_window(dialog_list_window_);
   screen_->refresh(true);
+
+  auto config = std::make_shared<ConfigWindow>(this, actor_id(this), options_);
+  config_window_ = std::make_shared<windows::BorderedWindow>(config, windows::Window::BorderType::Double);
 
   LOG(ERROR) << "starting";
 }
@@ -1288,6 +1292,18 @@ void Tdcurses::open_compose_window() {
   layout_->activate_window(compose_window_);
 }
 
+void Tdcurses::hide_config_window() {
+  if (screen_->has_popup_window(config_window_.get())) {
+    screen_->del_popup_window(config_window_.get());
+  }
+}
+
+void Tdcurses::show_config_window() {
+  if (!screen_->has_popup_window(config_window_.get())) {
+    screen_->add_popup_window(config_window_, 3);
+  }
+}
+
 void Tdcurses::close_compose_window() {
   if (compose_window_) {
     layout_->replace_compose_window(nullptr);
@@ -1314,6 +1330,16 @@ void Tdcurses::refresh() {
 
 void Tdcurses::tear_down() {
   td::Scheduler::unsubscribe(td::Stdin().get_poll_info().get_pollable_fd_ref());
+}
+
+void Tdcurses::initialize_options() {
+  options_ = {{"log_window", {"enabled", "disabled"}, [&](std::string val) {
+                 if (val == "enabled") {
+                   layout_->enable_log_window();
+                 } else {
+                   layout_->disable_log_window();
+                 }
+               }}};
 }
 
 }  // namespace tdcurses

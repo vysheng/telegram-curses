@@ -38,6 +38,7 @@ class Screen {
   td::int32 width();
   td::int32 height();
 
+  bool has_popup_window(Window *ptr) const;
   void add_popup_window(std::shared_ptr<Window> window, td::int32 priority);
   void del_popup_window(Window *window);
   void change_layout(std::shared_ptr<WindowLayout> window_layout);
