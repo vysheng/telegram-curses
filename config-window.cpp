@@ -3,7 +3,7 @@
 
 namespace tdcurses {
 
-td::int32 ConfigWindow::Element::render(TickitRenderBuffer *rb, bool is_selected) {
+td::int32 ConfigWindow::Element::render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) {
   auto &opt = get_opt();
   Outputter out;
   out << opt.name << " " << opt.values[opt.cur_selected];

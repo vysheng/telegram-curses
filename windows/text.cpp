@@ -21,43 +21,43 @@ MarkupElement MarkupElement::bg_color(size_t first_pos, size_t last_pos, td::int
   return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BG, bg_color);
 }
 MarkupElement MarkupElement::bold(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BOLD, 0);
+  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BOLD, 1);
 }
 MarkupElement MarkupElement::underline(size_t first_pos, size_t last_pos, TickitPenUnderline line_type) {
   return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_UNDER, line_type);
 }
 MarkupElement MarkupElement::italic(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_ITALIC, 0);
+  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_ITALIC, 1);
 }
 MarkupElement MarkupElement::reverse(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_REVERSE, 0);
+  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_REVERSE, 1);
 }
 MarkupElement MarkupElement::strike(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_STRIKE, 0);
+  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_STRIKE, 1);
 }
 MarkupElement MarkupElement::altfont(size_t first_pos, size_t last_pos, td::int32 font_id) {
   return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_ALTFONT, font_id);
 }
 MarkupElement MarkupElement::blink(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BLINK, 0);
+  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BLINK, 1);
 }
 
 void MarkupElement::install(TickitPen *pen) {
   switch (attr) {
-    case TickitPenAttr::TICKIT_PEN_FG:
-    case TickitPenAttr::TICKIT_PEN_BG:
-      tickit_pen_set_colour_attr(pen, attr, arg);
+    case Attr::Tickit::TICKIT_PEN_FG:
+    case Attr::Tickit::TICKIT_PEN_BG:
+      tickit_pen_set_colour_attr(pen, (TickitPenAttr)attr, arg);
       break;
-    case TickitPenAttr::TICKIT_PEN_BOLD:
-    case TickitPenAttr::TICKIT_PEN_ITALIC:
-    case TickitPenAttr::TICKIT_PEN_REVERSE:
-    case TickitPenAttr::TICKIT_PEN_STRIKE:
-    case TickitPenAttr::TICKIT_PEN_BLINK:
-      tickit_pen_set_bool_attr(pen, attr, true);
+    case Attr::Tickit::TICKIT_PEN_BOLD:
+    case Attr::Tickit::TICKIT_PEN_ITALIC:
+    case Attr::Tickit::TICKIT_PEN_REVERSE:
+    case Attr::Tickit::TICKIT_PEN_STRIKE:
+    case Attr::Tickit::TICKIT_PEN_BLINK:
+      tickit_pen_set_bool_attr(pen, (TickitPenAttr)attr, arg ? 1 : 0);
       break;
-    case TickitPenAttr::TICKIT_PEN_UNDER:
-    case TickitPenAttr::TICKIT_PEN_ALTFONT:
-      tickit_pen_set_int_attr(pen, attr, arg);
+    case Attr::Tickit::TICKIT_PEN_UNDER:
+    case Attr::Tickit::TICKIT_PEN_ALTFONT:
+      tickit_pen_set_int_attr(pen, (TickitPenAttr)attr, arg);
       break;
     default:
       break;
@@ -66,20 +66,20 @@ void MarkupElement::install(TickitPen *pen) {
 
 void MarkupElement::uninstall(TickitPen *pen) {
   switch (attr) {
-    case TickitPenAttr::TICKIT_PEN_FG:
-    case TickitPenAttr::TICKIT_PEN_BG:
-      tickit_pen_clear_attr(pen, attr);
+    case Attr::Tickit::TICKIT_PEN_FG:
+    case Attr::Tickit::TICKIT_PEN_BG:
+      tickit_pen_clear_attr(pen, (TickitPenAttr)attr);
       break;
-    case TickitPenAttr::TICKIT_PEN_BOLD:
-    case TickitPenAttr::TICKIT_PEN_ITALIC:
-    case TickitPenAttr::TICKIT_PEN_REVERSE:
-    case TickitPenAttr::TICKIT_PEN_STRIKE:
-    case TickitPenAttr::TICKIT_PEN_BLINK:
-      tickit_pen_clear_attr(pen, attr);
+    case Attr::Tickit::TICKIT_PEN_ITALIC:
+    case Attr::Tickit::TICKIT_PEN_BOLD:
+    case Attr::Tickit::TICKIT_PEN_REVERSE:
+    case Attr::Tickit::TICKIT_PEN_STRIKE:
+    case Attr::Tickit::TICKIT_PEN_BLINK:
+      tickit_pen_clear_attr(pen, (TickitPenAttr)attr);
       break;
-    case TickitPenAttr::TICKIT_PEN_UNDER:
-    case TickitPenAttr::TICKIT_PEN_ALTFONT:
-      tickit_pen_clear_attr(pen, attr);
+    case Attr::Tickit::TICKIT_PEN_UNDER:
+    case Attr::Tickit::TICKIT_PEN_ALTFONT:
+      tickit_pen_clear_attr(pen, (TickitPenAttr)attr);
       break;
     default:
       break;
@@ -244,16 +244,21 @@ class Builder {
   }
   void add_utf8(td::Slice data, td::int32 width, bool has_cursor) {
     if (cur_line_pos_ + width > width_) {
+      if (nolb_) {
+        return;
+      }
       start_new_line();
     }
 
     if (!is_password_) {
       if (rb_) {
+        tickit_renderbuffer_setpen(rb_, pen_);
         tickit_renderbuffer_textn_at(rb_, cur_line_, cur_line_pos_, data.data(), data.size());
       }
       cur_line_pos_ += width;
     } else {
       if (rb_) {
+        tickit_renderbuffer_setpen(rb_, pen_);
         tickit_renderbuffer_textn_at(rb_, cur_line_, cur_line_pos_, "*", 1);
       }
       cur_line_pos_++;
@@ -271,6 +276,10 @@ class Builder {
     }
     switch (ch) {
       case '\n': {
+        if (nolb_) {
+          add_utf8(" ", 1, has_cursor);
+          break;
+        }
         if (has_cursor) {
           if (cur_line_pos_ == width_) {
             start_new_line();
@@ -285,7 +294,7 @@ class Builder {
         break;
       default: {
         if (has_cursor) {
-          if (cur_line_pos_ == width_) {
+          if (cur_line_pos_ == width_ && !nolb_) {
             start_new_line();
           }
           cursor_y_ = cur_line_;
@@ -312,15 +321,23 @@ class Builder {
 
   void add_markup(MarkupElement &me) {
     if (pen_) {
-      me.install(pen_);
-      tickit_renderbuffer_setpen(rb_, pen_);
+      if (me.attr == MarkupElement::Attr::NoLB) {
+        nolb_++;
+      } else {
+        me.install(pen_);
+        tickit_renderbuffer_setpen(rb_, pen_);
+      }
     }
   }
 
   void del_markup(MarkupElement &me) {
     if (pen_) {
-      me.uninstall(pen_);
-      tickit_renderbuffer_setpen(rb_, pen_);
+      if (me.attr == MarkupElement::Attr::NoLB) {
+        nolb_--;
+      } else {
+        me.uninstall(pen_);
+        tickit_renderbuffer_setpen(rb_, pen_);
+      }
     }
   }
 
@@ -343,6 +360,7 @@ class Builder {
   td::int32 cursor_x_{-1};
   td::int32 cursor_y_{-1};
   bool is_password_{false};
+  td::int32 nolb_{0};
 };
 
 }  // namespace

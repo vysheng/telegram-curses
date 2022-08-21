@@ -54,17 +54,21 @@ void PadWindow::handle_input(TickitKeyEventInfo *info) {
   set_need_refresh();
   if (info->type == TICKIT_KEYEV_KEY) {
     if (!strcmp(info->str, "PageUp")) {
-      scroll_up(10);
+      scroll_up(height() / 2);
     } else if (!strcmp(info->str, "Up")) {
       scroll_up(1);
     } else if (!strcmp(info->str, "PageDown")) {
-      scroll_down(10);
+      scroll_down(height() / 2);
     } else if (!strcmp(info->str, "Down")) {
       scroll_down(1);
     } else if (!strcmp(info->str, "C-u")) {
-      scroll_up(10);
+      scroll_up(height() / 2);
     } else if (!strcmp(info->str, "C-d")) {
-      scroll_down(10);
+      scroll_down(height() / 2);
+    } else if (!strcmp(info->str, "C-b")) {
+      scroll_up(height() - 1);
+    } else if (!strcmp(info->str, "C-f")) {
+      scroll_down(height() - 1);
     } else {
       pad_handle_input(info);
     }
@@ -96,7 +100,7 @@ void PadWindow::on_resize(td::int32, td::int32, td::int32 new_width, td::int32 n
     auto &el = *p.second;
     auto old_height = el.height;
     el.element->change_width(new_width);
-    el.height = el.element->render(nullptr, cur_element_ == nullptr);
+    el.height = el.element->render(*this, nullptr, cur_element_ == nullptr);
     auto new_height = el.height;
 
     if (el.element->is_less(*cur_element_->element)) {
@@ -123,7 +127,7 @@ void PadWindow::change_element(PadWindowElement *elem) {
 
   auto old_height = it->second->height;
 
-  el.height = el.element->render(nullptr, it->second.get() == cur_element_);
+  el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
 
   auto new_height = it->second->height;
 
@@ -162,7 +166,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     if (elem->is_visible()) {
       it = elements_.emplace(elem.get(), std::move(ptr)).first;
       auto &el = *it->second;
-      el.height = el.element->render(nullptr, it->second.get() == cur_element_);
+      el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
         lines_before_cur_element_ += it->second->height;
       } else {
@@ -177,7 +181,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     if (elem->is_visible()) {
       it = elements_.emplace(elem.get(), std::move(ptr)).first;
       auto &el = *it->second;
-      el.height = el.element->render(nullptr, it->second.get() == cur_element_);
+      el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
         lines_before_cur_element_ += it->second->height;
       } else {
@@ -211,7 +215,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
       lines_after_cur_element_ = tot_height - lines_before_cur_element_;
     }
 
-    el.height = el.element->render(nullptr, it->second.get() == cur_element_);
+    el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
     auto new_height = it->second->height;
     offset_in_cur_element_ = (td::int32)(p * new_height);
     if (!elem->is_visible()) {
@@ -285,7 +289,7 @@ void PadWindow::add_element(std::shared_ptr<PadWindowElement> element) {
   CHECK(el.element);
   el.element->change_width(width());
 
-  el.height = el.element->render(nullptr, cur_element_ == nullptr);
+  el.height = el.element->render(*this, nullptr, cur_element_ == nullptr);
 
   auto new_height = it->second->height;
 
@@ -459,7 +463,7 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     tickit_renderbuffer_save(rb);
     tickit_renderbuffer_clip(rb, &rect);
     tickit_renderbuffer_translate(rb, offset, 0);
-    it->second->element->render(rb, it->second.get() == cur_element_);
+    it->second->element->render(*this, rb, it->second.get() == cur_element_);
     tickit_renderbuffer_restore(rb);
 
     offset += it->second->height;

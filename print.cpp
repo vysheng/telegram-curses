@@ -2,6 +2,7 @@
 #include "td/utils/port/Clocks.h"
 #include "td/utils/format.h"
 #include "td/utils/format.h"
+#include "chat-window.h"
 
 namespace td {
 namespace format {
@@ -43,11 +44,11 @@ Outputter &Outputter::operator<<(Date date) {
   return *this << "]";
 }
 
-void Outputter::add_markup(TickitPenAttr attr, size_t f, size_t l, td::int32 val) {
+void Outputter::add_markup(td::int32 attr, size_t f, size_t l, td::int32 val) {
   markup_.emplace_back(f, l, attr, val);
 }
 
-void Outputter::set_attr_ex(TickitPenAttr attr, td::int32 attr_val) {
+void Outputter::set_attr_ex(td::int32 attr, td::int32 attr_val) {
   auto val = (td::int32)attr;
   if (attr_val == -1) {
     CHECK(args_[val].size() > 0);
@@ -64,7 +65,7 @@ void Outputter::set_attr_ex(TickitPenAttr attr, td::int32 attr_val) {
   }
 }
 
-void Outputter::set_attr(TickitPenAttr attr, ChangeBool mode) {
+void Outputter::set_attr(td::int32 attr, ChangeBool mode) {
   td::int32 attr_val = 0;
   auto val = (td::int32)attr;
   switch (mode) {
@@ -96,12 +97,26 @@ Outputter &Outputter::operator<<(BgColor color) {
 
 std::vector<windows::MarkupElement> Outputter::markup() {
   auto res = markup_;
-  for (size_t i = 0; i < TickitPenAttr::TICKIT_N_PEN_ATTRS; i++) {
+  for (size_t i = 0; i < args_.size(); i++) {
     if (args_[i].size() > 0) {
-      res.emplace_back(args_[i].back().first, sb_.as_cslice().size(), (TickitPenAttr)i, args_[i].back().second);
+      res.emplace_back(args_[i].back().first, sb_.as_cslice().size(), (td::int32)i, args_[i].back().second);
     }
   }
   return res;
+}
+
+td::td_api::message *Outputter::get_message(td::int64 chat_id, td::int64 message_id) {
+  if (!cur_chat_) {
+    return nullptr;
+  }
+  if (cur_chat_->chat_id() != chat_id) {
+    return nullptr;
+  }
+  auto el = cur_chat_->get_message(message_id);
+  if (!el) {
+    return nullptr;
+  }
+  return el->message.get();
 }
 
 }  // namespace tdcurses

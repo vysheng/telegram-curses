@@ -198,9 +198,6 @@ class TdcursesImpl : public Tdcurses {
 
   void on_update(td::tl_object_ptr<td::td_api::Update> update) {
     total_updates++;
-    if (total_updates % 512 == 0) {
-      LOG(ERROR) << "total cnt = " << total_updates;
-    }
     td::td_api::downcast_call(*update.get(), [Self = this](auto &obj) { Self->process_update(obj); });
     refresh();
   }
@@ -933,6 +930,10 @@ class TdcursesImpl : public Tdcurses {
   //@description Information about a file was updated @file New data about the file
   //updateFile file : file = Update;
   void process_update(td::td_api::updateFile &update) {
+    auto c = chat_window();
+    if (c) {
+      c->process_update(update);
+    }
   }
 
   //@description The file generation process needs to be started by the client
@@ -1263,6 +1264,9 @@ bool Tdcurses::window_exists(td::int64 id) {
     return true;
   }
   if (chat_window_ && chat_window_->window_unique_id() == id) {
+    return true;
+  }
+  if (compose_window_ && compose_window_->window_unique_id() == id) {
     return true;
   }
 

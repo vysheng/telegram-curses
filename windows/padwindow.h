@@ -10,10 +10,12 @@
 
 namespace windows {
 
+class PadWindow;
+
 class PadWindowElement {
  public:
   virtual ~PadWindowElement() = default;
-  virtual td::int32 render(TickitRenderBuffer *rb, bool is_selected) = 0;
+  virtual td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) = 0;
   void change_width(td::int32 width) {
     width_ = width;
   }

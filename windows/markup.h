@@ -5,8 +5,12 @@
 
 namespace windows {
 struct MarkupElement {
+  struct Attr {
+    using Tickit = TickitPenAttr;
+    enum Values : td::int32 { Min = TickitPenAttr::TICKIT_N_PEN_ATTRS + 1, NoLB, Max };
+  };
   MarkupElement() = default;
-  MarkupElement(size_t first_pos, size_t last_pos, TickitPenAttr attr, td::int32 arg)
+  MarkupElement(size_t first_pos, size_t last_pos, td::int32 attr, td::int32 arg)
       : first_pos(first_pos), last_pos(last_pos), attr(attr), arg(arg) {
   }
   static MarkupElement fg_color(size_t first_pos, size_t last_pos, td::int32 fg_color);
@@ -21,7 +25,7 @@ struct MarkupElement {
   static MarkupElement blink(size_t first_pos, size_t last_pos);
   size_t first_pos;
   size_t last_pos;
-  TickitPenAttr attr;
+  int attr;
   td::int32 arg;
 
   void install(TickitPen *pen);

@@ -21,7 +21,7 @@ class ConfigWindow
       return idx_ < static_cast<const Element &>(other).idx_;
     }
 
-    td::int32 render(TickitRenderBuffer *rb, bool is_selected) override;
+    td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override;
 
     Tdcurses::Option &get_opt() const;
 

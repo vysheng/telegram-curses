@@ -48,6 +48,7 @@ void ComposeWindow::set_draft(std::string message) {
 
   send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
   clear();
+  root()->close_compose_window();
 }
 
 }  // namespace tdcurses

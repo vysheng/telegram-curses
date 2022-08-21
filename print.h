@@ -33,10 +33,12 @@ enum class Color : td::int32 {
   White
 };
 
+class ChatWindow;
+
 class Outputter {
  public:
   Outputter() {
-    args_.resize(TickitPenAttr::TICKIT_N_PEN_ATTRS);
+    args_.resize(windows::MarkupElement::Attr::Max);
   }
   struct Date {
     td::int32 date;
@@ -53,7 +55,7 @@ class Outputter {
   };
 
   enum class ChangeBool { Enable, Disable, Revert, Invert };
-  template <TickitPenAttr x>
+  template <td::int32 x>
   struct ChangeBoolImpl {
     explicit ChangeBoolImpl(bool v) {
       if (v) {
@@ -65,17 +67,18 @@ class Outputter {
     ChangeBoolImpl(ChangeBool t) : type(t) {
     }
     ChangeBool type;
-    static constexpr TickitPenAttr attr() {
+    static constexpr td::int32 attr() {
       return x;
     }
   };
 
-  using Underline = ChangeBoolImpl<TickitPenAttr::TICKIT_PEN_UNDER>;
-  using Bold = ChangeBoolImpl<TickitPenAttr::TICKIT_PEN_BOLD>;
-  using Italic = ChangeBoolImpl<TickitPenAttr::TICKIT_PEN_ITALIC>;
-  using Reverse = ChangeBoolImpl<TickitPenAttr::TICKIT_PEN_REVERSE>;
-  using Blink = ChangeBoolImpl<TickitPenAttr::TICKIT_PEN_BLINK>;
-  using Strike = ChangeBoolImpl<TickitPenAttr::TICKIT_PEN_STRIKE>;
+  using Underline = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_UNDER>;
+  using Bold = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_BOLD>;
+  using Italic = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_ITALIC>;
+  using Reverse = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_REVERSE>;
+  using Blink = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_BLINK>;
+  using Strike = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_STRIKE>;
+  using NoLb = ChangeBoolImpl<windows::MarkupElement::Attr::NoLB>;
 
   template <typename T>
   Outputter &operator<<(T x) {
@@ -112,19 +115,26 @@ class Outputter {
     return *this << FgColor{color};
   }
 
-  template <TickitPenAttr x>
+  template <td::int32 x>
   Outputter &operator<<(const ChangeBoolImpl<x> &el) {
     set_attr(el.attr(), el.type);
     return *this;
   }
 
-  void add_markup(TickitPenAttr attr, size_t f, size_t l, td::int32 val);
-  void set_attr_ex(TickitPenAttr attr, td::int32 val);
-  void set_attr(TickitPenAttr attr, ChangeBool mode);
+  void add_markup(td::int32 attr, size_t f, size_t l, td::int32 val);
+  void set_attr_ex(td::int32 attr, td::int32 val);
+  void set_attr(td::int32 attr, ChangeBool mode);
+
+  td::td_api::message *get_message(td::int64 chat_id, td::int64 message_id);
+
+  void set_chat(ChatWindow *chat) {
+    cur_chat_ = chat;
+  }
 
  private:
   std::vector<std::vector<std::pair<size_t, td::int32>>> args_;
   std::vector<windows::MarkupElement> markup_;
+  ChatWindow *cur_chat_{nullptr};
   td::StringBuilder sb_;
 };
 

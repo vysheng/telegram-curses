@@ -39,7 +39,7 @@ class LogWindow : public windows::PadWindow {
         E(std::string text, td::int64 id) : text_(std::move(text)), id_(id) {
         }
 
-        td::int32 render(TickitRenderBuffer *rb, bool is_selected) override {
+        td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
           return render_plain_text(rb, text_, width(), 1, is_selected);
         }
 

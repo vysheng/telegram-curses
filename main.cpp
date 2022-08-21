@@ -104,7 +104,7 @@ class NcursesRoot : public td::Actor {
       }
       data_ = a;
     }
-    td::int32 render(TickitRenderBuffer *rb, bool is_selected) override {
+    td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
       return render_plain_text(rb, data_, width(), 1000000, is_selected);
     }
 

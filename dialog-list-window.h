@@ -29,7 +29,7 @@ class DialogListWindow
     Element(td::tl_object_ptr<td::td_api::chat> chat) : Chat(std::move(chat)) {
     }
 
-    td::int32 render(TickitRenderBuffer *rb, bool is_selected) override;
+    td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override;
 
     bool is_less(const windows::PadWindowElement &elx) const override {
       const Element &el = static_cast<const Element &>(elx);

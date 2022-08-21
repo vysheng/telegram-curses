@@ -22,20 +22,21 @@ class ChatWindow
     scroll_last_line();
     send_open();
   }
-  class Element;
 
   class Element : public windows::PadWindowElement {
    public:
     Element(td::tl_object_ptr<td::td_api::message> message) : message(std::move(message)) {
     }
 
-    td::int32 render(TickitRenderBuffer *rb, bool is_selected) override;
+    td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override;
 
     bool is_less(const windows::PadWindowElement &elx) const override {
       const Element &el = static_cast<const Element &>(elx);
 
       return message->id_ < el.message->id_;
     }
+
+    void run(ChatWindow *window);
 
     td::tl_object_ptr<td::td_api::message> message;
   };
@@ -64,6 +65,9 @@ class ChatWindow
   void process_update(td::td_api::updateMessageMentionRead &update);
   void process_update(td::td_api::updateMessageUnreadReactions &update);
   void process_update(td::td_api::updateMessageLiveLocationViewed &update);
+  void process_update(td::td_api::updateFile &update);
+
+  void update_file(td::int64 message_id, td::td_api::file &file);
 
   std::string draft_message_text();
 
@@ -74,9 +78,41 @@ class ChatWindow
     send_close();
   }
 
+  static td::int32 get_file_id(const td::td_api::message &message);
+  static void update_message_file(td::td_api::message &message, const td::td_api::file &file);
+
+  void del_file_message_pair(td::int64 msg_id, td::int32 file_id) {
+    if (!file_id) {
+      return;
+    }
+    auto it = file_id_2_messages_.find(file_id);
+    CHECK(it != file_id_2_messages_.end());
+    it->second.erase(msg_id);
+    if (it->second.size() == 0) {
+      file_id_2_messages_.erase(it);
+    }
+  }
+
+  void add_file_message_pair(td::int64 msg_id, td::int32 file_id) {
+    if (!file_id) {
+      return;
+    }
+    file_id_2_messages_[file_id].insert(msg_id);
+  }
+
+  std::shared_ptr<Element> get_message(td::int64 message_id) {
+    auto it = messages_.find(message_id);
+    if (it != messages_.end()) {
+      return it->second;
+    } else {
+      return nullptr;
+    }
+  }
+
  private:
   td::int64 chat_id_;
   std::map<td::int64, std::shared_ptr<Element>> messages_;
+  std::map<td::int32, std::set<td::int64>> file_id_2_messages_;
   bool running_req_top_{false};
   bool running_req_bottom_{false};
   bool is_completed_top_{false};

@@ -8,7 +8,7 @@
 
 namespace tdcurses {
 
-td::int32 DialogListWindow::Element::render(TickitRenderBuffer *rb, bool is_selected) {
+td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) {
   Outputter out;
   std::string prefix;
   if (unread_count() > 0) {

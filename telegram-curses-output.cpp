@@ -1,12 +1,20 @@
 #include "td/generate/auto/td/telegram/td_api.h"
 #include "td/generate/auto/td/telegram/td_api.hpp"
 
+#include "td/utils/Slice-decl.h"
 #include "td/utils/format.h"
+#include "td/utils/logging.h"
+#include "td/utils/overloaded.h"
+#include "td/utils/utf8.h"
 
 #include "telegram-curses-output.h"
 
+#include "utf8proc.h"
+
 #include <ctime>
 #include <memory>
+#include <vector>
+#include <algorithm>
 
 namespace tdcurses {
 
@@ -41,7 +49,16 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
   }
 
   if (message.forward_info_) {
-    out << "[fwd " << message.forward_info_ << "]\n";
+    out << "fwd " << message.forward_info_ << "\n";
+  }
+
+  if (message.reply_to_message_id_) {
+    out << "reply " << Outputter::NoLb{true};
+    auto reply_msg = out.get_message(message.reply_in_chat_id_, message.reply_to_message_id_);
+    if (reply_msg) {
+      out << reply_msg->sender_id_ << " " << reply_msg->content_;
+    }
+    out << Outputter::NoLb{false} << "\n";
   }
 
   out << Color::Revert;
@@ -305,7 +322,69 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &cont
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) {
-  return out << content.text_;
+  auto enable_disable_markup = [&](const td::td_api::TextEntityType *ent, bool enable) {
+    td::td_api::downcast_call(
+        const_cast<td::td_api::TextEntityType &>(*ent),
+        td::overloaded(
+            [&](const td::td_api::textEntityTypeMention &) { out << (enable ? Color::Red : Color::Revert); },
+            [&](const td::td_api::textEntityTypeHashtag &) {}, [&](const td::td_api::textEntityTypeCashtag &) {},
+            [&](const td::td_api::textEntityTypeBotCommand &) {},
+            [&](const td::td_api::textEntityTypeUrl &) { out << Outputter::Underline(enable); },
+            [&](const td::td_api::textEntityTypeEmailAddress &) { out << Outputter::Underline(enable); },
+            [&](const td::td_api::textEntityTypePhoneNumber &) { out << Outputter::Underline(enable); },
+            [&](const td::td_api::textEntityTypeBankCardNumber &) { out << Outputter::Underline(enable); },
+            [&](const td::td_api::textEntityTypeBold &) { out << Outputter::Bold(enable); },
+            [&](const td::td_api::textEntityTypeItalic &) { out << Outputter::Italic(enable); },
+            [&](const td::td_api::textEntityTypeUnderline &) { out << Outputter::Underline(enable); },
+            [&](const td::td_api::textEntityTypeStrikethrough &) { out << Outputter::Strike(enable); },
+            [&](const td::td_api::textEntityTypeSpoiler &) {}, [&](const td::td_api::textEntityTypeCode &) {},
+            [&](const td::td_api::textEntityTypePre &) {}, [&](const td::td_api::textEntityTypePreCode &) {},
+            [&](const td::td_api::textEntityTypeTextUrl &e) {
+              out << Outputter::Underline(enable);
+              if (!enable) {
+                out << "[" << e.url_ << "]";
+              }
+            },
+            [&](const td::td_api::textEntityTypeMentionName &) { out << (enable ? Color::Red : Color::Revert); },
+            [&](const td::td_api::textEntityTypeMediaTimestamp &) {}));
+  };
+  std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> en;
+  std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> dis;
+  for (auto &m : content.entities_) {
+    if (m->length_ > 0) {
+      en.emplace_back(m->offset_, m->type_.get());
+      dis.emplace_back(m->offset_ + m->length_, m->type_.get());
+    }
+  }
+  size_t enp = 0, disp = 0;
+  std::sort(en.begin(), en.end());
+  std::sort(dis.begin(), dis.end());
+  const unsigned char *text = td::CSlice(content.text_).ubegin();
+  size_t p = 0;
+  while (*text) {
+    while (enp < en.size() && en[enp].first <= p) {
+      enable_disable_markup(en[enp].second, true);
+      enp++;
+    }
+    while (disp < dis.size() && dis[disp].first <= p) {
+      enable_disable_markup(dis[disp].second, false);
+      disp++;
+    }
+    td::uint32 code;
+    auto new_text = td::next_utf8_unsafe(text, &code, "");
+    out << td::Slice(text, new_text);
+    text = new_text;
+    p += (code <= 0xffff) ? 1 : 2;  // UTF16 codepoints =((
+  }
+  while (enp < en.size()) {
+    enable_disable_markup(en[enp].second, true);
+    enp++;
+  }
+  while (disp < dis.size()) {
+    enable_disable_markup(dis[disp].second, false);
+    disp++;
+  }
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::webPage &content) {
@@ -377,7 +456,17 @@ Outputter &operator<<(Outputter &out, const td::td_api::poll &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::file &file) {
-  return out << file.id_ << " " << td::format::as_size(file.size_);
+  out << file.id_ << " " << td::format::as_size(file.size_);
+  if (file.local_) {
+    if (file.local_->is_downloading_completed_) {
+      out << " " << file.local_->path_;
+    }
+    if (file.local_->is_downloading_active_) {
+      auto v = file.local_->downloaded_size_ * 100 / (file.size_ ?: 1);
+      out << " " << v << "%";
+    }
+  }
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageSenderChat &sender) {

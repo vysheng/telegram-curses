@@ -1,11 +1,15 @@
 #include "chat-window.h"
 #include "td/telegram/td_api.h"
+#include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
+#include "td/utils/Random.h"
 #include "td/utils/Status.h"
+#include "td/utils/overloaded.h"
 #include "telegram-curses-output.h"
 #include "windows/text.h"
 #include <limits>
 #include <memory>
+#include <tuple>
 
 namespace tdcurses {
 
@@ -44,8 +48,15 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   set_need_refresh();
   if (info->type == TICKIT_KEYEV_KEY) {
   } else {
-    if (!strcmp(info->str, "i")) {
-      LOG(ERROR) << "opening compose window";
+    if (!strcmp(info->str, " ")) {
+      auto el = get_active_element();
+      if (!el) {
+        return;
+      }
+      auto &e = static_cast<Element &>(*el);
+      e.run(this);
+      return;
+    } else if (!strcmp(info->str, "i")) {
       root()->open_compose_window();
       return;
     }
@@ -54,9 +65,7 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   {
     auto el = get_active_element();
     if (el) {
-      LOG(ERROR) << "view message";
       auto &e = static_cast<Element &>(*el);
-      LOG(ERROR) << "view message " << e.message->id_;
       auto req =
           td::make_tl_object<td::td_api::viewMessages>(chat_id_, 0, std::vector<td::int64>{e.message->id_}, false);
       send_request(std::move(req), {});
@@ -64,11 +73,12 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   }
 }
 
-td::int32 ChatWindow::Element::render(TickitRenderBuffer *rb, bool is_selected) {
-  Outputter out;
-  out << message;
+td::int32 ChatWindow::Element::render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) {
   td::int32 cursor_x, cursor_y;
   TickitCursorShape cursor_shape;
+  Outputter out;
+  out.set_chat(static_cast<ChatWindow *>(&root));
+  out << message;
   return windows::TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width(), out.as_str(), 0, out.markup(),
                                    is_selected, false);
 }
@@ -78,7 +88,6 @@ void ChatWindow::request_bottom_elements() {
     return;
   }
   running_req_bottom_ = true;
-  LOG(ERROR) << "requesting bottom";
   auto m = messages_.rbegin()->first;
   auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, -10, 10, false);
   send_request(std::move(req),
@@ -99,7 +108,6 @@ void ChatWindow::request_top_elements() {
   if (running_req_top_ || is_completed_top_) {
     return;
   }
-  LOG(ERROR) << "requesting top";
   running_req_top_ = true;
   td::int64 m;
   if (messages_.size() != 0) {
@@ -131,6 +139,7 @@ void ChatWindow::add_messages(td::tl_object_ptr<td::td_api::messages> msgs) {
     } else {
       auto el = std::make_shared<Element>(std::move(m));
       messages_.emplace(id, el);
+      add_file_message_pair(el->message->id_, get_file_id(*el->message));
       add_element(std::move(el));
     }
   }
@@ -149,6 +158,7 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
   } else {
     auto el = std::make_shared<Element>(std::move(m));
     messages_.emplace(id, el);
+    add_file_message_pair(el->message->id_, get_file_id(*el->message));
     add_element(std::move(el));
   }
 }
@@ -164,12 +174,14 @@ void ChatWindow::process_update(td::td_api::updateMessageSendAcknowledged &updat
 void ChatWindow::process_update(td::td_api::updateMessageSendSucceeded &update) {
   auto it = messages_.find(update.old_message_id_);
   if (it != messages_.end()) {
+    del_file_message_pair(it->second->message->id_, get_file_id(*it->second->message));
     delete_element(it->second.get());
     messages_.erase(it);
     auto m = std::move(update.message_);
     auto id = m->id_;
     auto el = std::make_shared<Element>(std::move(m));
     messages_.emplace(id, el);
+    add_file_message_pair(el->message->id_, get_file_id(*el->message));
     add_element(std::move(el));
   }
 }
@@ -180,12 +192,14 @@ void ChatWindow::process_update(td::td_api::updateMessageSendSucceeded &update) 
 void ChatWindow::process_update(td::td_api::updateMessageSendFailed &update) {
   auto it = messages_.find(update.old_message_id_);
   if (it != messages_.end()) {
+    del_file_message_pair(it->second->message->id_, get_file_id(*it->second->message));
     delete_element(it->second.get());
     messages_.erase(it);
     auto m = std::move(update.message_);
     auto id = m->id_;
     auto el = std::make_shared<Element>(std::move(m));
     messages_.emplace(id, el);
+    add_file_message_pair(el->message->id_, get_file_id(*el->message));
     add_element(std::move(el));
   }
 }
@@ -195,7 +209,13 @@ void ChatWindow::process_update(td::td_api::updateMessageSendFailed &update) {
 void ChatWindow::process_update(td::td_api::updateMessageContent &update) {
   auto it = messages_.find(update.message_id_);
   if (it != messages_.end()) {
+    auto old_f = get_file_id(*it->second->message);
     it->second->message->content_ = std::move(update.new_content_);
+    auto new_f = get_file_id(*it->second->message);
+    if (old_f != new_f) {
+      del_file_message_pair(update.message_id_, old_f);
+      add_file_message_pair(update.message_id_, new_f);
+    }
     change_element(it->second.get());
   }
 }
@@ -264,6 +284,89 @@ void ChatWindow::process_update(td::td_api::updateMessageUnreadReactions &update
 //@description A message with a live location was viewed. When the update is received, the client is supposed to update the live location
 //@chat_id Identifier of the chat with the live location message @message_id Identifier of the message with live location
 void ChatWindow::process_update(td::td_api::updateMessageLiveLocationViewed &update) {
+}
+
+void ChatWindow::process_update(td::td_api::updateFile &update) {
+  auto it = file_id_2_messages_.find(update.file_->id_);
+  if (it != file_id_2_messages_.end()) {
+    for (auto x : it->second) {
+      update_file(x, *update.file_);
+    }
+  }
+}
+
+td::int32 ChatWindow::get_file_id(const td::td_api::message &message) {
+  td::int32 res = 0;
+  td::td_api::downcast_call(
+      const_cast<td::td_api::MessageContent &>(*message.content_),
+      td::overloaded([&](const td::td_api::messageAnimation &content) { res = content.animation_->animation_->id_; },
+                     [&](const td::td_api::messageAudio &content) { res = content.audio_->audio_->id_; },
+                     [&](const td::td_api::messageDocument &content) { res = content.document_->document_->id_; },
+                     [&](const td::td_api::messagePhoto &content) { res = content.photo_->sizes_.back()->photo_->id_; },
+                     [&](const td::td_api::messageSticker &content) { res = content.sticker_->sticker_->id_; },
+                     [&](const td::td_api::messageVideo &content) { res = content.video_->video_->id_; },
+                     [&](const td::td_api::messageVideoNote &content) { res = content.video_note_->video_->id_; },
+                     [&](const td::td_api::messageVoiceNote &content) { res = content.voice_note_->voice_->id_; },
+                     [&](const auto &x) {}));
+  return res;
+}
+
+void ChatWindow::update_message_file(td::td_api::message &message, const td::td_api::file &file_in) {
+  td::tl_object_ptr<td::td_api::localFile> l;
+  if (file_in.local_) {
+    l = td::make_tl_object<td::td_api::localFile>(
+        file_in.local_->path_, file_in.local_->can_be_downloaded_, file_in.local_->can_be_deleted_,
+        file_in.local_->is_downloading_active_, file_in.local_->is_downloading_completed_,
+        file_in.local_->download_offset_, file_in.local_->downloaded_prefix_size_, file_in.local_->downloaded_size_);
+  }
+  td::tl_object_ptr<td::td_api::remoteFile> r;
+  if (file_in.remote_) {
+    r = td::make_tl_object<td::td_api::remoteFile>(
+        file_in.remote_->id_, file_in.remote_->unique_id_, file_in.remote_->is_uploading_active_,
+        file_in.remote_->is_uploading_completed_, file_in.remote_->uploaded_size_);
+  }
+  auto file = td::make_tl_object<td::td_api::file>(file_in.id_, file_in.size_, file_in.expected_size_, std::move(l),
+                                                   std::move(r));
+  //file id:int32 size:int53 expected_size:int53 local:localFile remote:remoteFile = File;
+  td::tl_object_ptr<td::td_api::file> *f = nullptr;
+  td::td_api::downcast_call(
+      *message.content_,
+      td::overloaded([&](td::td_api::messageAnimation &content) { f = &content.animation_->animation_; },
+                     [&](td::td_api::messageAudio &content) { f = &content.audio_->audio_; },
+                     [&](td::td_api::messageDocument &content) { f = &content.document_->document_; },
+                     [&](td::td_api::messagePhoto &content) { f = &content.photo_->sizes_.back()->photo_; },
+                     [&](td::td_api::messageSticker &content) { f = &content.sticker_->sticker_; },
+                     [&](td::td_api::messageVideo &content) { f = &content.video_->video_; },
+                     [&](td::td_api::messageVideoNote &content) { f = &content.video_note_->video_; },
+                     [&](td::td_api::messageVoiceNote &content) { f = &content.voice_note_->voice_; },
+                     [&](auto &x) {}));
+  if (f && (*f)->id_ == file->id_) {
+    *f = std::move(file);
+  }
+}
+
+void ChatWindow::update_file(td::int64 message_id, td::td_api::file &file) {
+  auto it = messages_.find(message_id);
+  if (it != messages_.end()) {
+    update_message_file(*it->second->message, file);
+    change_element(it->second.get());
+  }
+}
+
+void ChatWindow::Element::run(ChatWindow *window) {
+  auto file_id = ChatWindow::get_file_id(*message);
+  if (file_id) {
+    LOG(ERROR) << "downloading file " << file_id;
+    window->send_request(td::make_tl_object<td::td_api::downloadFile>(file_id, 16, 0, 0, true),
+                         [id = message->id_, window](td::Result<td::tl_object_ptr<td::td_api::file>> R) {
+                           if (R.is_error()) {
+                             LOG(ERROR) << "download failed: " << R.move_as_error();
+                             return;
+                           }
+                           window->update_file(id, *R.move_as_ok());
+                         });
+    //downloadFile file_id:int32 priority:int32 offset:int53 limit:int53 synchronous:Bool = File;
+  }
 }
 
 }  // namespace tdcurses
