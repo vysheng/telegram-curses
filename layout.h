@@ -130,6 +130,16 @@ class Layout
     }
   }
 
+  void initialize_sizes(TdcursesParameters &params) {
+    log_window_enabled_ = params.log_window_enabled;
+    dialog_list_window_height_ = 1.0 - 0.01 * params.log_window_height;
+    dialog_list_window_width_ = 0.01 * params.dialog_list_window_width;
+    chat_window_height_ = 1.0 - 0.01 * params.compose_window_height;
+
+    on_resize(width(), height(), width(), height());
+    set_need_refresh();
+  }
+
  private:
   bool log_window_enabled_{true};
 

@@ -167,12 +167,13 @@ class TdcursesImpl : public Tdcurses {
     tdlib_parameters_->system_version_ = version;
   }
 
-  void start(td::tl_object_ptr<td::td_api::tdlibParameters> tdlib_parameters) {
+  void start(td::tl_object_ptr<td::td_api::tdlibParameters> tdlib_parameters,
+             std::unique_ptr<TdcursesParameters> tdcurses_params) {
     self_ = actor_id(this);
     tdlib_parameters_ = std::move(tdlib_parameters);
     starting_ = true;
 
-    start_curses();
+    start_curses(*tdcurses_params);
 
     td_ = td::create_actor<td::ClientActor>("ClientActor", make_td_callback());
   }
@@ -1222,7 +1223,7 @@ class TdcursesImpl : public Tdcurses {
   //td::int32 unread_chats_{0};
 };
 
-void Tdcurses::start_curses() {
+void Tdcurses::start_curses(TdcursesParameters &params) {
   class Cb : public windows::Screen::Callback {
    public:
     Cb(td::ActorId<Tdcurses> self) : self_(self) {
@@ -1248,7 +1249,10 @@ void Tdcurses::start_curses() {
   screen_->change_layout(layout_);
   layout_->replace_log_window(log_window_);
   layout_->replace_dialog_list_window(dialog_list_window_);
+  layout_->initialize_sizes(params);
   screen_->refresh(true);
+
+  initialize_options(params);
 
   auto config = std::make_shared<ConfigWindow>(this, actor_id(this), options_);
   config_window_ = std::make_shared<windows::BorderedWindow>(config, windows::Window::BorderType::Double);
@@ -1333,14 +1337,17 @@ void Tdcurses::tear_down() {
   td::Scheduler::unsubscribe(td::Stdin().get_poll_info().get_pollable_fd_ref());
 }
 
-void Tdcurses::initialize_options() {
-  options_ = {{"log_window", {"enabled", "disabled"}, [&](std::string val) {
+void Tdcurses::initialize_options(TdcursesParameters &params) {
+  options_ = {{"log_window",
+               {"enabled", "disabled"},
+               [&](std::string val) {
                  if (val == "enabled") {
                    layout_->enable_log_window();
                  } else {
                    layout_->disable_log_window();
                  }
-               }}};
+               },
+               params.log_window_enabled ? 0U : 1U}};
 }
 
 }  // namespace tdcurses
@@ -1421,8 +1428,12 @@ int main(int argc, char **argv) {
   bool use_message_database = true;
   bool use_secret_chats = true;
   bool use_test_dc = false;
-  bool log_window_enabled = true;
   bool vs16_makes_wide = true;
+
+  bool log_window_enabled = true;
+  td::int32 dialog_list_window_width = 10;
+  td::int32 log_window_height = 10;
+  td::int32 compose_window_height = 10;
 
   struct CodepointInfo {
     CodepointInfo(td::uint32 begin, td::uint32 end, td::int32 width, std::string terms)
@@ -1453,6 +1464,9 @@ int main(int argc, char **argv) {
     td.add("use_test_dc", libconfig::Setting::TypeBoolean) = use_test_dc;
     auto &iface = root.add("iface", libconfig::Setting::Type::TypeGroup);
     iface.add("log_window_enabled", libconfig::Setting::TypeBoolean) = log_window_enabled;
+    iface.add("dialog_list_window_width", libconfig::Setting::TypeInt) = dialog_list_window_width;
+    iface.add("log_window_height", libconfig::Setting::TypeInt) = log_window_height;
+    iface.add("compose_window_height", libconfig::Setting::TypeInt) = compose_window_height;
     auto &utf8 = root.add("utf8", libconfig::Setting::Type::TypeGroup);
     utf8.add("vs16_makes_wide", libconfig::Setting::TypeBoolean) = vs16_makes_wide;
     auto &widecode = utf8.add("codepoints_override", libconfig::Setting::TypeList);
@@ -1491,8 +1505,12 @@ int main(int argc, char **argv) {
   config.lookupValue("use_message_database", use_message_database);
   config.lookupValue("use_secret_chats", use_secret_chats);
   config.lookupValue("use_test_dc", use_test_dc);
-  config.lookupValue("iface.log_window_enabled", log_window_enabled);
   config.lookupValue("utf8.vs16_makes_wide", vs16_makes_wide);
+
+  config.lookupValue("iface.log_window_enabled", log_window_enabled);
+  config.lookupValue("iface.dialog_list_window_width", dialog_list_window_width);
+  config.lookupValue("iface.log_window_height", log_window_height);
+  config.lookupValue("iface.compose_window_height", compose_window_height);
 
   [&]() {
     auto &root = config.getRoot();
@@ -1578,12 +1596,19 @@ int main(int argc, char **argv) {
   tdlib_parameters->use_secret_chats_ = use_secret_chats;
   tdlib_parameters->use_test_dc_ = use_test_dc;
 
+  auto tdcurses_params = std::make_unique<tdcurses::TdcursesParameters>();
+  tdcurses_params->log_window_enabled = log_window_enabled;
+  tdcurses_params->dialog_list_window_width = dialog_list_window_width;
+  tdcurses_params->log_window_height = log_window_height;
+  tdcurses_params->compose_window_height = compose_window_height;
+
   td::ActorOwn<tdcurses::TdcursesImpl> act;
   act = scheduler.create_actor_unsafe<tdcurses::TdcursesImpl>(1, "CliClient");
   scheduler.start();
   {
     auto guard = scheduler.get_main_guard();
-    td::send_closure_later(act.get(), &tdcurses::TdcursesImpl::start, std::move(tdlib_parameters));
+    td::send_closure_later(act.get(), &tdcurses::TdcursesImpl::start, std::move(tdlib_parameters),
+                           std::move(tdcurses_params));
   }
   while (scheduler.run_main(100)) {
   }

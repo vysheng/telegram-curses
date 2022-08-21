@@ -14,15 +14,23 @@ class ChatWindow;
 class ComposeWindow;
 class ConfigWindow;
 
+struct TdcursesParameters {
+  bool log_window_enabled{false};
+  td::int32 log_window_height{10};
+  td::int32 dialog_list_window_width{10};
+  td::int32 compose_window_height{10};
+};
+
 class Tdcurses : public TdcursesInterface {
  public:
   struct Option {
-    Option(std::string name, std::vector<std::string> values, std::function<void(std::string)> on_change)
-        : name(std::move(name)), values(std::move(values)), on_change(on_change) {
+    Option(std::string name, std::vector<std::string> values, std::function<void(std::string)> on_change,
+           td::uint32 cur_selected = 0)
+        : name(std::move(name)), values(std::move(values)), on_change(on_change), cur_selected(cur_selected) {
     }
     Option(std::string name, std::vector<std::string> n_values, std::function<void(std::string)> on_change,
-           std::string f)
-        : name(std::move(name)), values(std::move(n_values)), on_change(on_change) {
+           std::string f, td::uint32 cur_selected = 0)
+        : name(std::move(name)), values(std::move(n_values)), on_change(on_change), cur_selected(cur_selected) {
       for (td::uint32 i = 0; i < values.size(); i++) {
         if (values[i] == f) {
           cur_selected = i;
@@ -47,7 +55,7 @@ class Tdcurses : public TdcursesInterface {
     }
   };
 
-  void initialize_options();
+  void initialize_options(TdcursesParameters &params);
 
  private:
   td::ActorId<Tdcurses> self_;
@@ -65,10 +73,9 @@ class Tdcurses : public TdcursesInterface {
 
  public:
   Tdcurses() {
-    initialize_options();
   }
 
-  void start_curses();
+  void start_curses(TdcursesParameters &params);
 
   bool window_exists(td::int64 id);
 
