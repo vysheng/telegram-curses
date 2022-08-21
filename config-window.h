@@ -40,7 +40,7 @@ class ConfigWindow
 
   void handle_input(TickitKeyEventInfo *info) override {
     if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Enter")) {
+      if (!strcmp(info->str, "Enter") || !strcmp(info->str, "Escape")) {
         root()->hide_config_window();
         return;
       }

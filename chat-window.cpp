@@ -356,11 +356,9 @@ void ChatWindow::update_file(td::int64 message_id, td::td_api::file &file) {
 void ChatWindow::Element::run(ChatWindow *window) {
   auto file_id = ChatWindow::get_file_id(*message);
   if (file_id) {
-    LOG(ERROR) << "downloading file " << file_id;
     window->send_request(td::make_tl_object<td::td_api::downloadFile>(file_id, 16, 0, 0, true),
                          [id = message->id_, window](td::Result<td::tl_object_ptr<td::td_api::file>> R) {
                            if (R.is_error()) {
-                             LOG(ERROR) << "download failed: " << R.move_as_error();
                              return;
                            }
                            window->update_file(id, *R.move_as_ok());

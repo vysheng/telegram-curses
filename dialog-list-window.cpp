@@ -30,7 +30,6 @@ void DialogListWindow::request_bottom_elements() {
   if (running_req_ || is_completed_) {
     return;
   }
-  LOG(WARNING) << "request new chats";
   running_req_ = true;
 
   send_request(td::make_tl_object<td::td_api::loadChats>(nullptr, 10),
@@ -38,10 +37,8 @@ void DialogListWindow::request_bottom_elements() {
 }
 
 void DialogListWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
-  LOG(WARNING) << "received answer";
   //running_req_ = false;
   if (R.is_error() && R.error().code() == 404) {
-    LOG(WARNING) << "answer is full";
     is_completed_ = true;
   }
 }

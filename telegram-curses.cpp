@@ -80,13 +80,13 @@ std::string detect_home_dir() {
   struct passwd *pw = getpwuid(uid);
 
   if (pw == NULL) {
-    LOG(ERROR) << "cannot find HOME dir";
+    LOG(WARNING) << "cannot find HOME dir";
     exit(EXIT_FAILURE);
   }
 
   return pw->pw_dir;
 #else
-  LOG(ERROR) << "cannot find HOME dir";
+  LOG(WARNING) << "cannot find HOME dir";
   exit(EXIT_FAILURE);
 #endif
 }
@@ -221,7 +221,6 @@ class TdcursesImpl : public Tdcurses {
   }
 
   void request_database_password() {
-    LOG(ERROR) << "requesting db password";
     class Callback : public windows::OneLineInputWindow::Callback {
      public:
       Callback(TdcursesImpl *ptr) : ptr_(ptr) {
@@ -303,11 +302,9 @@ class TdcursesImpl : public Tdcurses {
   }
 
   void request_qr_code() {
-    LOG(ERROR) << "requesting qr code";
     send_request(td::make_tl_object<td::td_api::requestQrCodeAuthentication>(std::vector<td::int64>()),
                  td::PromiseCreator::lambda([SelfId = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
                    if (R.is_error()) {
-                     LOG(ERROR) << "failed to to request qr code";
                      td::send_closure(SelfId, &TdcursesImpl::request_phone_number);
                    }
                  }));
@@ -524,7 +521,7 @@ class TdcursesImpl : public Tdcurses {
   }
 
   void process_auth_state(td::td_api::authorizationStateReady &state) {
-    LOG(WARNING) << "ready";
+    LOG(INFO) << "ready";
     // do nothing
     dialog_list_window()->request_bottom_elements();
   }
@@ -1256,7 +1253,7 @@ void Tdcurses::start_curses() {
   auto config = std::make_shared<ConfigWindow>(this, actor_id(this), options_);
   config_window_ = std::make_shared<windows::BorderedWindow>(config, windows::Window::BorderType::Double);
 
-  LOG(ERROR) << "starting";
+  LOG(INFO) << "starting";
 }
 
 bool Tdcurses::window_exists(td::int64 id) {
@@ -1363,10 +1360,6 @@ void termination_signal_handler(int signum) {
 }
 
 int main(int argc, char **argv) {
-  auto R = td::FileLog::create("log.txt");
-  auto f = R.move_as_ok();
-  td::log_interface = f.get();
-
   td::setup_signals_alt_stack().ensure();
   td::set_signal_handler(td::SignalType::Abort, termination_signal_handler).ensure();
   td::set_signal_handler(td::SignalType::Error, termination_signal_handler).ensure();
@@ -1475,6 +1468,7 @@ int main(int argc, char **argv) {
   }
 
   libconfig::Config config;
+
   try {
     config.readFile(config_file_name.c_str());
   } catch (libconfig::FileIOException &e) {
@@ -1560,6 +1554,12 @@ int main(int argc, char **argv) {
     }
     override_unicode_width(std::move(b));
   }
+
+  auto log_dir = db_root + "logs/";
+  td::mkdir(log_dir).ensure();
+  auto R = td::FileLog::create(log_dir + "log.txt");
+  auto f = R.move_as_ok();
+  td::log_interface = f.get();
 
   auto tdlib_parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
   tdlib_parameters->api_hash_ = api_hash;

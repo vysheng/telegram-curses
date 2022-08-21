@@ -56,7 +56,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     out << "reply " << Outputter::NoLb{true};
     auto reply_msg = out.get_message(message.reply_in_chat_id_, message.reply_to_message_id_);
     if (reply_msg) {
-      out << reply_msg->sender_id_ << " " << reply_msg->content_;
+      out << Color::Red << reply_msg->sender_id_ << Color::Revert << " " << reply_msg->content_;
     }
     out << Outputter::NoLb{false} << "\n";
   }
