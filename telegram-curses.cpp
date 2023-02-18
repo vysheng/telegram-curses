@@ -1,5 +1,6 @@
-#include "td/actor/impl/ActorId-decl.h"
+#include "td/actor/impl/ActorId.h"
 #include "td/actor/impl/Scheduler-decl.h"
+#include "td/actor/impl/Scheduler.h"
 #include "td/tdactor/td/actor/actor.h"
 #include "td/tdutils/td/utils/int_types.h"
 #include "td/tl/TlObject.h"
@@ -127,7 +128,7 @@ std::string detect_db_root_name() {
 
 class TdcursesImpl : public Tdcurses {
  private:
-  td::tl_object_ptr<td::td_api::tdlibParameters> tdlib_parameters_;
+  td::tl_object_ptr<td::td_api::setTdlibParameters> tdlib_parameters_;
   td::ActorId<TdcursesImpl> self_;
   std::string root_directory_ = ".tdcurses";
   bool starting_ = false;
@@ -162,12 +163,23 @@ class TdcursesImpl : public Tdcurses {
   void get_os_type() {
   }
 
+  auto clone_tdlib_parameters() const {
+    return td::make_tl_object<td::td_api::setTdlibParameters>(
+        tdlib_parameters_->use_test_dc_, tdlib_parameters_->database_directory_, tdlib_parameters_->files_directory_,
+        tdlib_parameters_->database_encryption_key_, tdlib_parameters_->use_file_database_,
+        tdlib_parameters_->use_chat_info_database_, tdlib_parameters_->use_message_database_,
+        tdlib_parameters_->use_secret_chats_, tdlib_parameters_->api_id_, tdlib_parameters_->api_hash_,
+        tdlib_parameters_->system_language_code_, tdlib_parameters_->device_model_, tdlib_parameters_->system_version_,
+        tdlib_parameters_->application_version_, tdlib_parameters_->enable_storage_optimizer_,
+        tdlib_parameters_->ignore_file_names_);
+  }
+
   void change_system_version(std::string version) {
     CHECK(!starting_);
     tdlib_parameters_->system_version_ = version;
   }
 
-  void start(td::tl_object_ptr<td::td_api::tdlibParameters> tdlib_parameters,
+  void start(td::tl_object_ptr<td::td_api::setTdlibParameters> tdlib_parameters,
              std::unique_ptr<TdcursesParameters> tdcurses_params) {
     self_ = actor_id(this);
     tdlib_parameters_ = std::move(tdlib_parameters);
@@ -204,15 +216,23 @@ class TdcursesImpl : public Tdcurses {
   }
 
   void process_auth_state(td::td_api::authorizationStateWaitTdlibParameters &state) {
-    send_request(td::make_tl_object<td::td_api::setTdlibParameters>(std::move(tdlib_parameters_)),
-                 td::PromiseCreator::lambda([](td::Result<td::tl_object_ptr<td::td_api::ok>> R) { R.ensure(); }));
+    send_request(clone_tdlib_parameters(),
+                 td::PromiseCreator::lambda([self = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                   if (R.is_error()) {
+                     CHECK(R.error().code() == 401);
+                     td::send_closure(self, &TdcursesImpl::request_database_password);
+                   }
+                 }));
   }
 
   void received_database_password(td::Result<td::BufferSlice> res) {
     if (res.is_error()) {
       request_database_password();
     } else {
-      send_request(td::make_tl_object<td::td_api::checkDatabaseEncryptionKey>(res.move_as_ok().as_slice().str()),
+      auto params = clone_tdlib_parameters();
+      auto key = res.move_as_ok();
+      params->database_encryption_key_ = std::string(key.data(), key.size());
+      send_request(std::move(params),
                    td::PromiseCreator::lambda([SelfId = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
                      if (R.is_error()) {
                        td::send_closure(SelfId, &TdcursesImpl::request_database_password);
@@ -251,24 +271,39 @@ class TdcursesImpl : public Tdcurses {
     add_popup_window(box, 0);
   }
 
-  //authorizationStateWaitEncryptionKey is_encrypted:Bool = AuthorizationState;
-  void process_auth_state(td::td_api::authorizationStateWaitEncryptionKey &state) {
-    request_database_password();
+  //@description TDLib needs the user's email address to authorize. Call setAuthenticationEmailAddress to provide the email address, or directly call checkAuthenticationEmailCode with Apple ID/Google ID token if allowed
+  //@allow_apple_id True, if authorization through Apple ID is allowed
+  //@allow_google_id True, if authorization through Google ID is allowed
+  void process_auth_state(td::td_api::authorizationStateWaitEmailAddress &state) {
+    UNREACHABLE();
+  }
+
+  //@description TDLib needs the user's authentication code sent to an email address to authorize. Call checkAuthenticationEmailCode to provide the code
+  //@allow_apple_id True, if authorization through Apple ID is allowed
+  //@allow_google_id True, if authorization through Google ID is allowed
+  //@code_info Information about the sent authentication code
+  //@next_phone_number_authorization_date Point in time (Unix timestamp) when the user will be able to authorize with a code sent to the user's phone number; 0 if unknown
+  //authorizationStateWaitEmailCode allow_apple_id:Bool allow_google_id:Bool code_info:emailAddressAuthenticationCodeInfo next_phone_number_authorization_date:int32 = AuthorizationState;
+  void process_auth_state(td::td_api::authorizationStateWaitEmailCode &state) {
+    UNREACHABLE();
   }
 
   void received_phone_number(td::Result<td::BufferSlice> res) {
     if (res.is_error()) {
       request_phone_number();
     } else {
-      send_request(
-          td::make_tl_object<td::td_api::setAuthenticationPhoneNumber>(
-              res.move_as_ok().as_slice().str(), td::make_tl_object<td::td_api::phoneNumberAuthenticationSettings>(
-                                                     false, false, false, false, std::vector<std::string>())),
-          td::PromiseCreator::lambda([SelfId = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
-            if (R.is_error()) {
-              td::send_closure(SelfId, &TdcursesImpl::request_phone_number);
-            }
-          }));
+      //phoneNumberAuthenticationSettings allow_flash_call:Bool allow_missed_call:Bool is_current_phone_number:Bool allow_sms_retriever_api:Bool firebase_authentication_settings:FirebaseAuthenticationSettings authentication_tokens:vector<string> = PhoneNumberAuthenticationSettings;
+      send_request(td::make_tl_object<td::td_api::setAuthenticationPhoneNumber>(
+                       res.move_as_ok().as_slice().str(),
+                       td::make_tl_object<td::td_api::phoneNumberAuthenticationSettings>(
+                           /* allow flash call */ false, /* allow missed call */ false,
+                           /* is current phone number */ false, /* allow sms retriever */ false, /* firebase */ nullptr,
+                           /* tokens */ std::vector<std::string>())),
+                   td::PromiseCreator::lambda([SelfId = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                     if (R.is_error()) {
+                       td::send_closure(SelfId, &TdcursesImpl::request_phone_number);
+                     }
+                   }));
     }
   }
 
@@ -728,7 +763,7 @@ class TdcursesImpl : public Tdcurses {
 
   //@description The message Time To Live setting for a chat was changed @chat_id Chat identifier @message_ttl New value of message_ttl
   //updateChatMessageTtl chat_id:int53 message_ttl:int32 = Update;
-  void process_update(td::td_api::updateChatMessageTtl &update) {
+  void process_update(td::td_api::updateChatMessageAutoDeleteTime &update) {
     dialog_list_window()->process_update(update);
   }
 
@@ -787,6 +822,12 @@ class TdcursesImpl : public Tdcurses {
     dialog_list_window()->process_update(update);
   }
 
+  //@description Translation of chat messages was enabled or disabled @chat_id Chat identifier @is_translatable New value of is_translatable
+  //updateChatIsTranslatable chat_id:int53 is_translatable:Bool = Update;
+  void process_update(td::td_api::updateChatIsTranslatable &update) {
+    dialog_list_window()->process_update(update);
+  }
+
   //@description A chat's has_scheduled_messages field has changed @chat_id Chat identifier @has_scheduled_messages New value of has_scheduled_messages
   void process_update(td::td_api::updateChatHasScheduledMessages &update) {
     dialog_list_window()->process_update(update);
@@ -813,6 +854,12 @@ class TdcursesImpl : public Tdcurses {
   //@description The number of online group members has changed. This update with non-zero number of online group members is sent only for currently opened chats. There is no guarantee that it will be sent just after the number of online users has changed @chat_id Identifier of the chat @online_member_count New number of online members in the chat, or 0 if unknown
   //updateChatOnlineMemberCount chat_id:int53 online_member_count:int32 = Update;
   void process_update(td::td_api::updateChatOnlineMemberCount &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description Basic information about a topic in a forum chat was changed @chat_id Chat identifier @info New information about the topic
+  //updateForumTopicInfo chat_id:int53 info:forumTopicInfo = Update;
+  void process_update(td::td_api::updateForumTopicInfo &update) {
     dialog_list_window()->process_update(update);
   }
 
@@ -1111,9 +1158,14 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateWebAppMessageSent &update) {
   }
 
-  //@description The list of supported reactions has changed @reactions The new list of supported reactions
-  //updateReactions reactions:vector<reaction> = Update;
-  void process_update(td::td_api::updateReactions &update) {
+  //@description The list of active emoji reactions has changed @emojis The new list of active emoji reactions
+  //updateActiveEmojiReactions emojis:vector<string> = Update;
+  void process_update(td::td_api::updateActiveEmojiReactions &update) {
+  }
+
+  //@description The type of default reaction has changed @reaction_type The new type of the default reaction
+  //updateDefaultReactionType reaction_type:ReactionType = Update;
+  void process_update(td::td_api::updateDefaultReactionType &update) {
   }
 
   //@description The list of supported dice emojis has changed @emojis The new list of supported dice emojis
@@ -1135,6 +1187,11 @@ class TdcursesImpl : public Tdcurses {
   //@description The list of suggested to the user actions has changed @added_actions Added suggested actions @removed_actions Removed suggested actions
   //updateSuggestedActions added_actions:vector<SuggestedAction> removed_actions:vector<SuggestedAction> = Update;
   void process_update(td::td_api::updateSuggestedActions &update) {
+  }
+
+  //@description Autosave settings for some type of chats were updated @scope Type of chats for which autosave settings were updated @settings The new autosave settings; may be null if the settings are reset to default
+  //updateAutosaveSettings scope:AutosaveSettingsScope settings:scopeAutosaveSettings = Update;
+  void process_update(td::td_api::updateAutosaveSettings &update) {
   }
 
   //@description A new incoming inline query; for bots only @id Unique query identifier @sender_user_id Identifier of the user who sent the query @user_location User location, provided by the client; may be null @query Text of the query @offset Offset of the first entry to return
@@ -1375,8 +1432,7 @@ int main(int argc, char **argv) {
 
   SET_VERBOSITY_LEVEL(VERBOSITY_NAME(WARNING));
 
-  td::ConcurrentScheduler scheduler;
-  scheduler.init(4);
+  td::ConcurrentScheduler scheduler(4);
 
   /*auto gpl_notice = PSTRING() << "Telegram-cli " << TELEGRAM_CLI_VERSION << " Copyright (C) 2022\n"
                               << "This program comes with ABSOLUTELY NO WARRANTY; for details read GPL.\n"
@@ -1579,7 +1635,7 @@ int main(int argc, char **argv) {
   auto f = R.move_as_ok();
   td::log_interface = f.get();
 
-  auto tdlib_parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
+  auto tdlib_parameters = td::td_api::make_object<td::td_api::setTdlibParameters>();
   tdlib_parameters->api_hash_ = api_hash;
   tdlib_parameters->api_id_ = api_id;
   tdlib_parameters->application_version_ = TELEGRAM_CURSES_VERSION;

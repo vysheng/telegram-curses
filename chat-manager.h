@@ -124,7 +124,8 @@ class Chat {
   }
 
   auto message_ttl() const {
-    return chat_->message_ttl_;
+    return chat_->message_auto_delete_time_;
+    //return chat_->message_ttl_;
   }
 
   const auto &theme_name() const {
@@ -260,10 +261,10 @@ class Chat {
     chat_->message_sender_id_ = std::move(update.message_sender_id_);
   }
 
-  //@description The message Time To Live setting for a chat was changed @chat_id Chat identifier @message_ttl New value of message_ttl
-  //updateChatMessageTtl chat_id:int53 message_ttl:int32 = Update;
-  void process_update(td::td_api::updateChatMessageTtl &update) {
-    chat_->message_ttl_ = update.message_ttl_;
+  //@description The message auto-delete or self-destruct timer setting for a chat was changed @chat_id Chat identifier @message_auto_delete_time New value of message_auto_delete_time
+  //updateChatMessageAutoDeleteTime chat_id:int53 message_auto_delete_time:int32 = Update;
+  void process_update(td::td_api::updateChatMessageAutoDeleteTime &update) {
+    chat_->message_auto_delete_time_ = update.message_auto_delete_time_;
   }
 
   //@description Notification settings for a chat were changed @chat_id Chat identifier @notification_settings The new notification settings
@@ -343,6 +344,16 @@ class Chat {
   void process_update(td::td_api::updateChatOnlineMemberCount &update) {
     online_ = update.online_member_count_;
   }
+
+  //@description Basic information about a topic in a forum chat was changed @chat_id Chat identifier @info New information about the topic
+  void process_update(td::td_api::updateForumTopicInfo &update) {
+  }
+
+  //@description Translation of chat messages was enabled or disabled @chat_id Chat identifier @is_translatable New value of is_translatable
+  //updateChatIsTranslatable chat_id:int53 is_translatable:Bool = Update;
+  void process_update(td::td_api::updateChatIsTranslatable &update) {
+    chat_->is_translatable_ = update.is_translatable_;
+  }
 };
 
 class User {
@@ -360,7 +371,8 @@ class User {
     return user_->last_name_;
   }
   const auto &username() const {
-    return user_->username_;
+    return user_->usernames_->editable_username_;
+    //return user_->username_;
   }
   const auto &phone_number() const {
     return user_->phone_number_;

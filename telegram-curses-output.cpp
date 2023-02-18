@@ -269,8 +269,24 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetTheme &con
   return out << "[set theme " << content.theme_name_ << "]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetTtl &content) {
-  return out << "[ttl " << td::format::as_time(content.ttl_) << "]";
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetMessageAutoDeleteTime &content) {
+  return out << "[ttl " << td::format::as_time(content.message_auto_delete_time_) << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicCreated &content) {
+  return out << "[topic " << content.name_ << " created]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicEdited &content) {
+  return out << "[topic " << content.name_ << " edited]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicIsClosedToggled &content) {
+  return out << "[topic " << (content.is_closed_ ? "closed" : "opened") << "]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicIsHiddenToggled &content) {
+  return out << "[topic " << (content.is_hidden_ ? "hidden" : "shown") << "]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestProfilePhoto &content) {
+  return out << "[profile photo suggested " << content.photo_->animation_->file_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageCustomServiceAction &content) {
@@ -307,6 +323,22 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePassportDataRecei
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageProximityAlertTriggered &content) {
   return out << "[near " << content.traveler_id_ << ", distance " << content.distance_ << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedPremium &content) {
+  return out << "[gifted premium]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageUserShared &content) {
+  return out << "[user shared]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatShared &content) {
+  return out << "[chat shared]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageBotWriteAccessAllowed &content) {
+  return out << "[bot write access allowed]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataSent &content) {
@@ -346,6 +378,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
               }
             },
             [&](const td::td_api::textEntityTypeMentionName &) { out << (enable ? Color::Red : Color::Revert); },
+            [&](const td::td_api::textEntityTypeCustomEmoji &) {},
             [&](const td::td_api::textEntityTypeMediaTimestamp &) {}));
   };
   std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> en;
@@ -371,7 +404,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
       disp++;
     }
     td::uint32 code;
-    auto new_text = td::next_utf8_unsafe(text, &code, "");
+    auto new_text = td::next_utf8_unsafe(text, &code);
     out << td::Slice(text, new_text);
     text = new_text;
     p += (code <= 0xffff) ? 1 : 2;  // UTF16 codepoints =((

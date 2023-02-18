@@ -280,8 +280,7 @@ int main() {
   td::set_signal_handler(td::SignalType::Error, termination_signal_handler).ensure();
   td::ignore_signal(td::SignalType::Pipe).ensure();
 
-  td::ConcurrentScheduler scheduler;
-  scheduler.init(4);
+  td::ConcurrentScheduler scheduler(4);
   auto act = scheduler.create_actor_unsafe<NcursesRoot>(1, "root");
   scheduler.start();
   {

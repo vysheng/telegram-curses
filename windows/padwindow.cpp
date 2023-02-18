@@ -93,7 +93,7 @@ void PadWindow::handle_input(TickitKeyEventInfo *info) {
 
 void PadWindow::on_resize(td::int32, td::int32, td::int32 new_width, td::int32 new_height) {
   if (elements_.size() == 0) {
-    return Window::resize(new_width, new_height);
+    return;
   }
 
   for (auto &p : elements_) {
@@ -114,6 +114,8 @@ void PadWindow::on_resize(td::int32, td::int32, td::int32 new_width, td::int32 n
       offset_in_cur_element_ = (td::int32)(p * new_height);
     }
   }
+
+  adjust_cur_element(0);
 }
 
 void PadWindow::change_element(PadWindowElement *elem) {
@@ -409,17 +411,15 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   if (offset_from_window_top_ >= height()) {
     offset_from_window_top_ = height() - 1;
   }
-  if (pad_height() < height()) {
-    if (pad_to_ == PadTo::Top) {
-      auto off = offset_in_cur_element_ + lines_before_cur_element_;
-      if (offset_from_window_top_ > off) {
-        offset_from_window_top_ = off;
-      }
-    } else {
-      auto off = cur_element_->height - offset_in_cur_element_ + lines_after_cur_element_;
-      if (offset_from_window_top_ + off < height()) {
-        offset_from_window_top_ = height() - off;
-      }
+  if (pad_to_ == PadTo::Top) {
+    auto off = offset_in_cur_element_ + lines_before_cur_element_;
+    if (offset_from_window_top_ > off) {
+      offset_from_window_top_ = off;
+    }
+  } else {
+    auto off = cur_element_->height - offset_in_cur_element_ + lines_after_cur_element_;
+    if (offset_from_window_top_ + off < height()) {
+      offset_from_window_top_ = height() - off;
     }
   }
 

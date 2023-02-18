@@ -35,15 +35,9 @@ class Layout
     }
   }
   void activate_lower_window() override {
-    if (active_window().get() == dialog_list_window_.get()) {
-      activate_window(log_window_);
-    } else if (active_window().get() == chat_window_.get()) {
-      if (compose_window_) {
-        activate_window(compose_window_);
-      } else {
-        activate_window(log_window_);
-      }
-    } else if (active_window().get() == compose_window_.get()) {
+    if (active_window().get() == chat_window_.get() && compose_window_) {
+      activate_window(compose_window_);
+    } else if (log_window_enabled_) {
       activate_window(log_window_);
     }
   }
@@ -100,6 +94,9 @@ class Layout
     replace_window_in(chat_window_, std::move(window));
   }
   void replace_compose_window(std::shared_ptr<windows::Window> window) {
+    if (compose_window_ && active_window().get() == compose_window_.get()) {
+      activate_window(chat_window_);
+    }
     replace_window_in(compose_window_, std::move(window), false);
     on_resize(width(), height(), width(), height());
   }

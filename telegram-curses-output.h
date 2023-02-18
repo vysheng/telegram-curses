@@ -62,7 +62,12 @@ Outputter &operator<<(Outputter &, const td::td_api::messageChatUpgradeFrom &con
 Outputter &operator<<(Outputter &, const td::td_api::messagePinMessage &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageScreenshotTaken &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageChatSetTheme &content);
-Outputter &operator<<(Outputter &, const td::td_api::messageChatSetTtl &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageChatSetMessageAutoDeleteTime &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageForumTopicCreated &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageForumTopicEdited &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageForumTopicIsClosedToggled &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageForumTopicIsHiddenToggled &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageSuggestProfilePhoto &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageCustomServiceAction &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageGameScore &content);
 Outputter &operator<<(Outputter &, const td::td_api::messagePaymentSuccessful &content);
@@ -72,6 +77,10 @@ Outputter &operator<<(Outputter &, const td::td_api::messageWebsiteConnected &co
 Outputter &operator<<(Outputter &, const td::td_api::messagePassportDataSent &content);
 Outputter &operator<<(Outputter &, const td::td_api::messagePassportDataReceived &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageProximityAlertTriggered &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageGiftedPremium &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageUserShared &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageChatShared &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageBotWriteAccessAllowed &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageWebAppDataSent &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageWebAppDataReceived &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageUnsupported &content);
