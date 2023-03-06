@@ -130,11 +130,13 @@ void OneLineInputWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td:
   tickit_renderbuffer_save(rb);
   tickit_renderbuffer_textn_at(rb, line, 0, prompt_.data(), prompt_.size());
   tickit_renderbuffer_translate(rb, line - cursor_y, 1 + (td::int32)prompt_.size());
-  auto h2 = edit_.render(rb, cursor_x, cursor_y, cursor_shape, width(), true, is_password_);
+  td::int32 tmp;
+  auto h2 = edit_.render(rb, cursor_x, tmp, cursor_shape, width(), true, is_password_);
   (void)h2;
   CHECK(h == h2);
   tickit_renderbuffer_restore(rb);
   cursor_y = 0;
+  cursor_x += 1 + (td::int32)prompt_.size();
 }
 
 void ViewWindow::handle_input(TickitKeyEventInfo *info) {

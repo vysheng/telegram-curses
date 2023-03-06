@@ -13,6 +13,8 @@ class Layout
     log_window_ = std::make_shared<windows::EmptyWindow>();
     dialog_list_window_ = std::make_shared<windows::EmptyWindow>();
     chat_window_ = std::make_shared<windows::EmptyWindow>();
+    command_line_ = std::make_shared<windows::EmptyWindow>();
+    status_line_ = std::make_shared<windows::EmptyWindow>();
 
     update_windows_list();
     activate_window(dialog_list_window_);
@@ -44,6 +46,7 @@ class Layout
   void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
     auto h = log_window_enabled_ ? (td::int32)(height() * dialog_list_window_height_) : height();
     auto w = (td::int32)(width() * dialog_list_window_width_);
+    h -= 2;
     dialog_list_window_->resize(w, h);
     if (!compose_window_) {
       chat_window_->resize(width() - 1 - w, h);
@@ -52,8 +55,10 @@ class Layout
       chat_window_->resize(width() - 1 - w, h2);
       compose_window_->resize(width() - 1 - w, h - 1 - h2);
     }
+    status_line_->resize(width(), 1);
+    command_line_->resize(width(), 1);
     if (log_window_enabled_) {
-      log_window_->resize(width(), height() - 1 - h);
+      log_window_->resize(width(), height() - 1 - h - 2);
     }
     update_windows_list();
   }
@@ -68,16 +73,18 @@ class Layout
           std::make_unique<WindowInfo>(dialog_list_window_->width() + 1, chat_window_->height() + 1, compose_window_));
     }
     if (log_window_enabled_) {
-      windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 1, log_window_));
+      windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 3, log_window_));
     }
+    windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height(), status_line_));
+    windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 1, command_line_));
     set_subwindow_list(std::move(windows));
   }
 
   void render_borders(TickitRenderBuffer *rb) override {
-    tickit_renderbuffer_hline_at(rb, dialog_list_window_->height(), 0, width() - 1, TickitLineStyle::TICKIT_LINE_SINGLE,
-                                 TickitLineCaps::TICKIT_LINECAP_BOTH);
-    tickit_renderbuffer_vline_at(rb, 0, dialog_list_window_->height(), dialog_list_window_->width(),
-                                 TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_START);
+    tickit_renderbuffer_hline_at(rb, dialog_list_window_->height() + 2, 0, width() - 1,
+                                 TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
+    tickit_renderbuffer_vline_at(rb, 0, dialog_list_window_->height() - 1, dialog_list_window_->width(),
+                                 TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
     if (compose_window_) {
       tickit_renderbuffer_hline_at(rb, chat_window_->height(), dialog_list_window_->width(), width() - 1,
                                    TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_END);
@@ -86,6 +93,12 @@ class Layout
 
   void replace_log_window(std::shared_ptr<windows::Window> window) {
     replace_window_in(log_window_, std::move(window));
+  }
+  void replace_status_line_window(std::shared_ptr<windows::Window> window) {
+    replace_window_in(status_line_, std::move(window));
+  }
+  void replace_command_line_window(std::shared_ptr<windows::Window> window) {
+    replace_window_in(command_line_, std::move(window));
   }
   void replace_dialog_list_window(std::shared_ptr<windows::Window> window) {
     replace_window_in(dialog_list_window_, std::move(window));
@@ -108,6 +121,12 @@ class Layout
         return;
       }
     }
+
+    if (command_line_->force_active()) {
+      command_line_->handle_input(info);
+      return;
+    }
+
     return windows::WindowLayout::handle_input(info);
   }
 
@@ -144,6 +163,8 @@ class Layout
   std::shared_ptr<windows::Window> dialog_list_window_;
   std::shared_ptr<windows::Window> chat_window_;
   std::shared_ptr<windows::Window> compose_window_;
+  std::shared_ptr<windows::Window> status_line_;
+  std::shared_ptr<windows::Window> command_line_;
 
   double dialog_list_window_height_{0.9};
   double dialog_list_window_width_{0.1};

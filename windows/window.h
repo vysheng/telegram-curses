@@ -80,6 +80,9 @@ class Window {
   virtual td::int32 best_height() {
     return 3;
   }
+  virtual bool force_active() {
+    return false;
+  }
 
  private:
   td::int32 width_{10};

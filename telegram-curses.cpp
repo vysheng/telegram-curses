@@ -26,6 +26,7 @@
 #include "td/utils/port/StdStreams.h"
 
 #include "windows/editorwindow.h"
+#include "windows/markup.h"
 #include "windows/screen.h"
 #include "windows/unicode.h"
 
@@ -42,6 +43,7 @@
 #include "windows/log-window.h"
 #include "print.h"
 #include "layout.h"
+#include "status-line-window.h"
 
 #include <atomic>
 #include <cstdio>
@@ -1061,8 +1063,8 @@ class TdcursesImpl : public Tdcurses {
   //updateUnreadChatCount unread_count : int32 unread_unmuted_count : int32 marked_as_unread_count
   //    : int32 marked_as_unread_unmuted_count : int32 = Update;
   void process_update(td::td_api::updateUnreadChatCount &update) {
-    /*unread_chats_ = update.unread_unmuted_count_ + update.marked_as_unread_unmuted_count_;
-    update_prompt();*/
+    unread_chats_ = update.unread_unmuted_count_ + update.marked_as_unread_unmuted_count_;
+    update_status_line();
   }
 
   //@description An option changed its value @name The option name @value The new option value
@@ -1127,11 +1129,12 @@ class TdcursesImpl : public Tdcurses {
     td::td_api::downcast_call(
         *update.state_,
         td::overloaded(
-            [&](td::td_api::connectionStateReady &state) { conn_state_ = ""; },
+            [&](td::td_api::connectionStateReady &state) { conn_state_ = "ready"; },
             [&](td::td_api::connectionStateConnectingToProxy &state) { conn_state_ = "connecting to proxy"; },
             [&](td::td_api::connectionStateConnecting &state) { conn_state_ = "connecting"; },
             [&](td::td_api::connectionStateUpdating &state) { conn_state_ = "updating"; },
             [&](td::td_api::connectionStateWaitingForNetwork &state) { conn_state_ = "waitnet"; }));
+    update_status_line();
   }
 
   //@description New terms of service must be accepted by the user. If the terms of service are declined, then the deleteAccount method should be called with the reason "Decline ToS update" @terms_of_service_id Identifier of the terms of service @terms_of_service The new terms of service
@@ -1273,11 +1276,13 @@ class TdcursesImpl : public Tdcurses {
   void start_up() override {
   }
 
+  void update_status_line() override;
+
  private:
   std::map<td::uint64, td::Promise<td::tl_object_ptr<td::td_api::Object>>> handlers_;
   td::uint64 last_query_id_;
-  std::string conn_state_ = "none ";
-  //td::int32 unread_chats_{0};
+  std::string conn_state_ = "none";
+  td::int32 unread_chats_{0};
 };
 
 void Tdcurses::start_curses(TdcursesParameters &params) {
@@ -1302,10 +1307,34 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   log_window_ = std::make_shared<windows::LogWindow>();
   log_interface_ = std::make_unique<windows::WindowLogInterface<Tdcurses>>(log_window_, actor_id(this));
   dialog_list_window_ = std::make_shared<DialogListWindow>(this, actor_id(this));
+  status_line_window_ = std::make_shared<StatusLineWindow>();
+  class CommandLineCallback : public CommandLineWindow::Callback {
+   public:
+    CommandLineCallback(Tdcurses *ptr) : curses_(ptr) {
+    }
+    void on_command(std::string command) override {
+      if (command.size() == 0) {
+        return;
+      }
+      if (command[0] == '/') {
+        auto c = curses_->chat_window();
+        if (c) {
+          c->set_search_pattern(command.substr(1));
+        }
+      }
+    }
+
+   private:
+    Tdcurses *curses_;
+  };
+  command_line_window_ = std::make_shared<CommandLineWindow>(std::make_unique<CommandLineCallback>(this));
+  status_line_window_->replace_text("", {windows::MarkupElement::bg_color(0, 1000, (td::int32)Color::Grey)});
   //td::log_interface = log_interface_.get();
   screen_->change_layout(layout_);
   layout_->replace_log_window(log_window_);
   layout_->replace_dialog_list_window(dialog_list_window_);
+  layout_->replace_status_line_window(status_line_window_);
+  layout_->replace_command_line_window(command_line_window_);
   layout_->initialize_sizes(params);
   screen_->refresh(true);
 
@@ -1337,6 +1366,7 @@ void Tdcurses::open_chat(td::int64 chat_id) {
   layout_->replace_chat_window(chat_window_);
   layout_->activate_window(chat_window_);
   layout_->replace_compose_window(nullptr);
+  update_status_line();
 }
 
 void Tdcurses::open_compose_window() {
@@ -1405,6 +1435,38 @@ void Tdcurses::initialize_options(TdcursesParameters &params) {
                  }
                },
                params.log_window_enabled ? 0U : 1U}};
+}
+
+void TdcursesImpl::update_status_line() {
+  auto w = status_line_window();
+  if (w) {
+    Outputter out;
+    out << conn_state_ << " " << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
+
+    if (unread_chats_) {
+      out << Outputter::FgColor(Color::Red) << unread_chats_ << Outputter::FgColor(Color::Revert);
+    } else {
+      out << unread_chats_;
+    }
+    out << " unread " << Outputter::Reverse(Outputter::ChangeBool::Revert) << " ";
+    auto ch = chat_window();
+    if (ch) {
+      auto info = dialog_list_window()->get_chat(ch->chat_id());
+      if (info) {
+        out << info->title() << " ";
+      }
+    }
+    out << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
+    if (ch) {
+      out << ch->search_pattern() << " ";
+    }
+    out << Outputter::Reverse(Outputter::ChangeBool::Revert) << " ";
+    auto markup = out.markup();
+    auto str = out.as_str();
+    markup.push_back(windows::MarkupElement::bg_color(0, 1000, (td::int32)Color::Grey));
+    markup.push_back(windows::MarkupElement::fg_color(0, 1000, (td::int32)Color::Lime));
+    w->replace_text(std::move(str), std::move(markup));
+  }
 }
 
 }  // namespace tdcurses

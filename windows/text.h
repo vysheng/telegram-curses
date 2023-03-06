@@ -46,6 +46,10 @@ class TextEdit {
   td::int32 render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
                    td::int32 width, bool is_selected, bool is_password);
 
+  bool is_empty() const {
+    return text_.size() == 0;
+  }
+
  private:
   std::string text_;
   size_t pos_{0};

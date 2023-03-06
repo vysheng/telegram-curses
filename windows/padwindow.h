@@ -113,6 +113,20 @@ class PadWindow : public Window {
     pad_to_ = pad_to;
   }
 
+  void clear() {
+    elements_.clear();
+    cur_element_ = nullptr;
+    if (pad_to_ == PadTo::Top) {
+      glued_to_ = GluedTo::Top;
+    } else {
+      glued_to_ = GluedTo::Bottom;
+    }
+    offset_in_cur_element_ = 0;
+    offset_from_window_top_ = 0;
+    lines_after_cur_element_ = 0;
+    lines_before_cur_element_ = 0;
+  }
+
  private:
   class Compare {
    public:

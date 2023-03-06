@@ -320,24 +320,20 @@ class Builder {
   }
 
   void add_markup(MarkupElement &me) {
-    if (pen_) {
-      if (me.attr == MarkupElement::Attr::NoLB) {
-        nolb_++;
-      } else {
-        me.install(pen_);
-        tickit_renderbuffer_setpen(rb_, pen_);
-      }
+    if (me.attr == MarkupElement::Attr::NoLB) {
+      nolb_++;
+    } else if (pen_) {
+      me.install(pen_);
+      tickit_renderbuffer_setpen(rb_, pen_);
     }
   }
 
   void del_markup(MarkupElement &me) {
-    if (pen_) {
-      if (me.attr == MarkupElement::Attr::NoLB) {
-        nolb_--;
-      } else {
-        me.uninstall(pen_);
-        tickit_renderbuffer_setpen(rb_, pen_);
-      }
+    if (me.attr == MarkupElement::Attr::NoLB) {
+      nolb_--;
+    } else if (pen_) {
+      me.uninstall(pen_);
+      tickit_renderbuffer_setpen(rb_, pen_);
     }
   }
 

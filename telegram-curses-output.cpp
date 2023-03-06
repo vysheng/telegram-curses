@@ -5,6 +5,7 @@
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
 #include "td/utils/overloaded.h"
+#include "td/utils/port/Stat.h"
 #include "td/utils/utf8.h"
 
 #include "telegram-curses-output.h"
@@ -19,6 +20,7 @@
 namespace tdcurses {
 
 Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
+  auto start_pos = out.as_cslice().size();
   auto C = ChatManager::instance->get_chat(message.chat_id_);
   if (message.is_outgoing_) {
     out << Color::Blue;
@@ -63,7 +65,35 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
 
   out << Color::Revert;
 
-  return out << message.content_;
+  out << message.content_;
+
+  if (message.interaction_info_ &&
+      (message.interaction_info_->view_count_ || message.interaction_info_->forward_count_ ||
+       message.interaction_info_->reactions_.size())) {
+    if (out.as_cslice().size() - start_pos < 100 && out.as_cslice().find('\n') == td::CSlice::npos) {
+      out << " ";
+    } else {
+      out << "\n";
+    }
+    if (message.interaction_info_->view_count_ > 0) {
+      out << "[" << message.interaction_info_->view_count_ << "👁]";
+    }
+    if (message.interaction_info_->forward_count_ > 0) {
+      out << "[" << message.interaction_info_->forward_count_ << "⏭]";
+    }
+    for (auto &r : message.interaction_info_->reactions_) {
+      if (r->is_chosen_) {
+        out << Outputter::FgColor(Color::Yellow);
+      }
+      out << "[" << r->total_count_ << r->type_ << "]";
+      if (r->is_chosen_) {
+        out << Outputter::FgColor(Color::Revert);
+      }
+    }
+    out << " ";
+  }
+
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageForwardInfo &fwd_info) {
@@ -537,6 +567,14 @@ Outputter &operator<<(Outputter &out, const std::shared_ptr<User> &chat) {
   } else {
     return out << "(unknown)";
   }
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeEmoji &e) {
+  return out << e.emoji_;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeCustomEmoji &e) {
+  return out << "?";
 }
 
 }  // namespace tdcurses

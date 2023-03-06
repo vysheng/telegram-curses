@@ -92,6 +92,14 @@ class OneLineInputWindow : public Window {
     callback_ = std::move(cb);
   }
 
+  void clear() {
+    edit_.clear();
+  }
+
+  bool is_empty() const {
+    return edit_.is_empty();
+  }
+
  private:
   std::string prompt_;
   TextEdit edit_;
@@ -137,6 +145,12 @@ class ViewWindow : public Window {
   }
   td::int32 best_height() override {
     return 10000;
+  }
+
+  void replace_text(std::string text, std::vector<MarkupElement> markup = {}) {
+    text_ = std::move(text);
+    markup_ = std::move(markup);
+    set_need_refresh();
   }
 
  private:

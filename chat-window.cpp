@@ -10,6 +10,7 @@
 #include <limits>
 #include <memory>
 #include <tuple>
+#include <vector>
 
 namespace tdcurses {
 
@@ -47,6 +48,9 @@ std::string ChatWindow::draft_message_text() {
 void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   set_need_refresh();
   if (info->type == TICKIT_KEYEV_KEY) {
+    if (!strcmp(info->str, "Escape")) {
+      set_search_pattern("");
+    }
   } else {
     if (!strcmp(info->str, " ")) {
       auto el = get_active_element();
@@ -58,6 +62,9 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
       return;
     } else if (!strcmp(info->str, "i")) {
       root()->open_compose_window();
+      return;
+    } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
+      root()->command_line_window()->handle_input(info);
       return;
     }
   }
@@ -83,15 +90,25 @@ td::int32 ChatWindow::Element::render(windows::PadWindow &root, TickitRenderBuff
                                    is_selected, false);
 }
 
-void ChatWindow::request_bottom_elements() {
+void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
   if (running_req_bottom_ || messages_.size() == 0 || is_completed_bottom_) {
     return;
   }
   running_req_bottom_ = true;
   auto m = messages_.rbegin()->first;
-  auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, -10, 10, false);
-  send_request(std::move(req),
-               [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) { received_top_elements(std::move(R)); });
+  if (search_pattern_.size() == 0) {
+    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, -10, 10, false);
+    send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+      received_bottom_elements(std::move(R));
+    });
+  } else {
+    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 = FoundChatMessages;
+    auto req = td::make_tl_object<td::td_api::searchChatMessages>(chat_id_, search_pattern_, nullptr, message_id ?: m,
+                                                                  -10, 10, nullptr, 0);
+    send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+      received_bottom_search_elements(std::move(R));
+    });
+  }
 }
 void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
   CHECK(running_req_bottom_);
@@ -101,10 +118,21 @@ void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_ap
   if (res->messages_.size() == 0) {
     is_completed_bottom_ = true;
   }
-  add_messages(std::move(res));
+  add_messages(std::move(res->messages_));
 }
 
-void ChatWindow::request_top_elements() {
+void ChatWindow::received_bottom_search_elements(td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+  CHECK(running_req_bottom_);
+  running_req_bottom_ = false;
+  R.ensure();
+  auto res = R.move_as_ok();
+  if (res->messages_.size() == 0) {
+    is_completed_bottom_ = true;
+  }
+  add_messages(std::move(res->messages_));
+}
+
+void ChatWindow::request_top_elements_ex(td::int32 message_id) {
   if (running_req_top_ || is_completed_top_) {
     return;
   }
@@ -116,11 +144,23 @@ void ChatWindow::request_top_elements() {
     m = std::numeric_limits<td::int64>::max();
     is_completed_bottom_ = true;
   }
-  auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, 0, 10, false);
-  send_request(std::move(req),
-               [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) { received_top_elements(std::move(R)); });
+  if (search_pattern_.size() == 0) {
+    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, message_id ?: m, 0, 10, false);
+    send_request(std::move(req),
+                 [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) { received_top_elements(std::move(R)); });
+  } else {
+    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 = FoundChatMessages;
+    auto req =
+        td::make_tl_object<td::td_api::searchChatMessages>(chat_id_, search_pattern_, nullptr, m, 0, 10, nullptr, 0);
+    send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+      received_top_search_elements(std::move(R));
+    });
+  }
 }
 void ChatWindow::received_top_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+  if (R.is_error()) {
+    return;
+  }
   CHECK(running_req_top_);
   running_req_top_ = false;
   R.ensure();
@@ -128,11 +168,25 @@ void ChatWindow::received_top_elements(td::Result<td::tl_object_ptr<td::td_api::
   if (res->messages_.size() == 0) {
     is_completed_top_ = true;
   }
-  add_messages(std::move(res));
+  add_messages(std::move(res->messages_));
 }
 
-void ChatWindow::add_messages(td::tl_object_ptr<td::td_api::messages> msgs) {
-  for (auto &m : msgs->messages_) {
+void ChatWindow::received_top_search_elements(td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+  if (R.is_error()) {
+    return;
+  }
+  CHECK(running_req_top_);
+  running_req_top_ = false;
+  R.ensure();
+  auto res = R.move_as_ok();
+  if (res->messages_.size() == 0) {
+    is_completed_top_ = true;
+  }
+  add_messages(std::move(res->messages_));
+}
+
+void ChatWindow::add_messages(std::vector<td::tl_object_ptr<td::td_api::message>> msgs) {
+  for (auto &m : msgs) {
     auto id = m->id_;
     auto it = messages_.find(id);
     if (it != messages_.end()) {
@@ -365,6 +419,27 @@ void ChatWindow::Element::run(ChatWindow *window) {
                          });
     //downloadFile file_id:int32 priority:int32 offset:int53 limit:int53 synchronous:Bool = File;
   }
+}
+
+void ChatWindow::set_search_pattern(std::string pattern) {
+  if (pattern == search_pattern_) {
+    return;
+  }
+  change_unique_id();
+  messages_.clear();
+  file_id_2_messages_.clear();
+  search_pattern_ = std::move(pattern);
+  running_req_top_ = false;
+  running_req_bottom_ = false;
+  is_completed_top_ = false;
+  is_completed_bottom_ = false;
+
+  PadWindow::clear();
+
+  set_need_refresh();
+  request_top_elements_ex(0);
+
+  root()->update_status_line();
 }
 
 }  // namespace tdcurses

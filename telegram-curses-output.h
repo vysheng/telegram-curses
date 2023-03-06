@@ -105,4 +105,6 @@ Outputter &operator<<(Outputter &, const td::td_api::file &file);
 Outputter &operator<<(Outputter &, const std::shared_ptr<Chat> &chat);
 Outputter &operator<<(Outputter &, const std::shared_ptr<User> &chat);
 
+Outputter &operator<<(Outputter &, const td::td_api::reactionTypeEmoji &file);
+Outputter &operator<<(Outputter &, const td::td_api::reactionTypeCustomEmoji &file);
 }  // namespace tdcurses

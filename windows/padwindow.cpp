@@ -160,8 +160,9 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
 
   auto old_height = it->second->height;
 
-  if (cur_element_->element->is_less(*elem)) {
+  if (elem->is_less(*cur_element_->element)) {
     lines_before_cur_element_ -= it->second->height;
+    CHECK(lines_before_cur_element_ >= 0);
     auto ptr = std::move(it->second);
     elements_.erase(it);
     change();
@@ -170,12 +171,12 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
       auto &el = *it->second;
       el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
-        lines_before_cur_element_ += it->second->height;
-      } else {
         lines_after_cur_element_ += it->second->height;
+      } else {
+        lines_before_cur_element_ += it->second->height;
       }
     }
-  } else if (elem->is_less(*cur_element_->element)) {
+  } else if (cur_element_->element->is_less(*elem)) {
     lines_after_cur_element_ -= it->second->height;
     auto ptr = std::move(it->second);
     elements_.erase(it);
@@ -185,9 +186,9 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
       auto &el = *it->second;
       el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
-        lines_before_cur_element_ += it->second->height;
-      } else {
         lines_after_cur_element_ += it->second->height;
+      } else {
+        lines_before_cur_element_ += it->second->height;
       }
     }
   } else {
@@ -225,6 +226,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     }
   }
 
+  CHECK(lines_before_cur_element_ >= 0);
   adjust_cur_element(0);
 }
 
@@ -244,15 +246,19 @@ void PadWindow::delete_element(PadWindowElement *elem) {
 
   if (cur_element_->element->is_less(*elem)) {
     lines_after_cur_element_ -= old_height;
+    CHECK(lines_before_cur_element_ >= 0);
   } else if (elem->is_less(*cur_element_->element)) {
     lines_before_cur_element_ -= old_height;
+    CHECK(lines_before_cur_element_ >= 0);
   } else {
     if (it != elements_.begin()) {
       it--;
       cur_element_ = it->second.get();
       lines_before_cur_element_ -= it->second->height;
       offset_in_cur_element_ = it->second->height - 1;
+      CHECK(lines_before_cur_element_ >= 0);
     } else {
+      CHECK(lines_before_cur_element_ == 0);
       it++;
       if (it != elements_.end()) {
         cur_element_ = it->second.get();
@@ -413,11 +419,15 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   }
   if (pad_to_ == PadTo::Top) {
     auto off = offset_in_cur_element_ + lines_before_cur_element_;
+    CHECK(offset_in_cur_element_ >= 0);
+    CHECK(lines_before_cur_element_ >= 0);
     if (offset_from_window_top_ > off) {
       offset_from_window_top_ = off;
     }
   } else {
     auto off = cur_element_->height - offset_in_cur_element_ + lines_after_cur_element_;
+    CHECK(cur_element_->height - offset_in_cur_element_ >= 0);
+    CHECK(lines_after_cur_element_ >= 0);
     if (offset_from_window_top_ + off < height()) {
       offset_from_window_top_ = height() - off;
     }
@@ -437,6 +447,10 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
   cursor_y = 0;
   cursor_shape = (TickitCursorShape)0;
   if (!elements_.size()) {
+    cursor_x = 0;
+    cursor_y = 0;
+    auto rect = TickitRect{.top = 0, .left = 0, .lines = height(), .cols = width()};
+    tickit_renderbuffer_eraserect(rb, &rect);
     return;
   }
   auto offset = offset_from_window_top_ - offset_in_cur_element_;
@@ -463,10 +477,26 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     tickit_renderbuffer_save(rb);
     tickit_renderbuffer_clip(rb, &rect);
     tickit_renderbuffer_translate(rb, offset, 0);
-    it->second->element->render(*this, rb, it->second.get() == cur_element_);
+    auto x = it->second->element->render(*this, rb, it->second.get() == cur_element_);
     tickit_renderbuffer_restore(rb);
 
-    offset += it->second->height;
+    offset += x;
+
+    if (x != it->second->height) {
+      if (it->second->element->is_less(*cur_element_->element)) {
+        lines_before_cur_element_ += x - it->second->height;
+      } else if (cur_element_->element->is_less(*it->second->element)) {
+        lines_after_cur_element_ += x - it->second->height;
+      } else {
+        if (offset_in_cur_element_ >= x) {
+          offset_in_cur_element_ = x > 0 ? x - 1 : 0;
+        }
+      }
+      it->second->height = x;
+
+      set_need_refresh();
+    }
+
     it++;
   }
 
@@ -474,6 +504,10 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     auto rect = TickitRect{.top = offset, .left = 0, .lines = height() - offset, .cols = width()};
     tickit_renderbuffer_eraserect(rb, &rect);
     request_bottom_elements();
+  }
+
+  if (need_refresh()) {
+    adjust_cur_element(0);
   }
 }
 

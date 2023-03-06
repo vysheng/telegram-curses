@@ -4,6 +4,7 @@
 #include "windows/screen.h"
 #include "windows/log-window.h"
 #include "windows/window.h"
+#include "status-line-window.h"
 #include <vector>
 
 namespace tdcurses {
@@ -68,6 +69,8 @@ class Tdcurses : public TdcursesInterface {
   std::shared_ptr<ChatWindow> chat_window_;
   std::shared_ptr<ComposeWindow> compose_window_;
   std::shared_ptr<windows::Window> config_window_;
+  std::shared_ptr<StatusLineWindow> status_line_window_;
+  std::shared_ptr<CommandLineWindow> command_line_window_;
 
   std::vector<Option> options_;
 
@@ -120,6 +123,12 @@ class Tdcurses : public TdcursesInterface {
   auto dialog_list_window() const {
     return dialog_list_window_;
   }
+  auto status_line_window() const {
+    return status_line_window_;
+  }
+  auto command_line_window() const {
+    return command_line_window_;
+  }
   auto chat_window() const {
     return chat_window_;
   }
@@ -128,6 +137,8 @@ class Tdcurses : public TdcursesInterface {
   }
   void on_close() {
   }
+
+  virtual void update_status_line() = 0;
 };
 
 }  // namespace tdcurses
