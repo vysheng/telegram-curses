@@ -61,6 +61,7 @@ Outputter &operator<<(Outputter &, const td::td_api::messageChatUpgradeTo &conte
 Outputter &operator<<(Outputter &, const td::td_api::messageChatUpgradeFrom &content);
 Outputter &operator<<(Outputter &, const td::td_api::messagePinMessage &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageScreenshotTaken &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageChatSetBackground &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageChatSetTheme &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageChatSetMessageAutoDeleteTime &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageForumTopicCreated &content);
@@ -83,6 +84,7 @@ Outputter &operator<<(Outputter &, const td::td_api::messageChatShared &content)
 Outputter &operator<<(Outputter &, const td::td_api::messageBotWriteAccessAllowed &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageWebAppDataSent &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageWebAppDataReceived &content);
+Outputter &operator<<(Outputter &, const td::td_api::messageStory &content);
 Outputter &operator<<(Outputter &, const td::td_api::messageUnsupported &content);
 
 Outputter &operator<<(Outputter &, const td::td_api::formattedText &content);
@@ -104,6 +106,9 @@ Outputter &operator<<(Outputter &, const td::td_api::poll &content);
 Outputter &operator<<(Outputter &, const td::td_api::file &file);
 Outputter &operator<<(Outputter &, const std::shared_ptr<Chat> &chat);
 Outputter &operator<<(Outputter &, const std::shared_ptr<User> &chat);
+
+Outputter &operator<<(Outputter &, const td::td_api::messageSenderChat &sender);
+Outputter &operator<<(Outputter &, const td::td_api::messageSenderUser &sender);
 
 Outputter &operator<<(Outputter &, const td::td_api::reactionTypeEmoji &file);
 Outputter &operator<<(Outputter &, const td::td_api::reactionTypeCustomEmoji &file);

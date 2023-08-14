@@ -73,8 +73,8 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     auto el = get_active_element();
     if (el) {
       auto &e = static_cast<Element &>(*el);
-      auto req =
-          td::make_tl_object<td::td_api::viewMessages>(chat_id_, 0, std::vector<td::int64>{e.message->id_}, false);
+      auto req = td::make_tl_object<td::td_api::viewMessages>(chat_id_, std::vector<td::int64>{e.message->id_}, nullptr,
+                                                              false);
       send_request(std::move(req), {});
     }
   }

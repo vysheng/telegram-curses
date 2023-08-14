@@ -788,6 +788,11 @@ class TdcursesImpl : public Tdcurses {
     dialog_list_window()->process_update(update);
   }
 
+  //@description The chat background was changed @chat_id Chat identifier @background The new chat background; may be null if background was reset to default
+  //updateChatBackground chat_id:int53 background:chatBackground = Update;
+  void process_update(td::td_api::updateChatBackground &update) {
+  }
+
   //@description The chat theme was changed @chat_id Chat identifier @theme_name The new name of the chat theme; may be empty if theme was reset to default
   //updateChatTheme chat_id:int53 theme_name:string = Update;
   void process_update(td::td_api::updateChatTheme &update) {
@@ -848,8 +853,8 @@ class TdcursesImpl : public Tdcurses {
   }
 
   //@description The list of chat filters or a chat filter has changed @chat_filters The new list of chat filters
-  //updateChatFilters chat_filters:vector<chatFilterInfo> = Update;
-  void process_update(td::td_api::updateChatFilters &update) {
+  //updateChatFolders chat_folders:vector<chatFolderInfo> main_chat_list_position:int32 = Update;
+  void process_update(td::td_api::updateChatFolders &update) {
     //ChatManager::instance->process_update(update);
   }
 
@@ -1067,6 +1072,27 @@ class TdcursesImpl : public Tdcurses {
     update_status_line();
   }
 
+  //@description A story was changed @story The new information about the story
+  //updateStory story:story = Update;
+  void process_update(td::td_api::updateStory &update) {
+  }
+
+  //@description A story became inaccessible @story_sender_chat_id Identifier of the chat that posted the story @story_id Story identifier
+  //updateStoryDeleted story_sender_chat_id:int53 story_id:int32 = Update;
+  void process_update(td::td_api::updateStoryDeleted &update) {
+  }
+
+  //@description The list of active stories posted by a specific chat has changed
+  //@active_stories The new list of active stories
+  //updateChatActiveStories active_stories:chatActiveStories = Update;
+  void process_update(td::td_api::updateChatActiveStories &update) {
+  }
+
+  //@description Number of chats in a story list has changed @story_list The story list @chat_count Approximate total number of chats with active stories in the list
+  //updateStoryListChatCount story_list:StoryList chat_count:int32 = Update;
+  void process_update(td::td_api::updateStoryListChatCount &update) {
+  }
+
   //@description An option changed its value @name The option name @value The new option value
   //updateOption name : string value : OptionValue = Update;
   void process_update(td::td_api::updateOption &update) {
@@ -1190,6 +1216,11 @@ class TdcursesImpl : public Tdcurses {
   //@description The list of suggested to the user actions has changed @added_actions Added suggested actions @removed_actions Removed suggested actions
   //updateSuggestedActions added_actions:vector<SuggestedAction> removed_actions:vector<SuggestedAction> = Update;
   void process_update(td::td_api::updateSuggestedActions &update) {
+  }
+
+  //@description Adding users to a chat has failed because of their privacy settings. An invite link can be shared with the users if appropriate @chat_id Chat identifier @user_ids Identifiers of users, which weren't added because of their privacy settings
+  //updateAddChatMembersPrivacyForbidden chat_id:int53 user_ids:vector<int53> = Update;
+  void process_update(td::td_api::updateAddChatMembersPrivacyForbidden &update) {
   }
 
   //@description Autosave settings for some type of chats were updated @scope Type of chats for which autosave settings were updated @settings The new autosave settings; may be null if the settings are reset to default

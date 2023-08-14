@@ -28,8 +28,8 @@ void ComposeWindow::send_message(std::string message) {
       td::make_tl_object<td::td_api::formattedText>(message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
   //inputMessageText text:formattedText disable_web_page_preview:Bool clear_draft:Bool = InputMessageContent;
   auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), false, false);
-  //sendMessage chat_id:int53 message_thread_id:int53 reply_to_message_id:int53 options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
-  auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, 0, 0, nullptr, nullptr, std::move(content));
+  //sendMessage chat_id:int53 message_thread_id:int53 reply_to:MessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
+  auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, 0, nullptr, nullptr, nullptr, std::move(content));
 
   send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
   clear();

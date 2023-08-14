@@ -1,6 +1,7 @@
 #include "td/generate/auto/td/telegram/td_api.h"
 #include "td/generate/auto/td/telegram/td_api.hpp"
 
+#include "td/telegram/DownloadManager.h"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
@@ -54,13 +55,19 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     out << "fwd " << message.forward_info_ << "\n";
   }
 
-  if (message.reply_to_message_id_) {
-    out << "reply " << Outputter::NoLb{true};
-    auto reply_msg = out.get_message(message.reply_in_chat_id_, message.reply_to_message_id_);
-    if (reply_msg) {
-      out << Color::Red << reply_msg->sender_id_ << Color::Revert << " " << reply_msg->content_;
-    }
-    out << Outputter::NoLb{false} << "\n";
+  if (message.reply_to_) {
+    td::td_api::downcast_call(const_cast<td::td_api::MessageReplyTo &>(*message.reply_to_),
+                              td::overloaded(
+                                  [&](const td::td_api::messageReplyToMessage &r) {
+                                    out << "reply " << Outputter::NoLb{true};
+                                    auto reply_msg = out.get_message(r.chat_id_, r.message_id_);
+                                    if (reply_msg) {
+                                      out << Color::Red << reply_msg->sender_id_ << Color::Revert << " "
+                                          << reply_msg->content_;
+                                    }
+                                    out << Outputter::NoLb{false} << "\n";
+                                  },
+                                  [&](const td::td_api::messageReplyToStory &r) {}));
   }
 
   out << Color::Revert;
@@ -295,6 +302,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageScreenshotTaken &
   return out << "[screenshot]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetBackground &content) {
+  return out << "[set background]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetTheme &content) {
   return out << "[set theme " << content.theme_name_ << "]";
 }
@@ -377,6 +388,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataSent &c
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataReceived &content) {
   return out << "[webapp datar received]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content) {
+  return out << "[story " << content.story_id_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &content) {

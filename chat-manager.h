@@ -20,8 +20,8 @@ inline bool eq_source(const td::td_api::ChatList &l, const td::td_api::ChatList 
       const_cast<td::td_api::ChatList &>(l),
       td::overloaded([&](td::td_api::chatListMain &s) { res = true; },
                      [&](td::td_api::chatListArchive &s) { res = true; },
-                     [&](td::td_api::chatListFilter &s) {
-                       res = (s.chat_filter_id_ == static_cast<const td::td_api::chatListFilter &>(r).chat_filter_id_);
+                     [&](td::td_api::chatListFolder &s) {
+                       res = (s.chat_folder_id_ == static_cast<const td::td_api::chatListFolder &>(r).chat_folder_id_);
                      }));
   return res;
 }
@@ -99,11 +99,11 @@ class Chat {
     return chat_->unread_count_;
   }
 
-  auto last_read_inbox_message_id() const {
+  td::int64 last_read_inbox_message_id() const {
     return chat_->last_read_inbox_message_id_;
   }
 
-  auto last_read_outbox_message_id() const {
+  td::int64 last_read_outbox_message_id() const {
     return chat_->last_read_outbox_message_id_;
   }
 
