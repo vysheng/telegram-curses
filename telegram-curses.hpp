@@ -14,6 +14,7 @@ class DialogListWindow;
 class ChatWindow;
 class ComposeWindow;
 class ConfigWindow;
+class ChatInfoWindow;
 
 struct TdcursesParameters {
   bool log_window_enabled{false};
@@ -69,6 +70,8 @@ class Tdcurses : public TdcursesInterface {
   std::shared_ptr<ChatWindow> chat_window_;
   std::shared_ptr<ComposeWindow> compose_window_;
   std::shared_ptr<windows::Window> config_window_;
+  std::shared_ptr<ChatInfoWindow> chat_info_window_;
+  std::shared_ptr<windows::Window> chat_info_window_bordered_;
   std::shared_ptr<StatusLineWindow> status_line_window_;
   std::shared_ptr<CommandLineWindow> command_line_window_;
 
@@ -109,6 +112,10 @@ class Tdcurses : public TdcursesInterface {
 
   void hide_config_window();
   void show_config_window();
+
+  void hide_chat_info_window();
+  void show_chat_info_window(td::int64 chat_id);
+  void show_user_info_window(td::int64 user_id);
 
   void loop() override;
   void refresh();

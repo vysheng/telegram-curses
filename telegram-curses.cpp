@@ -44,6 +44,7 @@
 #include "print.h"
 #include "layout.h"
 #include "status-line-window.h"
+#include "info-window.h"
 
 #include <atomic>
 #include <cstdio>
@@ -935,7 +936,7 @@ class TdcursesImpl : public Tdcurses {
   //@description Some data of a basic group has changed. This update is guaranteed to come before the basic group identifier is returned to the client @basic_group New data about the group
   //updateBasicGroup basic_group : basicGroup = Update;
   void process_update(td::td_api::updateBasicGroup &update) {
-    //ChatManager::instance->process_update(update);
+    ChatManager::instance->process_update(update);
   }
 
   //@description Some data of a supergroup or a channel has changed. This update is guaranteed to come before the supergroup identifier is returned to the client @supergroup New data about the supergroup
@@ -1349,8 +1350,12 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
       }
       if (command[0] == '/') {
         auto c = curses_->chat_window();
-        if (c) {
+        if (c && c->is_active()) {
           c->set_search_pattern(command.substr(1));
+        }
+        auto d = curses_->dialog_list_window();
+        if (d && d->is_active()) {
+          d->set_search_pattern(command.substr(1));
         }
       }
     }
@@ -1374,6 +1379,10 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   auto config = std::make_shared<ConfigWindow>(this, actor_id(this), options_);
   config_window_ = std::make_shared<windows::BorderedWindow>(config, windows::Window::BorderType::Double);
 
+  chat_info_window_ = std::make_shared<ChatInfoWindow>(this, actor_id(this), nullptr);
+  chat_info_window_bordered_ =
+      std::make_shared<windows::BorderedWindow>(chat_info_window_, windows::Window::BorderType::Double);
+
   LOG(INFO) << "starting";
 }
 
@@ -1385,6 +1394,9 @@ bool Tdcurses::window_exists(td::int64 id) {
     return true;
   }
   if (compose_window_ && compose_window_->window_unique_id() == id) {
+    return true;
+  }
+  if (chat_info_window_ && chat_info_window_->window_unique_id() == id) {
     return true;
   }
 
@@ -1424,6 +1436,31 @@ void Tdcurses::hide_config_window() {
 void Tdcurses::show_config_window() {
   if (!screen_->has_popup_window(config_window_.get())) {
     screen_->add_popup_window(config_window_, 3);
+  }
+}
+
+void Tdcurses::hide_chat_info_window() {
+  if (screen_->has_popup_window(chat_info_window_bordered_.get())) {
+    screen_->del_popup_window(chat_info_window_bordered_.get());
+  }
+}
+
+void Tdcurses::show_chat_info_window(td::int64 chat_id) {
+  LOG_CHECK(ChatManager::instance->get_chat(chat_id)) << chat_id;
+  chat_info_window_->set_chat(ChatManager::instance->get_chat(chat_id));
+  if (!screen_->has_popup_window(chat_info_window_bordered_.get())) {
+    screen_->add_popup_window(chat_info_window_bordered_, 3);
+  } else {
+    chat_info_window_bordered_->set_need_refresh();
+  }
+}
+
+void Tdcurses::show_user_info_window(td::int64 user_id) {
+  chat_info_window_->set_chat(ChatManager::instance->get_user(user_id));
+  if (!screen_->has_popup_window(chat_info_window_bordered_.get())) {
+    screen_->add_popup_window(chat_info_window_bordered_, 3);
+  } else {
+    chat_info_window_bordered_->set_need_refresh();
   }
 }
 

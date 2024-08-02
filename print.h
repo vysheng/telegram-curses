@@ -1,6 +1,9 @@
 #pragma once
 
+#include "td/telegram/StoryListId.h"
+#include "td/tl/TlObject.h"
 #include "td/utils/Slice-decl.h"
+#include "td/utils/format.h"
 #include "windows/markup.h"
 
 #include "td/telegram/td_api.h"
@@ -9,6 +12,7 @@
 #include "td/utils/buffer.h"
 #include "td/utils/StringBuilder.h"
 #include "td/utils/int_types.h"
+#include <type_traits>
 #include <vector>
 
 namespace tdcurses {
@@ -81,18 +85,25 @@ class Outputter {
   using NoLb = ChangeBoolImpl<windows::MarkupElement::Attr::NoLB>;
 
   template <typename T>
-  Outputter &operator<<(T x) {
+  std::enable_if_t<std::is_copy_constructible<T>::value, Outputter &> operator<<(T x) {
     sb_ << x;
     return *this;
   }
   template <class T>
-  std::enable_if_t<std::is_base_of<td::TlObject, T>::value, Outputter &> operator<<(const td::tl_object_ptr<T> &obj) {
+  std::enable_if_t<std::is_constructible<T>::value && std::is_base_of<td::TlObject, T>::value, Outputter &> operator<<(
+      const td::tl_object_ptr<T> &obj) {
     return *this << *obj.get();
   }
   template <class T>
   std::enable_if_t<!std::is_constructible<T>::value && std::is_base_of<td::TlObject, T>::value, Outputter &> operator<<(
       const T &X) {
     td::td_api::downcast_call(const_cast<T &>(X), [&](const auto &obj) { *this << obj; });
+    return *this;
+  }
+  template <class T>
+  std::enable_if_t<!std::is_constructible<T>::value && std::is_base_of<td::TlObject, T>::value, Outputter &> operator<<(
+      const td::tl_object_ptr<T> &X) {
+    td::td_api::downcast_call(const_cast<T &>(*X), [&](const auto &obj) { *this << obj; });
     return *this;
   }
 

@@ -592,4 +592,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeCustomEmoji 
   return out << "?";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::chatPhoto &file) {
+  return out << "chat photo";
+}
+
 }  // namespace tdcurses

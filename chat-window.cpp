@@ -63,6 +63,18 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "i")) {
       root()->open_compose_window();
       return;
+    } else if (!strcmp(info->str, "I")) {
+      auto cur_element = get_active_element();
+      if (!cur_element) {
+        root()->show_chat_info_window(chat_id_);
+      } else {
+        auto el = static_cast<Element *>(cur_element.get());
+        td::td_api::downcast_call(
+            *el->message->sender_id_,
+            td::overloaded([&](td::td_api::messageSenderUser &user) { root()->show_user_info_window(user.user_id_); },
+                           [&](td::td_api::messageSenderChat &chat) { root()->show_chat_info_window(chat.chat_id_); }));
+      }
+      return;
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
       return;

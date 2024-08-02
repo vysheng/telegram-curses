@@ -133,7 +133,7 @@ add_subdirectory(td)
 add_subdirectory(third-party/libtickit)
 
 add_executable(telegram-curses-test main.cpp third-party/qrcodegen/qrcodegen.cpp windows/screen.cpp windows/window.cpp windows/padwindow.cpp windows/text.cpp windows/editorwindow.cpp windows/unicode.cpp windows/window-layout.cpp print.cpp chat-manager.cpp telegram-curses-window-root.cpp )
-add_executable(telegram-curses telegram-curses.cpp third-party/qrcodegen/qrcodegen.cpp windows/screen.cpp windows/window.cpp windows/padwindow.cpp windows/text.cpp windows/editorwindow.cpp windows/unicode.cpp windows/window-layout.cpp print.cpp dialog-list-window.cpp chat-manager.cpp telegram-curses-window-root.cpp telegram-curses-output.cpp chat-window.cpp compose-window.cpp config-window.cpp )
+add_executable(telegram-curses telegram-curses.cpp third-party/qrcodegen/qrcodegen.cpp windows/screen.cpp windows/window.cpp windows/padwindow.cpp windows/text.cpp windows/editorwindow.cpp windows/unicode.cpp windows/window-layout.cpp print.cpp dialog-list-window.cpp chat-manager.cpp telegram-curses-window-root.cpp telegram-curses-output.cpp chat-window.cpp compose-window.cpp config-window.cpp info-window.cpp )
 target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc)
 target_link_libraries(telegram-curses-test PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc)
 target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS})

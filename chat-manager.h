@@ -26,7 +26,7 @@ inline bool eq_source(const td::td_api::ChatList &l, const td::td_api::ChatList 
   return res;
 }
 
-enum class ChatType { User, Channel, Supergroup, Basicgroup, SecretChat };
+enum class ChatType { User, Channel, Supergroup, Basicgroup, SecretChat, Unknown };
 
 class Chat {
  public:
@@ -36,6 +36,9 @@ class Chat {
     return chat_->id_;
   }
   ChatType chat_type() const {
+    if (!chat_ || !chat_->type_) {
+      return ChatType::Unknown;
+    }
     ChatType r;
     td::td_api::downcast_call(const_cast<td::td_api::ChatType &>(*chat_->type_),
                               td::overloaded([&](const td::td_api::chatTypePrivate &p) { r = ChatType::User; },
@@ -48,6 +51,18 @@ class Chat {
                                                  r = ChatType::Supergroup;
                                                }
                                              }));
+    return r;
+  }
+  td::int64 chat_base_id() const {
+    if (!chat_ || !chat_->type_) {
+      return 0;
+    }
+    td::int64 r;
+    td::td_api::downcast_call(const_cast<td::td_api::ChatType &>(*chat_->type_),
+                              td::overloaded([&](const td::td_api::chatTypePrivate &p) { r = p.user_id_; },
+                                             [&](const td::td_api::chatTypeSecret &p) { r = p.user_id_; },
+                                             [&](const td::td_api::chatTypeBasicGroup &p) { r = p.basic_group_id_; },
+                                             [&](const td::td_api::chatTypeSupergroup &p) { r = p.supergroup_id_; }));
     return r;
   }
 
@@ -160,17 +175,32 @@ class Chat {
     return online_;
   }
 
-  td::int64 get_order(const td::td_api::ChatList &l) {
+  const auto *get_order_full(const td::td_api::ChatList &l) {
     for (auto &x : chat_->positions_) {
       if (eq_source(*x->list_, l)) {
-        return x->order_;
+        return x.get();
       }
     }
-    return 0;
+    return (const td::td_api::chatPosition *)nullptr;
+  }
+
+  td::int64 get_order(const td::td_api::ChatList &l) {
+    auto r = get_order_full(l);
+    return r ? r->order_ : 0;
   }
 
   void full_update(td::tl_object_ptr<td::td_api::chat> chat) {
     chat_ = std::move(chat);
+  }
+
+  bool is_muted() {
+    if (!chat_->notification_settings_) {
+      return false;
+    }
+    if (chat_->notification_settings_->use_default_mute_for_) {
+      return false;
+    }
+    return chat_->notification_settings_->mute_for_ > 0;
   }
 
  private:
@@ -370,7 +400,11 @@ class User {
   const auto &last_name() const {
     return user_->last_name_;
   }
-  const auto &username() const {
+  const std::string &username() const {
+    if (!user_->usernames_) {
+      static const std::string empty;
+      return empty;
+    }
     return user_->usernames_->editable_username_;
     //return user_->username_;
   }
@@ -427,6 +461,75 @@ class User {
   td::tl_object_ptr<td::td_api::user> user_;
 };
 
+class BasicGroup {
+ public:
+  BasicGroup(td::tl_object_ptr<td::td_api::basicGroup> group) : group_(std::move(group)) {
+  }
+
+  //basicGroup id:int53 member_count:int32 status:ChatMemberStatus is_active:Bool upgraded_to_supergroup_id:int53 = BasicGroup;
+  auto group_id() const {
+    return group_->id_;
+  }
+  auto member_count() const {
+    return group_->member_count_;
+  }
+  const auto &status() const {
+    return group_->status_;
+  }
+  bool is_active() const {
+    return group_->is_active_;
+  }
+  auto upgraded_to_supergroup_id() const {
+    return group_->upgraded_to_supergroup_id_;
+  }
+  void full_update(td::tl_object_ptr<td::td_api::basicGroup> group) {
+    group_ = std::move(group);
+  }
+
+ private:
+  td::tl_object_ptr<td::td_api::basicGroup> group_;
+};
+
+class Supergroup {
+ public:
+  Supergroup(td::tl_object_ptr<td::td_api::supergroup> group) : group_(std::move(group)) {
+  }
+
+  //basicGroup id:int53 member_count:int32 status:ChatMemberStatus is_active:Bool upgraded_to_supergroup_id:int53 = BasicGroup;
+  auto group_id() const {
+    return group_->id_;
+  }
+  auto member_count() const {
+    return group_->member_count_;
+  }
+  const auto &status() const {
+    return group_->status_;
+  }
+  void full_update(td::tl_object_ptr<td::td_api::supergroup> group) {
+    group_ = std::move(group);
+  }
+
+ private:
+  td::tl_object_ptr<td::td_api::supergroup> group_;
+};
+
+class SecretChat {
+ public:
+  SecretChat(td::tl_object_ptr<td::td_api::secretChat> group) : group_(std::move(group)) {
+  }
+
+  //basicGroup id:int53 member_count:int32 status:ChatMemberStatus is_active:Bool upgraded_to_supergroup_id:int53 = BasicGroup;
+  auto user_id() const {
+    return group_->user_id_;
+  }
+  void full_update(td::tl_object_ptr<td::td_api::secretChat> group) {
+    group_ = std::move(group);
+  }
+
+ private:
+  td::tl_object_ptr<td::td_api::secretChat> group_;
+};
+
 class ChatManager {
  public:
   virtual ~ChatManager() = default;
@@ -450,6 +553,14 @@ class ChatManager {
   std::shared_ptr<User> get_user(td::int64 chat_id) {
     auto it = users_.find(chat_id);
     if (it != users_.end()) {
+      return it->second;
+    } else {
+      return nullptr;
+    }
+  }
+  std::shared_ptr<BasicGroup> get_basic_group(td::int64 chat_id) {
+    auto it = basic_groups_.find(chat_id);
+    if (it != basic_groups_.end()) {
       return it->second;
     } else {
       return nullptr;
@@ -479,12 +590,29 @@ class ChatManager {
       u->process_update(upd);
     }
   }
+  void process_update(td::td_api::updateBasicGroup &upd) {
+    auto it = basic_groups_.find(upd.basic_group_->id_);
+    if (it != basic_groups_.end()) {
+      it->second->full_update(std::move(upd.basic_group_));
+    } else {
+      auto group = std::make_shared<BasicGroup>(std::move(upd.basic_group_));
+      basic_groups_.emplace(group->group_id(), std::move(group));
+    }
+  }
 
   static ChatManager *instance;
+
+  template <typename T>
+  void iterate_all_chats(T &&cb) {
+    for (auto &c : chats_) {
+      cb(c.second);
+    }
+  }
 
  private:
   std::map<td::int64, std::shared_ptr<Chat>> chats_;
   std::map<td::int64, std::shared_ptr<User>> users_;
+  std::map<td::int64, std::shared_ptr<BasicGroup>> basic_groups_;
 };
 
 }  // namespace tdcurses
