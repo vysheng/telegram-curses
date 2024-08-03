@@ -167,14 +167,14 @@ class TdcursesImpl : public Tdcurses {
   }
 
   auto clone_tdlib_parameters() const {
+    //setTdlibParameters use_test_dc:Bool database_directory:string files_directory:string database_encryption_key:bytes use_file_database:Bool use_chat_info_database:Bool use_message_database:Bool use_secret_chats:Bool api_id:int32 api_hash:string system_language_code:string device_model:string system_version:string application_version:string = Ok;
     return td::make_tl_object<td::td_api::setTdlibParameters>(
         tdlib_parameters_->use_test_dc_, tdlib_parameters_->database_directory_, tdlib_parameters_->files_directory_,
         tdlib_parameters_->database_encryption_key_, tdlib_parameters_->use_file_database_,
         tdlib_parameters_->use_chat_info_database_, tdlib_parameters_->use_message_database_,
         tdlib_parameters_->use_secret_chats_, tdlib_parameters_->api_id_, tdlib_parameters_->api_hash_,
         tdlib_parameters_->system_language_code_, tdlib_parameters_->device_model_, tdlib_parameters_->system_version_,
-        tdlib_parameters_->application_version_, tdlib_parameters_->enable_storage_optimizer_,
-        tdlib_parameters_->ignore_file_names_);
+        tdlib_parameters_->application_version_);
   }
 
   void change_system_version(std::string version) {
@@ -295,12 +295,13 @@ class TdcursesImpl : public Tdcurses {
     if (res.is_error()) {
       request_phone_number();
     } else {
-      //phoneNumberAuthenticationSettings allow_flash_call:Bool allow_missed_call:Bool is_current_phone_number:Bool allow_sms_retriever_api:Bool firebase_authentication_settings:FirebaseAuthenticationSettings authentication_tokens:vector<string> = PhoneNumberAuthenticationSettings;
+      //phoneNumberAuthenticationSettings allow_flash_call:Bool allow_missed_call:Bool is_current_phone_number:Bool has_unknown_phone_number:Bool allow_sms_retriever_api:Bool firebase_authentication_settings:FirebaseAuthenticationSettings authentication_tokens:vector<string> = PhoneNumberAuthenticationSettings;
       send_request(td::make_tl_object<td::td_api::setAuthenticationPhoneNumber>(
                        res.move_as_ok().as_slice().str(),
                        td::make_tl_object<td::td_api::phoneNumberAuthenticationSettings>(
-                           /* allow flash call */ false, /* allow missed call */ false,
-                           /* is current phone number */ false, /* allow sms retriever */ false, /* firebase */ nullptr,
+                           /* allow flash call */ true, /* allow missed call */ true,
+                           /* is current phone number */ false, /* has unknown phone number */ false,
+                           /* allow sms retriever */ false, /* firebase */ nullptr,
                            /* tokens */ std::vector<std::string>())),
                    td::PromiseCreator::lambda([SelfId = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
                      if (R.is_error()) {
@@ -468,7 +469,7 @@ class TdcursesImpl : public Tdcurses {
         first_name = str.substr(0, ch);
         last_name = str.substr(ch + 1);
       }
-      send_request(td::make_tl_object<td::td_api::registerUser>(first_name, last_name),
+      send_request(td::make_tl_object<td::td_api::registerUser>(first_name, last_name, false),
                    td::PromiseCreator::lambda([SelfId = self_](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
                      if (R.is_error()) {
                        td::send_closure(SelfId, &TdcursesImpl::request_name);
@@ -574,16 +575,16 @@ class TdcursesImpl : public Tdcurses {
   void process_auth_state(td::td_api::authorizationStateClosed &state) {
   }
 
-  //@class Update @description Contains notifications about data changes
-
-  //@description The user authorization state has changed @authorization_state New authorization state
+  //@description The user authorization state has changed
+  //@authorization_state New authorization state
   //updateAuthorizationState authorization_state:AuthorizationState = Update;
   void process_update(td::td_api::updateAuthorizationState &update) {
     del_qr_code_window();
     td::td_api::downcast_call(*update.authorization_state_, [&](auto &obj) { process_auth_state(obj); });
   }
 
-  //@description A new message was received; can also be an outgoing message @message The new message
+  //@description A new message was received; can also be an outgoing message
+  //@message The new message
   //updateNewMessage message:message = Update;
   void process_update(td::td_api::updateNewMessage &update) {
     auto c = chat_window();
@@ -592,8 +593,10 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A request to send a message has reached the Telegram server. This doesn't mean that the message will be sent successfully or even that the send message request will be processed. This update will be sent only if the option "use_quick_ack" is set to true. This update may be sent multiple times for the same message
-  //@chat_id The chat identifier of the sent message @message_id A temporary message identifier
+  //@description A request to send a message has reached the Telegram server. This doesn't mean that the message will be sent successfully.
+  //-This update is sent only if the option "use_quick_ack" is set to true. This update may be sent multiple times for the same message
+  //@chat_id The chat identifier of the sent message
+  //@message_id A temporary message identifier
   //updateMessageSendAcknowledged chat_id:int53 message_id:int53 = Update;
   void process_update(td::td_api::updateMessageSendAcknowledged &update) {
     auto c = chat_window();
@@ -602,7 +605,9 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A message has been successfully sent @message Information about the sent message. Usually only the message identifier, date, and content are changed, but almost all other fields can also change @old_message_id The previous temporary message identifier
+  //@description A message has been successfully sent
+  //@message The sent message. Usually only the message identifier, date, and content are changed, but almost all other fields can also change
+  //@old_message_id The previous temporary message identifier
   //updateMessageSendSucceeded message:message old_message_id:int53 = Update;
   void process_update(td::td_api::updateMessageSendSucceeded &update) {
     auto c = chat_window();
@@ -612,8 +617,10 @@ class TdcursesImpl : public Tdcurses {
   }
 
   //@description A message failed to send. Be aware that some messages being sent can be irrecoverably deleted, in which case updateDeleteMessages will be received instead of this update
-  //@message Contains information about the message that failed to send @old_message_id The previous temporary message identifier @error_code An error code @error_message Error message
-  //updateMessageSendFailed message:message old_message_id:int53 error_code:int32 error_message:string = Update;
+  //@message The failed to send message
+  //@old_message_id The previous temporary message identifier
+  //@error The cause of the message sending failure
+  //updateMessageSendFailed message:message old_message_id:int53 error:error = Update;
   void process_update(td::td_api::updateMessageSendFailed &update) {
     auto c = chat_window();
     if (c && c->chat_id() == update.message_->chat_id_) {
@@ -621,7 +628,10 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description The message content has changed @chat_id Chat identifier @message_id Message identifier @new_content New message content
+  //@description The message content has changed
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@new_content New message content
   //updateMessageContent chat_id:int53 message_id:int53 new_content:MessageContent = Update;
   void process_update(td::td_api::updateMessageContent &update) {
     auto c = chat_window();
@@ -630,8 +640,12 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A message was edited. Changes in the message content will come in a separate updateMessageContent @chat_id Chat identifier @message_id Message identifier @edit_date Point in time (Unix timestamp) when the message was edited @reply_markup New message reply markup; may be null
-  //updateMessageEdited chat_id : int53 message_id : int53 edit_date : int32 reply_markup : ReplyMarkup = Update;
+  //@description A message was edited. Changes in the message content will come in a separate updateMessageContent
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@edit_date Point in time (Unix timestamp) when the message was edited
+  //@reply_markup New message reply markup; may be null
+  //updateMessageEdited chat_id:int53 message_id:int53 edit_date:int32 reply_markup:ReplyMarkup = Update;
   void process_update(td::td_api::updateMessageEdited &update) {
     auto c = chat_window();
     if (c && c->chat_id() == update.chat_id_) {
@@ -639,7 +653,9 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description The message pinned state was changed @chat_id Chat identifier @message_id The message identifier @is_pinned True, if the message is pinned
+  //@description The message pinned state was changed
+  //@chat_id Chat identifier @message_id The message identifier
+  //@is_pinned True, if the message is pinned
   //updateMessageIsPinned chat_id:int53 message_id:int53 is_pinned:Bool = Update;
   void process_update(td::td_api::updateMessageIsPinned &update) {
     auto c = chat_window();
@@ -648,7 +664,10 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description The information about interactions with a message has changed @chat_id Chat identifier @message_id Message identifier @interaction_info New information about interactions with the message; may be null
+  //@description The information about interactions with a message has changed
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@interaction_info New information about interactions with the message; may be null
   //updateMessageInteractionInfo chat_id:int53 message_id:int53 interaction_info:messageInteractionInfo = Update;
   void process_update(td::td_api::updateMessageInteractionInfo &update) {
     auto c = chat_window();
@@ -657,8 +676,10 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description The message content was opened. Updates voice note messages to "listened", video note messages to "viewed" and starts the TTL timer for self-destructing messages @chat_id Chat identifier @message_id Message identifier
-  //updateMessageContentOpened chat_id : int53 message_id : int53 = Update;
+  //@description The message content was opened. Updates voice note messages to "listened", video note messages to "viewed" and starts the self-destruct timer
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //updateMessageContentOpened chat_id:int53 message_id:int53 = Update;
   void process_update(td::td_api::updateMessageContentOpened &update) {
     auto c = chat_window();
     if (c && c->chat_id() == update.chat_id_) {
@@ -666,8 +687,11 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A message with an unread mention was read @chat_id Chat identifier @message_id Message identifier @unread_mention_count The new number of unread mention messages left in the chat
-  //updateMessageMentionRead chat_id : int53 message_id : int53 unread_mention_count : int32 = Update;
+  //@description A message with an unread mention was read
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@unread_mention_count The new number of unread mention messages left in the chat
+  //updateMessageMentionRead chat_id:int53 message_id:int53 unread_mention_count:int32 = Update;
   void process_update(td::td_api::updateMessageMentionRead &update) {
     auto c = chat_window();
     if (c && c->chat_id() == update.chat_id_) {
@@ -675,7 +699,11 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description The list of unread reactions added to a message was changed @chat_id Chat identifier @message_id Message identifier @unread_reactions The new list of unread reactions @unread_reaction_count The new number of messages with unread reactions left in the chat
+  //@description The list of unread reactions added to a message was changed
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@unread_reactions The new list of unread reactions
+  //@unread_reaction_count The new number of messages with unread reactions left in the chat
   //updateMessageUnreadReactions chat_id:int53 message_id:int53 unread_reactions:vector<unreadReaction> unread_reaction_count:int32 = Update;
   void process_update(td::td_api::updateMessageUnreadReactions &update) {
     auto c = chat_window();
@@ -684,8 +712,22 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A message with a live location was viewed. When the update is received, the client is supposed to update the live location
-  //@chat_id Identifier of the chat with the live location message @message_id Identifier of the message with live location
+  //@description A fact-check added to a message was changed
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@fact_check The new fact-check
+  //updateMessageFactCheck chat_id:int53 message_id:int53 fact_check:factCheck = Update;
+  void process_update(td::td_api::updateMessageFactCheck &update) {
+    auto c = chat_window();
+    if (c && c->chat_id() == update.chat_id_) {
+      c->process_update(update);
+    }
+  }
+
+  //@description A message with a live location was viewed. When the update is received, the application is supposed to update the live location
+  //@chat_id Identifier of the chat with the live location message
+  //@message_id Identifier of the message with live location
+  //updateMessageLiveLocationViewed chat_id:int53 message_id:int53 = Update;
   void process_update(td::td_api::updateMessageLiveLocationViewed &update) {
     auto c = chat_window();
     if (c && c->chat_id() == update.chat_id_) {
@@ -693,192 +735,352 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A new chat has been loaded/created. This update is guaranteed to come before the chat identifier is returned to the client. The chat field changes will be reported through separate updates @chat The chat
-  //updateNewChat chat : chat = Update;
+  //@description A new chat has been loaded/created. This update is guaranteed to come before the chat identifier is returned to the application. The chat field changes will be reported through separate updates
+  //@chat The chat
+  //updateNewChat chat:chat = Update;
   void process_update(td::td_api::updateNewChat &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The title of a chat was changed @chat_id Chat identifier @title The new chat title
-  //updateChatTitle chat_id : int53 title : string = Update;
+  //@description The title of a chat was changed
+  //@chat_id Chat identifier
+  //@title The new chat title
+  //updateChatTitle chat_id:int53 title:string = Update;
   void process_update(td::td_api::updateChatTitle &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description A chat photo was changed @chat_id Chat identifier @photo The new chat photo; may be null
-  //updateChatPhoto chat_id : int53 photo : chatPhoto = Update;
+  //@description A chat photo was changed
+  //@chat_id Chat identifier
+  //@photo The new chat photo; may be null
+  //updateChatPhoto chat_id:int53 photo:chatPhotoInfo = Update;
   void process_update(td::td_api::updateChatPhoto &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Chat permissions was changed @chat_id Chat identifier @permissions The new chat permissions
+  //@description Chat accent colors have changed
+  //@chat_id Chat identifier
+  //@accent_color_id The new chat accent color identifier
+  //@background_custom_emoji_id The new identifier of a custom emoji to be shown on the reply header and link preview background; 0 if none
+  //@profile_accent_color_id The new chat profile accent color identifier; -1 if none
+  //@profile_background_custom_emoji_id The new identifier of a custom emoji to be shown on the profile background; 0 if none
+  //updateChatAccentColors chat_id:int53 accent_color_id:int32 background_custom_emoji_id:int64 profile_accent_color_id:int32 profile_background_custom_emoji_id:int64 = Update;
+  void process_update(td::td_api::updateChatAccentColors &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description Chat permissions were changed
+  //@chat_id Chat identifier
+  //@permissions The new chat permissions
   //updateChatPermissions chat_id:int53 permissions:chatPermissions = Update;
   void process_update(td::td_api::updateChatPermissions &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The last message of a chat was changed. If last_message is null then the last message in the chat became unknown. Some new unknown messages might be added to the chat in this case @chat_id Chat identifier @last_message The new last message in the chat; may be null @order New value of the chat order
-  //updateChatLastMessage chat_id : int53 last_message : message order : int64 = Update;
+  //@description The last message of a chat was changed
+  //@chat_id Chat identifier
+  //@last_message The new last message in the chat; may be null if the last message became unknown. While the last message is unknown, new messages can be added to the chat without corresponding updateNewMessage update
+  //@positions The new chat positions in the chat lists
+  //updateChatLastMessage chat_id:int53 last_message:message positions:vector<chatPosition> = Update;
   void process_update(td::td_api::updateChatLastMessage &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The position of a chat in a chat list has changed. Instead of this update updateChatLastMessage or updateChatDraftMessage might be sent @chat_id Chat identifier @position New chat position. If new order is 0, then the chat needs to be removed from the list
+  //@description The position of a chat in a chat list has changed. An updateChatLastMessage or updateChatDraftMessage update might be sent instead of the update
+  //@chat_id Chat identifier
+  //@position New chat position. If new order is 0, then the chat needs to be removed from the list
   //updateChatPosition chat_id:int53 position:chatPosition = Update;
   void process_update(td::td_api::updateChatPosition &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Incoming messages were read or number of unread messages has been changed @chat_id Chat identifier @last_read_inbox_message_id Identifier of the last read incoming message @unread_count The number of unread messages left in the chat
-  //updateChatReadInbox chat_id : int53 last_read_inbox_message_id : int53 unread_count : int32 = Update;
+  //@description A chat was added to a chat list
+  //@chat_id Chat identifier
+  //@chat_list The chat list to which the chat was added
+  //updateChatAddedToList chat_id:int53 chat_list:ChatList = Update;
+  void process_update(td::td_api::updateChatAddedToList &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description A chat was removed from a chat list
+  //@chat_id Chat identifier
+  //@chat_list The chat list from which the chat was removed
+  //updateChatRemovedFromList chat_id:int53 chat_list:ChatList = Update;
+  void process_update(td::td_api::updateChatRemovedFromList &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description Incoming messages were read or the number of unread messages has been changed
+  //@chat_id Chat identifier
+  //@last_read_inbox_message_id Identifier of the last read incoming message
+  //@unread_count The number of unread messages left in the chat
+  //updateChatReadInbox chat_id:int53 last_read_inbox_message_id:int53 unread_count:int32 = Update;
   void process_update(td::td_api::updateChatReadInbox &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Outgoing messages were read @chat_id Chat identifier @last_read_outbox_message_id Identifier of last read outgoing message
-  //updateChatReadOutbox chat_id : int53 last_read_outbox_message_id : int53 = Update;
+  //@description Outgoing messages were read
+  //@chat_id Chat identifier
+  //@last_read_outbox_message_id Identifier of last read outgoing message
+  //updateChatReadOutbox chat_id:int53 last_read_outbox_message_id:int53 = Update;
   void process_update(td::td_api::updateChatReadOutbox &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The chat action bar was changed @chat_id Chat identifier @action_bar The new value of the action bar; may be null
+  //@description The chat action bar was changed
+  //@chat_id Chat identifier
+  //@action_bar The new value of the action bar; may be null
+  //updateChatActionBar chat_id:int53 action_bar:ChatActionBar = Update;
   void process_update(td::td_api::updateChatActionBar &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The chat available reactions were changed @chat_id Chat identifier @available_reactions The new list of reactions, available in the chat
-  //updateChatAvailableReactions chat_id:int53 available_reactions:vector<string> = Update;
+  //@description The bar for managing business bot was changed in a chat
+  //@chat_id Chat identifier
+  //@business_bot_manage_bar The new value of the business bot manage bar; may be null
+  //updateChatBusinessBotManageBar chat_id:int53 business_bot_manage_bar:businessBotManageBar = Update;
+  void process_update(td::td_api::updateChatBusinessBotManageBar &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description The chat available reactions were changed
+  //@chat_id Chat identifier @available_reactions The new reactions, available in the chat
+  //updateChatAvailableReactions chat_id:int53 available_reactions:ChatAvailableReactions = Update;
   void process_update(td::td_api::updateChatAvailableReactions &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description A chat draft has changed. Be aware that the update may come in the currently opened chat but with old content of the draft. If the user has changed the content of the draft, this update shouldn't be applied @chat_id Chat identifier @draft_message The new draft message; may be null @order New value of the chat order
-  //updateChatDraftMessage chat_id : int53 draft_message : draftMessage order : int64 = Update;
+  //@description A chat draft has changed. Be aware that the update may come in the currently opened chat but with old content of the draft. If the user has changed the content of the draft, this update mustn't be applied
+  //@chat_id Chat identifier
+  //@draft_message The new draft message; may be null if none
+  //@positions The new chat positions in the chat lists
+  //updateChatDraftMessage chat_id:int53 draft_message:draftMessage positions:vector<chatPosition> = Update;
   void process_update(td::td_api::updateChatDraftMessage &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The message sender that is selected to send messages in a chat has changed @chat_id Chat identifier @message_sender_id New value of message_sender_id; may be null if the user can't change message sender
+  //@description Chat emoji status has changed
+  //@chat_id Chat identifier
+  //@emoji_status The new chat emoji status; may be null
+  //updateChatEmojiStatus chat_id:int53 emoji_status:emojiStatus = Update;
+  void process_update(td::td_api::updateChatEmojiStatus &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description The message sender that is selected to send messages in a chat has changed
+  //@chat_id Chat identifier
+  //@message_sender_id New value of message_sender_id; may be null if the user can't change message sender
   //updateChatMessageSender chat_id:int53 message_sender_id:MessageSender = Update;
   void process_update(td::td_api::updateChatMessageSender &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The message Time To Live setting for a chat was changed @chat_id Chat identifier @message_ttl New value of message_ttl
-  //updateChatMessageTtl chat_id:int53 message_ttl:int32 = Update;
+  //@description The message auto-delete or self-destruct timer setting for a chat was changed
+  //@chat_id Chat identifier
+  //@message_auto_delete_time New value of message_auto_delete_time
+  //updateChatMessageAutoDeleteTime chat_id:int53 message_auto_delete_time:int32 = Update;
   void process_update(td::td_api::updateChatMessageAutoDeleteTime &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Notification settings for a chat were changed @chat_id Chat identifier @notification_settings The new notification settings
-  //updateChatNotificationSettings chat_id : int53 notification_settings : chatNotificationSettings = Update;
+  //@description Notification settings for a chat were changed
+  //@chat_id Chat identifier
+  //@notification_settings The new notification settings
+  //updateChatNotificationSettings chat_id:int53 notification_settings:chatNotificationSettings = Update;
   void process_update(td::td_api::updateChatNotificationSettings &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The chat pending join requests were changed @chat_id Chat identifier @pending_join_requests The new data about pending join requests; may be null
+  //@description The chat pending join requests were changed
+  //@chat_id Chat identifier
+  //@pending_join_requests The new data about pending join requests; may be null
   //updateChatPendingJoinRequests chat_id:int53 pending_join_requests:chatJoinRequestsInfo = Update;
   void process_update(td::td_api::updateChatPendingJoinRequests &update) {
     dialog_list_window()->process_update(update);
   }
 
   //@description The default chat reply markup was changed. Can occur because new messages with reply markup were received or because an old reply markup was hidden by the user
-  //@chat_id Chat identifier @reply_markup_message_id Identifier of the message from which reply markup needs to be used; 0 if there is no default custom reply markup in the chat
-  //updateChatReplyMarkup chat_id : int53 reply_markup_message_id : int53 = Update;
+  //@chat_id Chat identifier
+  //@reply_markup_message_id Identifier of the message from which reply markup needs to be used; 0 if there is no default custom reply markup in the chat
+  //updateChatReplyMarkup chat_id:int53 reply_markup_message_id:int53 = Update;
   void process_update(td::td_api::updateChatReplyMarkup &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The chat background was changed @chat_id Chat identifier @background The new chat background; may be null if background was reset to default
+  //@description The chat background was changed
+  //@chat_id Chat identifier
+  //@background The new chat background; may be null if background was reset to default
   //updateChatBackground chat_id:int53 background:chatBackground = Update;
   void process_update(td::td_api::updateChatBackground &update) {
+    dialog_list_window()->process_update(update);
   }
 
-  //@description The chat theme was changed @chat_id Chat identifier @theme_name The new name of the chat theme; may be empty if theme was reset to default
+  //@description The chat theme was changed
+  //@chat_id Chat identifier
+  //@theme_name The new name of the chat theme; may be empty if theme was reset to default
   //updateChatTheme chat_id:int53 theme_name:string = Update;
   void process_update(td::td_api::updateChatTheme &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The chat unread_mention_count has changed @chat_id Chat identifier @unread_mention_count The number of unread mention messages left in the chat
-  //updateChatUnreadMentionCount chat_id : int53 unread_mention_count : int32 = Update;
+  //@description The chat unread_mention_count has changed
+  //@chat_id Chat identifier
+  //@unread_mention_count The number of unread mention messages left in the chat
+  //updateChatUnreadMentionCount chat_id:int53 unread_mention_count:int32 = Update;
   void process_update(td::td_api::updateChatUnreadMentionCount &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Number of unread messages has changed. This update is sent only if a message database is used @unread_count Total number of unread messages @unread_unmuted_count Total number of unread messages in unmuted chats
-  //updateUnreadMessageCount unread_count : int32 unread_unmuted_count : int32 = Update;
+  //@description The chat unread_reaction_count has changed
+  //@chat_id Chat identifier
+  //@unread_reaction_count The number of messages with unread reactions left in the chat
+  //updateChatUnreadReactionCount chat_id:int53 unread_reaction_count:int32 = Update;
   void process_update(td::td_api::updateChatUnreadReactionCount &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description A chat video chat state has changed @chat_id Chat identifier @video_chat New value of video_chat
+  //@description A chat video chat state has changed
+  //@chat_id Chat identifier
+  //@video_chat New value of video_chat
   //updateChatVideoChat chat_id:int53 video_chat:videoChat = Update;
   void process_update(td::td_api::updateChatVideoChat &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The value of the default disable_notification parameter, used when a message is sent to the chat, was changed @chat_id Chat identifier @default_disable_notification The new default_disable_notification value
-  //updateChatDefaultDisableNotification chat_id : int53 default_disable_notification : Bool = Update;
+  //@description The value of the default disable_notification parameter, used when a message is sent to the chat, was changed
+  //@chat_id Chat identifier
+  //@default_disable_notification The new default_disable_notification value
+  //updateChatDefaultDisableNotification chat_id:int53 default_disable_notification:Bool = Update;
   void process_update(td::td_api::updateChatDefaultDisableNotification &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description A chat content was allowed or restricted for saving @chat_id Chat identifier @has_protected_content New value of has_protected_content
+  //@description A chat content was allowed or restricted for saving
+  //@chat_id Chat identifier
+  //@has_protected_content New value of has_protected_content
   //updateChatHasProtectedContent chat_id:int53 has_protected_content:Bool = Update;
   void process_update(td::td_api::updateChatHasProtectedContent &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Translation of chat messages was enabled or disabled @chat_id Chat identifier @is_translatable New value of is_translatable
+  //@description Translation of chat messages was enabled or disabled
+  //@chat_id Chat identifier
+  //@is_translatable New value of is_translatable
   //updateChatIsTranslatable chat_id:int53 is_translatable:Bool = Update;
   void process_update(td::td_api::updateChatIsTranslatable &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description A chat's has_scheduled_messages field has changed @chat_id Chat identifier @has_scheduled_messages New value of has_scheduled_messages
-  void process_update(td::td_api::updateChatHasScheduledMessages &update) {
-    dialog_list_window()->process_update(update);
-  }
-
-  //@description A chat was blocked or unblocked @chat_id Chat identifier @is_blocked New value of is_blocked
-  //updateChatIsBlocked chat_id:int53 is_blocked:Bool = Update;
-  void process_update(td::td_api::updateChatIsBlocked &update) {
-    dialog_list_window()->process_update(update);
-  }
-
-  //@description A chat was marked as unread or was read @chat_id Chat identifier @is_marked_as_unread New value of is_marked_as_unread
-  //updateChatIsMarkedAsUnread chat_id : int53 is_marked_as_unread : Bool = Update;
+  //@description A chat was marked as unread or was read
+  //@chat_id Chat identifier
+  //@is_marked_as_unread New value of is_marked_as_unread
+  //updateChatIsMarkedAsUnread chat_id:int53 is_marked_as_unread:Bool = Update;
   void process_update(td::td_api::updateChatIsMarkedAsUnread &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description The list of chat filters or a chat filter has changed @chat_filters The new list of chat filters
-  //updateChatFolders chat_folders:vector<chatFolderInfo> main_chat_list_position:int32 = Update;
+  //@description A chat default appearance has changed
+  //@chat_id Chat identifier
+  //@view_as_topics New value of view_as_topics
+  //updateChatViewAsTopics chat_id:int53 view_as_topics:Bool = Update;
+  void process_update(td::td_api::updateChatViewAsTopics &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description A chat was blocked or unblocked
+  //@chat_id Chat identifier
+  //@block_list Block list to which the chat is added; may be null if none
+  //updateChatBlockList chat_id:int53 block_list:BlockList = Update;
+  void process_update(td::td_api::updateChatBlockList &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description A chat's has_scheduled_messages field has changed
+  //@chat_id Chat identifier
+  //@has_scheduled_messages New value of has_scheduled_messages
+  //updateChatHasScheduledMessages chat_id:int53 has_scheduled_messages:Bool = Update;
+  void process_update(td::td_api::updateChatHasScheduledMessages &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description The list of chat folders or a chat folder has changed
+  //@chat_folders The new list of chat folders
+  //@main_chat_list_position Position of the main chat list among chat folders, 0-based
+  //@are_tags_enabled True, if folder tags are enabled
+  //updateChatFolders chat_folders:vector<chatFolderInfo> main_chat_list_position:int32 are_tags_enabled:Bool = Update;
   void process_update(td::td_api::updateChatFolders &update) {
     //ChatManager::instance->process_update(update);
   }
 
-  //@description The number of online group members has changed. This update with non-zero number of online group members is sent only for currently opened chats. There is no guarantee that it will be sent just after the number of online users has changed @chat_id Identifier of the chat @online_member_count New number of online members in the chat, or 0 if unknown
+  //@description The number of online group members has changed. This update with non-zero number of online group members is sent only for currently opened chats.
+  //-There is no guarantee that it is sent just after the number of online users has changed
+  //@chat_id Identifier of the chat
+  //@online_member_count New number of online members in the chat, or 0 if unknown
   //updateChatOnlineMemberCount chat_id:int53 online_member_count:int32 = Update;
   void process_update(td::td_api::updateChatOnlineMemberCount &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Basic information about a topic in a forum chat was changed @chat_id Chat identifier @info New information about the topic
+  //@description Basic information about a Saved Messages topic has changed. This update is guaranteed to come before the topic identifier is returned to the application
+  //@topic New data about the topic
+  //updateSavedMessagesTopic topic:savedMessagesTopic = Update;
+  void process_update(td::td_api::updateSavedMessagesTopic &update) {
+  }
+
+  //@description Number of Saved Messages topics has changed
+  //@topic_count Approximate total number of Saved Messages topics
+  //updateSavedMessagesTopicCount topic_count:int32 = Update;
+  void process_update(td::td_api::updateSavedMessagesTopicCount &update) {
+  }
+
+  //@description Basic information about a quick reply shortcut has changed. This update is guaranteed to come before the quick shortcut name is returned to the application
+  //@shortcut New data about the shortcut
+  //updateQuickReplyShortcut shortcut:quickReplyShortcut = Update;
+  void process_update(td::td_api::updateQuickReplyShortcut &update) {
+  }
+
+  //@description A quick reply shortcut and all its messages were deleted @shortcut_id The identifier of the deleted shortcut
+  //updateQuickReplyShortcutDeleted shortcut_id:int32 = Update;
+  void process_update(td::td_api::updateQuickReplyShortcutDeleted &update) {
+  }
+
+  //@description The list of quick reply shortcuts has changed @shortcut_ids The new list of identifiers of quick reply shortcuts
+  //updateQuickReplyShortcuts shortcut_ids:vector<int32> = Update;
+  void process_update(td::td_api::updateQuickReplyShortcuts &update) {
+  }
+
+  //@description The list of quick reply shortcut messages has changed
+  //@shortcut_id The identifier of the shortcut
+  //@messages The new list of quick reply messages for the shortcut in order from the first to the last sent
+  //updateQuickReplyShortcutMessages shortcut_id:int32 messages:vector<quickReplyMessage> = Update;
+  void process_update(td::td_api::updateQuickReplyShortcutMessages &update) {
+  }
+
+  //@description Basic information about a topic in a forum chat was changed
+  //@chat_id Chat identifier
+  //@info New information about the topic
   //updateForumTopicInfo chat_id:int53 info:forumTopicInfo = Update;
   void process_update(td::td_api::updateForumTopicInfo &update) {
     dialog_list_window()->process_update(update);
   }
 
-  //@description Notification settings for some type of chats were updated @scope Types of chats for which notification settings were updated @notification_settings The new notification settings
-  //updateScopeNotificationSettings scope : NotificationSettingsScope notification_settings : scopeNotificationSettings =
-  //  Update;
+  //@description Notification settings for some type of chats were updated
+  //@scope Types of chats for which notification settings were updated
+  //@notification_settings The new notification settings
+  //updateScopeNotificationSettings scope:NotificationSettingsScope notification_settings:scopeNotificationSettings = Update;
   void process_update(td::td_api::updateScopeNotificationSettings &update) {
   }
 
-  //@description A notification was changed @notification_group_id Unique notification group identifier @notification Changed notification
-  //updateNotification notification_group_id : int32 notification : notification = Update;
+  //@description Notification settings for reactions were updated
+  //@notification_settings The new notification settings
+  //updateReactionNotificationSettings notification_settings:reactionNotificationSettings = Update;
+  void process_update(td::td_api::updateReactionNotificationSettings &update) {
+  }
+
+  //@description A notification was changed
+  //@notification_group_id Unique notification group identifier
+  //@notification Changed notification
+  //updateNotification notification_group_id:int32 notification:notification = Update;
   void process_update(td::td_api::updateNotification &update) {
   }
 
@@ -887,92 +1089,116 @@ class TdcursesImpl : public Tdcurses {
   //@type New type of the notification group
   //@chat_id Identifier of a chat to which all notifications in the group belong
   //@notification_settings_chat_id Chat identifier, which notification settings must be applied to the added notifications
-  //@is_silent True, if the notifications should be shown without sound
+  //@notification_sound_id Identifier of the notification sound to be played; 0 if sound is disabled
   //@total_count Total number of unread notifications in the group, can be bigger than number of active notifications
-  //@added_notifications List of added group notifications, sorted by notification ID @removed_notification_ids Identifiers of removed group notifications, sorted by notification ID
-  //updateNotificationGroup notification_group_id : int32 type : NotificationGroupType chat_id
-  //    : int53 notification_settings_chat_id : int53 is_silent : Bool total_count : int32 added_notifications
-  //    : vector<notification>
-  //          removed_notification_ids : vector<int32> = Update;
+  //@added_notifications List of added group notifications, sorted by notification identifier
+  //@removed_notification_ids Identifiers of removed group notifications, sorted by notification identifier
+  //updateNotificationGroup notification_group_id:int32 type:NotificationGroupType chat_id:int53 notification_settings_chat_id:int53 notification_sound_id:int64 total_count:int32 added_notifications:vector<notification> removed_notification_ids:vector<int32> = Update;
   void process_update(td::td_api::updateNotificationGroup &update) {
   }
 
-  //@description Contains active notifications that was shown on previous application launches. This update is sent only if a message database is used. In that case it comes once before any updateNotification and updateNotificationGroup update @groups Lists of active notification groups
-  //updateActiveNotifications groups : vector<notificationGroup> = Update;
+  //@description Contains active notifications that were shown on previous application launches. This update is sent only if the message database is used. In that case it comes once before any updateNotification and updateNotificationGroup update
+  //@groups Lists of active notification groups
+  //updateActiveNotifications groups:vector<notificationGroup> = Update;
   void process_update(td::td_api::updateActiveNotifications &update) {
   }
 
-  //@description Describes, whether there are some pending notification updates. Can be used to prevent application from killing, while there are some pending notifications
+  //@description Describes whether there are some pending notification updates. Can be used to prevent application from killing, while there are some pending notifications
   //@have_delayed_notifications True, if there are some delayed notification updates, which will be sent soon
   //@have_unreceived_notifications True, if there can be some yet unreceived notifications, which are being fetched from the server
-  //updateHavePendingNotifications have_delayed_notifications : Bool have_unreceived_notifications : Bool = Update;
+  //updateHavePendingNotifications have_delayed_notifications:Bool have_unreceived_notifications:Bool = Update;
   void process_update(td::td_api::updateHavePendingNotifications &update) {
   }
 
-  //@description Some messages were deleted @chat_id Chat identifier @message_ids Identifiers of the deleted messages
+  //@description Some messages were deleted
+  //@chat_id Chat identifier
+  //@message_ids Identifiers of the deleted messages
   //@is_permanent True, if the messages are permanently deleted by a user (as opposed to just becoming inaccessible)
   //@from_cache True, if the messages are deleted only from the cache and can possibly be retrieved again in the future
-  //updateDeleteMessages chat_id : int53 message_ids : vector<int53> is_permanent : Bool from_cache : Bool = Update;
+  //updateDeleteMessages chat_id:int53 message_ids:vector<int53> is_permanent:Bool from_cache:Bool = Update;
   void process_update(td::td_api::updateDeleteMessages &update) {
+    auto c = chat_window();
+    if (c && c->chat_id() == update.chat_id_) {
+      c->process_update(update);
+    }
   }
 
-  //@description A message sender activity in the chat has changed @chat_id Chat identifier @message_thread_id If not 0, a message thread identifier in which the action was performed @sender_id Identifier of a message sender performing the action @action The action
+  //@description A message sender activity in the chat has changed
+  //@chat_id Chat identifier
+  //@message_thread_id If not 0, the message thread identifier in which the action was performed
+  //@sender_id Identifier of a message sender performing the action
+  //@action The action
   //updateChatAction chat_id:int53 message_thread_id:int53 sender_id:MessageSender action:ChatAction = Update;
   void process_update(td::td_api::updateChatAction &update) {
+    auto c = chat_window();
+    if (c && c->chat_id() == update.chat_id_) {
+      c->process_update(update);
+    }
   }
 
-  //@description The user went online or offline @user_id User identifier @status New status of the user
-  //updateUserStatus user_id : int32 status : UserStatus = Update;
+  //@description The user went online or offline
+  //@user_id User identifier
+  //@status New status of the user
+  //updateUserStatus user_id:int53 status:UserStatus = Update;
   void process_update(td::td_api::updateUserStatus &update) {
     dialog_list_window()->process_user_update(update);
   }
 
-  //@description Some data of a user has changed. This update is guaranteed to come before the user identifier is returned to the client @user New data about the user
-  //updateUser user : user = Update;
+  //@description Some data of a user has changed. This update is guaranteed to come before the user identifier is returned to the application
+  //@user New data about the user
+  //updateUser user:user = Update;
   void process_update(td::td_api::updateUser &update) {
     dialog_list_window()->process_user_update(update);
   }
 
-  //@description Some data of a basic group has changed. This update is guaranteed to come before the basic group identifier is returned to the client @basic_group New data about the group
-  //updateBasicGroup basic_group : basicGroup = Update;
+  //@description Some data of a basic group has changed. This update is guaranteed to come before the basic group identifier is returned to the application
+  //@basic_group New data about the group
+  //updateBasicGroup basic_group:basicGroup = Update;
   void process_update(td::td_api::updateBasicGroup &update) {
-    ChatManager::instance->process_update(update);
+    dialog_list_window()->process_user_update(update);
   }
 
-  //@description Some data of a supergroup or a channel has changed. This update is guaranteed to come before the supergroup identifier is returned to the client @supergroup New data about the supergroup
-  //updateSupergroup supergroup : supergroup = Update;
+  //@description Some data of a supergroup or a channel has changed. This update is guaranteed to come before the supergroup identifier is returned to the application
+  //@supergroup New data about the supergroup
+  //updateSupergroup supergroup:supergroup = Update;
   void process_update(td::td_api::updateSupergroup &update) {
-    //ChatManager::instance->process_update(update);
+    dialog_list_window()->process_user_update(update);
   }
 
-  //@description Some data of a secret chat has changed. This update is guaranteed to come before the secret chat identifier is returned to the client @secret_chat New data about the secret chat
-  //updateSecretChat secret_chat : secretChat = Update;
+  //@description Some data of a secret chat has changed. This update is guaranteed to come before the secret chat identifier is returned to the application
+  //@secret_chat New data about the secret chat
+  //updateSecretChat secret_chat:secretChat = Update;
   void process_update(td::td_api::updateSecretChat &update) {
-    //ChatManager::instance->process_update(update);
+    dialog_list_window()->process_user_update(update);
   }
 
-  //@description Some data from userFullInfo has been changed @user_id User identifier @user_full_info New full information about the user
-  //updateUserFullInfo user_id : int32 user_full_info : userFullInfo = Update;
+  //@description Some data in userFullInfo has been changed
+  //@user_id User identifier
+  //@user_full_info New full information about the user
+  //updateUserFullInfo user_id:int53 user_full_info:userFullInfo = Update;
   void process_update(td::td_api::updateUserFullInfo &update) {
     //ChatManager::instance->process_update(update);
   }
 
-  //@description Some data from basicGroupFullInfo has been changed @basic_group_id Identifier of a basic group @basic_group_full_info New full information about the group
-  //updateBasicGroupFullInfo basic_group_id : int32 basic_group_full_info : basicGroupFullInfo = Update;
+  //@description Some data in basicGroupFullInfo has been changed
+  //@basic_group_id Identifier of a basic group
+  //@basic_group_full_info New full information about the group
+  //updateBasicGroupFullInfo basic_group_id:int53 basic_group_full_info:basicGroupFullInfo = Update;
   void process_update(td::td_api::updateBasicGroupFullInfo &update) {
     //ChatManager::instance->process_update(update);
   }
 
-  //@description Some data from supergroupFullInfo has been changed @supergroup_id Identifier of the supergroup or channel @supergroup_full_info New full information about the supergroup
-  //updateSupergroupFullInfo supergroup_id : int32 supergroup_full_info : supergroupFullInfo = Update;
+  //@description Some data in supergroupFullInfo has been changed @supergroup_id Identifier of the supergroup or channel
+  //@supergroup_full_info New full information about the supergroup
+  //updateSupergroupFullInfo supergroup_id:int53 supergroup_full_info:supergroupFullInfo = Update;
   void process_update(td::td_api::updateSupergroupFullInfo &update) {
     //ChatManager::instance->process_update(update);
   }
 
-  //@description Service notification from the server. Upon receiving this the client must show a popup with the content of the notification
-  //@type Notification type. If type begins with "AUTH_KEY_DROP_", then two buttons "Cancel" and "Log out" should be shown under notification; if user presses the second, all local data should be destroyed using Destroy method
+  //@description A service notification from the server was received. Upon receiving this the application must show a popup with the content of the notification
+  //@type Notification type. If type begins with "AUTH_KEY_DROP_", then two buttons "Cancel" and "Log out" must be shown under notification; if user presses the second, all local data must be destroyed using Destroy method
   //@content Notification content
-  //updateServiceNotification type : string content : MessageContent = Update;
+  //updateServiceNotification type:string content:MessageContent = Update;
   void process_update(td::td_api::updateServiceNotification &update) {
     /*Outputter out;
     out << color_scheme.get_color(ObjectType::ServiceNotification) << update.content_ << td::TerminalColors::empty()
@@ -980,8 +1206,9 @@ class TdcursesImpl : public Tdcurses {
     td::TerminalIO::out() << td::CSlice{out};*/
   }
 
-  //@description Information about a file was updated @file New data about the file
-  //updateFile file : file = Update;
+  //@description Information about a file was updated
+  //@file New data about the file
+  //updateFile file:file = Update;
   void process_update(td::td_api::updateFile &update) {
     auto c = chat_window();
     if (c) {
@@ -989,18 +1216,17 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description The file generation process needs to be started by the client
+  //@description The file generation process needs to be started by the application
   //@generation_id Unique identifier for the generation process
   //@original_path The path to a file from which a new file is generated; may be empty
-  //@destination_path The path to a file that should be created and where the new file should be generated
-  //@conversion String specifying the conversion applied to the original file. If conversion is "#url#" than original_path contains an HTTP/HTTPS URL of a file, which should be downloaded by the client
-  //updateFileGenerationStart generation_id : int64 original_path : string destination_path : string conversion
-  //    : string = Update;
+  //@destination_path The path to a file that must be created and where the new file is generated
+  //@conversion String specifying the conversion applied to the original file. If conversion is "#url#" than original_path contains an HTTP/HTTPS URL of a file, which must be downloaded by the application
+  //updateFileGenerationStart generation_id:int64 original_path:string destination_path:string conversion:string = Update;
   void process_update(td::td_api::updateFileGenerationStart &update) {
   }
 
   //@description File generation is no longer needed @generation_id Unique identifier for the generation process
-  //updateFileGenerationStop generation_id : int64 = Update;
+  //updateFileGenerationStop generation_id:int64 = Update;
   void process_update(td::td_api::updateFileGenerationStop &update) {
   }
 
@@ -1012,12 +1238,14 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateFileDownloads &update) {
   }
 
-  //@description A file was added to the file download list. This update is sent only after file download list is loaded for the first time @file_download The added file download @counts New number of being downloaded and recently downloaded files found
+  //@description A file was added to the file download list. This update is sent only after file download list is loaded for the first time
+  //@file_download The added file download @counts New number of being downloaded and recently downloaded files found
   //updateFileAddedToDownloads file_download:fileDownload counts:downloadedFileCounts = Update;
   void process_update(td::td_api::updateFileAddedToDownloads &update) {
   }
 
-  //@description A file download was changed. This update is sent only after file download list is loaded for the first time @file_id File identifier
+  //@description A file download was changed. This update is sent only after file download list is loaded for the first time
+  //@file_id File identifier
   //@complete_date Point in time (Unix timestamp) when the file downloading was completed; 0 if the file downloading isn't completed
   //@is_paused True, if downloading of the file is paused
   //@counts New number of being downloaded and recently downloaded files found
@@ -1025,62 +1253,103 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateFileDownload &update) {
   }
 
-  //@description A file was removed from the file download list. This update is sent only after file download list is loaded for the first time @file_id File identifier @counts New number of being downloaded and recently downloaded files found
+  //@description A file was removed from the file download list. This update is sent only after file download list is loaded for the first time
+  //@file_id File identifier
+  //@counts New number of being downloaded and recently downloaded files found
   //updateFileRemovedFromDownloads file_id:int32 counts:downloadedFileCounts = Update;
   void process_update(td::td_api::updateFileRemovedFromDownloads &update) {
   }
 
-  //@description New call was created or information about a call was updated @call New data about a call
-  //updateCall call : call = Update;
+  //@description A request can't be completed unless application verification is performed; for official mobile applications only.
+  //-The method setApplicationVerificationToken must be called once the verification is completed or failed
+  //@verification_id Unique identifier for the verification process
+  //@nonce Unique base64url-encoded nonce for the classic Play Integrity verification (https://developer.android.com/google/play/integrity/classic) for Android,
+  //-or a unique string to compare with verify_nonce field from a push notification for iOS
+  //@cloud_project_number Cloud project number to pass to the Play Integrity API on Android
+  //updateApplicationVerificationRequired verification_id:int53 nonce:string cloud_project_number:int64 = Update;
+  void process_update(td::td_api::updateApplicationVerificationRequired &update) {
+  }
+
+  //@description New call was created or information about a call was updated
+  //@call New data about a call
+  //updateCall call:call = Update;
   void process_update(td::td_api::updateCall &update) {
   }
 
-  //@description Information about a group call was updated @group_call New data about a group call
+  //@description Information about a group call was updated
+  //@group_call New data about a group call
   //updateGroupCall group_call:groupCall = Update;
   void process_update(td::td_api::updateGroupCall &update) {
   }
 
   //@description Information about a group call participant was changed. The updates are sent only after the group call is received through getGroupCall and only if the call is joined or being joined
-  //@group_call_id Identifier of group call @participant New data about a participant
+  //@group_call_id Identifier of group call
+  //@participant New data about a participant
   //updateGroupCallParticipant group_call_id:int32 participant:groupCallParticipant = Update;
   void process_update(td::td_api::updateGroupCallParticipant &update) {
   }
 
-  //@description New call signaling data arrived @call_id The call identifier @data The data
+  //@description New call signaling data arrived
+  //@call_id The call identifier
+  //@data The data
   //updateNewCallSignalingData call_id:int32 data:bytes = Update;
   void process_update(td::td_api::updateNewCallSignalingData &update) {
   }
 
-  //@description Some privacy setting rules have been changed @setting The privacy setting @rules New privacy rules
-  //updateUserPrivacySettingRules setting : UserPrivacySetting rules : userPrivacySettingRules = Update;
+  //@description Some privacy setting rules have been changed
+  //@setting The privacy setting
+  //@rules New privacy rules
+  //updateUserPrivacySettingRules setting:UserPrivacySetting rules:userPrivacySettingRules = Update;
   void process_update(td::td_api::updateUserPrivacySettingRules &update) {
   }
 
-  //@description Number of unread messages has changed. This update is sent only if a message database is used @unread_count Total number of unread messages @unread_unmuted_count Total number of unread messages in unmuted chats
-  //updateUnreadMessageCount unread_count : int32 unread_unmuted_count : int32 = Update;
+  //@description Number of unread messages in a chat list has changed. This update is sent only if the message database is used
+  //@chat_list The chat list with changed number of unread messages
+  //@unread_count Total number of unread messages
+  //@unread_unmuted_count Total number of unread messages in unmuted chats
+  //updateUnreadMessageCount chat_list:ChatList unread_count:int32 unread_unmuted_count:int32 = Update;
   void process_update(td::td_api::updateUnreadMessageCount &update) {
   }
 
-  //@description Number of unread chats, i.e. with unread messages or marked as unread, has changed. This update is sent only if a message database is used
+  //@description Number of unread chats, i.e. with unread messages or marked as unread, has changed. This update is sent only if the message database is used
+  //@chat_list The chat list with changed number of unread messages
+  //@total_count Approximate total number of chats in the chat list
   //@unread_count Total number of unread chats
   //@unread_unmuted_count Total number of unread unmuted chats
   //@marked_as_unread_count Total number of chats marked as unread
   //@marked_as_unread_unmuted_count Total number of unmuted chats marked as unread
-  //updateUnreadChatCount unread_count : int32 unread_unmuted_count : int32 marked_as_unread_count
-  //    : int32 marked_as_unread_unmuted_count : int32 = Update;
+  //updateUnreadChatCount chat_list:ChatList total_count:int32 unread_count:int32 unread_unmuted_count:int32 marked_as_unread_count:int32 marked_as_unread_unmuted_count:int32 = Update;
   void process_update(td::td_api::updateUnreadChatCount &update) {
     unread_chats_ = update.unread_unmuted_count_ + update.marked_as_unread_unmuted_count_;
     update_status_line();
   }
 
-  //@description A story was changed @story The new information about the story
+  //@description A story was changed
+  //@story The new information about the story
   //updateStory story:story = Update;
   void process_update(td::td_api::updateStory &update) {
   }
 
-  //@description A story became inaccessible @story_sender_chat_id Identifier of the chat that posted the story @story_id Story identifier
+  //@description A story became inaccessible
+  //@story_sender_chat_id Identifier of the chat that posted the story
+  //@story_id Story identifier
   //updateStoryDeleted story_sender_chat_id:int53 story_id:int32 = Update;
   void process_update(td::td_api::updateStoryDeleted &update) {
+  }
+
+  //@description A story has been successfully sent
+  //@story The sent story
+  //@old_story_id The previous temporary story identifier
+  //updateStorySendSucceeded story:story old_story_id:int32 = Update;
+  void process_update(td::td_api::updateStorySendSucceeded &update) {
+  }
+
+  //@description A story failed to send. If the story sending is canceled, then updateStoryDeleted will be received instead of this update
+  //@story The failed to send story
+  //@error The cause of the story sending failure
+  //@error_type Type of the error; may be null if unknown
+  //updateStorySendFailed story:story error:error error_type:CanSendStoryResult = Update;
+  void process_update(td::td_api::updateStorySendFailed &update) {
   }
 
   //@description The list of active stories posted by a specific chat has changed
@@ -1089,69 +1358,104 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateChatActiveStories &update) {
   }
 
-  //@description Number of chats in a story list has changed @story_list The story list @chat_count Approximate total number of chats with active stories in the list
+  //@description Number of chats in a story list has changed
+  //@story_list The story list @chat_count Approximate total number of chats with active stories in the list
   //updateStoryListChatCount story_list:StoryList chat_count:int32 = Update;
   void process_update(td::td_api::updateStoryListChatCount &update) {
   }
 
-  //@description An option changed its value @name The option name @value The new option value
-  //updateOption name : string value : OptionValue = Update;
+  //@description Story stealth mode settings have changed
+  //@active_until_date Point in time (Unix timestamp) until stealth mode is active; 0 if it is disabled
+  //@cooldown_until_date Point in time (Unix timestamp) when stealth mode can be enabled again; 0 if there is no active cooldown
+  //updateStoryStealthMode active_until_date:int32 cooldown_until_date:int32 = Update;
+  void process_update(td::td_api::updateStoryStealthMode &update) {
+  }
+
+  //@description An option changed its value
+  //@name The option name
+  //@value The new option value
+  //updateOption name:string value:OptionValue = Update;
   void process_update(td::td_api::updateOption &update) {
   }
 
-  //@description A sticker set has changed @sticker_set The sticker set
+  //@description A sticker set has changed
+  //@sticker_set The sticker set
   //updateStickerSet sticker_set:stickerSet = Update;
   void process_update(td::td_api::updateStickerSet &update) {
   }
 
-  //@description The list of installed sticker sets was updated @is_masks True, if the list of installed mask sticker sets was updated @sticker_set_ids The new list of installed ordinary sticker sets
-  //updateInstalledStickerSets is_masks : Bool sticker_set_ids : vector<int64> = Update;
+  //@description The list of installed sticker sets was updated @sticker_type Type of the affected stickers @sticker_set_ids The new list of installed ordinary sticker sets
+  //updateInstalledStickerSets sticker_type:StickerType sticker_set_ids:vector<int64> = Update;
   void process_update(td::td_api::updateInstalledStickerSets &update) {
   }
 
-  //@description The list of trending sticker sets was updated or some of them were viewed @sticker_sets The new list of trending sticker sets
-  //updateTrendingStickerSets sticker_sets : stickerSets = Update;
+  //@description The list of trending sticker sets was updated or some of them were viewed @sticker_type Type of the affected stickers @sticker_sets The prefix of the list of trending sticker sets with the newest trending sticker sets
+  //updateTrendingStickerSets sticker_type:StickerType sticker_sets:trendingStickerSets = Update;
   void process_update(td::td_api::updateTrendingStickerSets &update) {
   }
 
-  //@description The list of recently used stickers was updated @is_attached True, if the list of stickers attached to photo or video files was updated, otherwise the list of sent stickers is updated @sticker_ids The new list of file identifiers of recently used stickers
-  //updateRecentStickers is_attached : Bool sticker_ids : vector<int32> = Update;
+  //@description The list of recently used stickers was updated @is_attached True, if the list of stickers attached to photo or video files was updated; otherwise, the list of sent stickers is updated @sticker_ids The new list of file identifiers of recently used stickers
+  //updateRecentStickers is_attached:Bool sticker_ids:vector<int32> = Update;
   void process_update(td::td_api::updateRecentStickers &update) {
   }
 
-  //@description The list of favorite stickers was updated @sticker_ids The new list of file identifiers of favorite stickers
-  //updateFavoriteStickers sticker_ids : vector<int32> = Update;
+  //@description The list of favorite stickers was updated
+  //@sticker_ids The new list of file identifiers of favorite stickers
+  //updateFavoriteStickers sticker_ids:vector<int32> = Update;
   void process_update(td::td_api::updateFavoriteStickers &update) {
   }
 
-  //@description The list of saved animations was updated @animation_ids The new list of file identifiers of saved animations
-  //updateSavedAnimations animation_ids : vector<int32> = Update;
+  //@description The list of saved animations was updated
+  //@animation_ids The new list of file identifiers of saved animations
+  //updateSavedAnimations animation_ids:vector<int32> = Update;
   void process_update(td::td_api::updateSavedAnimations &update) {
   }
 
-  //@description The list of saved notifications sounds was updated. This update may not be sent until information about a notification sound was requested for the first time @notification_sound_ids The new list of identifiers of saved notification sounds
+  //@description The list of saved notification sounds was updated. This update may not be sent until information about a notification sound was requested for the first time
+  //@notification_sound_ids The new list of identifiers of saved notification sounds
   //updateSavedNotificationSounds notification_sound_ids:vector<int64> = Update;
   void process_update(td::td_api::updateSavedNotificationSounds &update) {
   }
 
-  //@description The selected background has changed @for_dark_theme True, if background for dark theme has changed @background The new selected background; may be null
-  //updateSelectedBackground for_dark_theme:Bool background:background = Update;
-  void process_update(td::td_api::updateSelectedBackground &update) {
+  //@description The default background has changed
+  //@for_dark_theme True, if default background for dark theme has changed
+  //@background The new default background; may be null
+  //updateDefaultBackground for_dark_theme:Bool background:background = Update;
+  void process_update(td::td_api::updateDefaultBackground &update) {
   }
 
-  //@description The list of available chat themes has changed @chat_themes The new list of chat themes
+  //@description The list of available chat themes has changed
+  //@chat_themes The new list of chat themes
   //updateChatThemes chat_themes:vector<chatTheme> = Update;
   void process_update(td::td_api::updateChatThemes &update) {
   }
 
-  //@description Some language pack strings have been updated @localization_target Localization target to which the language pack belongs @language_pack_id Identifier of the updated language pack @strings List of changed language pack strings
-  //updateLanguagePackStrings localization_target : string language_pack_id : string strings
-  //    : vector<languagePackString> = Update;
+  //@description The list of supported accent colors has changed
+  //@colors Information about supported colors; colors with identifiers 0 (red), 1 (orange), 2 (purple/violet), 3 (green), 4 (cyan), 5 (blue), 6 (pink) must always be supported
+  //-and aren't included in the list. The exact colors for the accent colors with identifiers 0-6 must be taken from the app theme
+  //@available_accent_color_ids The list of accent color identifiers, which can be set through setAccentColor and setChatAccentColor. The colors must be shown in the specififed order
+  //updateAccentColors colors:vector<accentColor> available_accent_color_ids:vector<int32> = Update;
+  void process_update(td::td_api::updateAccentColors &update) {
+  }
+
+  //@description The list of supported accent colors for user profiles has changed
+  //@colors Information about supported colors
+  //@available_accent_color_ids The list of accent color identifiers, which can be set through setProfileAccentColor and setChatProfileAccentColor. The colors must be shown in the specififed order
+  //updateProfileAccentColors colors:vector<profileAccentColor> available_accent_color_ids:vector<int32> = Update;
+  void process_update(td::td_api::updateProfileAccentColors &update) {
+  }
+
+  //@description Some language pack strings have been updated
+  //@localization_target Localization target to which the language pack belongs
+  //@language_pack_id Identifier of the updated language pack
+  //@strings List of changed language pack strings; empty if all strings have changed
+  //updateLanguagePackStrings localization_target:string language_pack_id:string strings:vector<languagePackString> = Update;
   void process_update(td::td_api::updateLanguagePackStrings &update) {
   }
 
-  //@description The connection state has changed @state The new connection state
-  //updateConnectionState state : ConnectionState = Update;
+  //@description The connection state has changed. This update must be used only to show a human-readable description of the connection state
+  //@state The new connection state
+  //updateConnectionState state:ConnectionState = Update;
   void process_update(td::td_api::updateConnectionState &update) {
     td::td_api::downcast_call(
         *update.state_,
@@ -1164,8 +1468,9 @@ class TdcursesImpl : public Tdcurses {
     update_status_line();
   }
 
-  //@description New terms of service must be accepted by the user. If the terms of service are declined, then the deleteAccount method should be called with the reason "Decline ToS update" @terms_of_service_id Identifier of the terms of service @terms_of_service The new terms of service
-  //updateTermsOfService terms_of_service_id : string terms_of_service : termsOfService = Update;
+  //@description New terms of service must be accepted by the user. If the terms of service are declined, then the deleteAccount method must be called with the reason "Decline ToS update" @terms_of_service_id Identifier of the terms of service
+  //@terms_of_service The new terms of service
+  //updateTermsOfService terms_of_service_id:string terms_of_service:termsOfService = Update;
   void process_update(td::td_api::updateTermsOfService &update) {
     /*Outputter out;
     out << "UPDATED TERMS OF SERVICE:\n"
@@ -1174,128 +1479,311 @@ class TdcursesImpl : public Tdcurses {
     td::TerminalIO::out() << td::CSlice{out};*/
   }
 
-  //@description List of users nearby has changed. The update is sent only 60 seconds after a successful searchChatsNearby request @users_nearby The new list of users nearby
+  //@description The list of users nearby has changed. The update is guaranteed to be sent only 60 seconds after a successful searchChatsNearby request
+  //@users_nearby The new list of users nearby
+  //updateUsersNearby users_nearby:vector<chatNearby> = Update;
   void process_update(td::td_api::updateUsersNearby &update) {
   }
 
-  //@description The list of bots added to attachment menu has changed @bots The new list of bots added to attachment menu. The bots must be shown in attachment menu only in private chats. The bots must not be shown on scheduled messages screen
+  //@description The first unconfirmed session has changed
+  //@session The unconfirmed session; may be null if none
+  //updateUnconfirmedSession session:unconfirmedSession = Update;
+  void process_update(td::td_api::updateUnconfirmedSession &update) {
+  }
+
+  //@description The list of bots added to attachment or side menu has changed
+  //@bots The new list of bots. The bots must not be shown on scheduled messages screen
   //updateAttachmentMenuBots bots:vector<attachmentMenuBot> = Update;
   void process_update(td::td_api::updateAttachmentMenuBots &update) {
   }
 
-  //@description A message was sent by an opened web app, so the web app needs to be closed @web_app_launch_id Identifier of web app launch
+  //@description A message was sent by an opened Web App, so the Web App needs to be closed
+  //@web_app_launch_id Identifier of Web App launch
   //updateWebAppMessageSent web_app_launch_id:int64 = Update;
   void process_update(td::td_api::updateWebAppMessageSent &update) {
   }
 
-  //@description The list of active emoji reactions has changed @emojis The new list of active emoji reactions
+  //@description The list of active emoji reactions has changed
+  //@emojis The new list of active emoji reactions
   //updateActiveEmojiReactions emojis:vector<string> = Update;
   void process_update(td::td_api::updateActiveEmojiReactions &update) {
   }
 
-  //@description The type of default reaction has changed @reaction_type The new type of the default reaction
+  //@description The list of available message effects has changed
+  //@reaction_effect_ids The new list of available message effects from emoji reactions
+  //@sticker_effect_ids The new list of available message effects from Premium stickers
+  //updateAvailableMessageEffects reaction_effect_ids:vector<int64> sticker_effect_ids:vector<int64> = Update;
+  void process_update(td::td_api::updateAvailableMessageEffects &update) {
+  }
+
+  //@description The type of default reaction has changed
+  //@reaction_type The new type of the default reaction
   //updateDefaultReactionType reaction_type:ReactionType = Update;
   void process_update(td::td_api::updateDefaultReactionType &update) {
   }
 
-  //@description The list of supported dice emojis has changed @emojis The new list of supported dice emojis
+  //@description Tags used in Saved Messages or a Saved Messages topic have changed
+  //@saved_messages_topic_id Identifier of Saved Messages topic which tags were changed; 0 if tags for the whole chat has changed
+  //@tags The new tags
+  //updateSavedMessagesTags saved_messages_topic_id:int53 tags:savedMessagesTags = Update;
+  void process_update(td::td_api::updateSavedMessagesTags &update) {
+  }
+
+  //@description The number of Telegram Stars owned by the current user has changed
+  //@star_count The new number of Telegram Stars owned
+  //updateOwnedStarCount star_count:int53 = Update;
+  void process_update(td::td_api::updateOwnedStarCount &update) {
+  }
+
+  //@description The revenue earned from sponsored messages in a chat has changed. If chat revenue screen is opened, then getChatRevenueTransactions may be called to fetch new transactions
+  //@chat_id Identifier of the chat
+  //@revenue_amount New amount of earned revenue
+  //updateChatRevenueAmount chat_id:int53 revenue_amount:chatRevenueAmount = Update;
+  void process_update(td::td_api::updateChatRevenueAmount &update) {
+    dialog_list_window()->process_update(update);
+  }
+
+  //@description The Telegram Star revenue earned by a bot or a chat has changed. If Telegram Star transaction screen of the chat is opened, then getStarTransactions may be called to fetch new transactions
+  //@owner_id Identifier of the owner of the Telegram Stars
+  //@status New Telegram Star revenue status
+  //updateStarRevenueStatus owner_id:MessageSender status:starRevenueStatus = Update;
+  void process_update(td::td_api::updateStarRevenueStatus &update) {
+  }
+
+  //@description The parameters of speech recognition without Telegram Premium subscription has changed
+  //@max_media_duration The maximum allowed duration of media for speech recognition without Telegram Premium subscription, in seconds
+  //@weekly_count The total number of allowed speech recognitions per week; 0 if none
+  //@left_count Number of left speech recognition attempts this week
+  //@next_reset_date Point in time (Unix timestamp) when the weekly number of tries will reset; 0 if unknown
+  //updateSpeechRecognitionTrial max_media_duration:int32 weekly_count:int32 left_count:int32 next_reset_date:int32 = Update;
+  void process_update(td::td_api::updateSpeechRecognitionTrial &update) {
+  }
+
+  //@description The list of supported dice emojis has changed
+  //@emojis The new list of supported dice emojis
   //updateDiceEmojis emojis:vector<string> = Update;
   void process_update(td::td_api::updateDiceEmojis &update) {
   }
 
   //@description Some animated emoji message was clicked and a big animated sticker must be played if the message is visible on the screen. chatActionWatchingAnimations with the text of the message needs to be sent if the sticker is played
-  //@chat_id Chat identifier @message_id Message identifier @sticker The animated sticker to be played
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@sticker The animated sticker to be played
   //updateAnimatedEmojiMessageClicked chat_id:int53 message_id:int53 sticker:sticker = Update;
   void process_update(td::td_api::updateAnimatedEmojiMessageClicked &update) {
   }
 
-  //@description The parameters of animation search through GetOption("animation_search_bot_username") bot has changed @provider Name of the animation search provider @emojis The new list of emojis suggested for searching
+  //@description The parameters of animation search through getOption("animation_search_bot_username") bot has changed
+  //@provider Name of the animation search provider
+  //@emojis The new list of emojis suggested for searching
   //updateAnimationSearchParameters provider:string emojis:vector<string> = Update;
   void process_update(td::td_api::updateAnimationSearchParameters &update) {
   }
 
-  //@description The list of suggested to the user actions has changed @added_actions Added suggested actions @removed_actions Removed suggested actions
+  //@description The list of suggested to the user actions has changed
+  //@added_actions Added suggested actions
+  //@removed_actions Removed suggested actions
   //updateSuggestedActions added_actions:vector<SuggestedAction> removed_actions:vector<SuggestedAction> = Update;
   void process_update(td::td_api::updateSuggestedActions &update) {
   }
 
-  //@description Adding users to a chat has failed because of their privacy settings. An invite link can be shared with the users if appropriate @chat_id Chat identifier @user_ids Identifiers of users, which weren't added because of their privacy settings
-  //updateAddChatMembersPrivacyForbidden chat_id:int53 user_ids:vector<int53> = Update;
-  void process_update(td::td_api::updateAddChatMembersPrivacyForbidden &update) {
+  //@description Download or upload file speed for the user was limited, but it can be restored by subscription to Telegram Premium. The notification can be postponed until a being downloaded or uploaded file is visible to the user
+  //-Use getOption("premium_download_speedup") or getOption("premium_upload_speedup") to get expected speedup after subscription to Telegram Premium
+  //@is_upload True, if upload speed was limited; false, if download speed was limited
+  //updateSpeedLimitNotification is_upload:Bool = Update;
+  void process_update(td::td_api::updateSpeedLimitNotification &update) {
   }
 
-  //@description Autosave settings for some type of chats were updated @scope Type of chats for which autosave settings were updated @settings The new autosave settings; may be null if the settings are reset to default
+  //@description The list of contacts that had birthdays recently or will have birthday soon has changed
+  //@close_birthday_users List of contact users with close birthday
+  //updateContactCloseBirthdays close_birthday_users:vector<closeBirthdayUser> = Update;
+  void process_update(td::td_api::updateContactCloseBirthdays &update) {
+  }
+
+  //@description Autosave settings for some type of chats were updated
+  //@scope Type of chats for which autosave settings were updated
+  //@settings The new autosave settings; may be null if the settings are reset to default
   //updateAutosaveSettings scope:AutosaveSettingsScope settings:scopeAutosaveSettings = Update;
   void process_update(td::td_api::updateAutosaveSettings &update) {
   }
 
-  //@description A new incoming inline query; for bots only @id Unique query identifier @sender_user_id Identifier of the user who sent the query @user_location User location, provided by the client; may be null @query Text of the query @offset Offset of the first entry to return
-  //updateNewInlineQuery id : int64 sender_user_id : int32 user_location : location query : string offset : string =
-  //   Update;
+  //@description A business connection has changed; for bots only
+  //@connection New data about the connection
+  //updateBusinessConnection connection:businessConnection = Update;
+  void process_update(td::td_api::updateBusinessConnection &update) {
+  }
+
+  //@description A new message was added to a business account; for bots only
+  //@connection_id Unique identifier of the business connection
+  //@message The new message
+  //updateNewBusinessMessage connection_id:string message:businessMessage = Update;
+  void process_update(td::td_api::updateNewBusinessMessage &update) {
+  }
+
+  //@description A message in a business account was edited; for bots only
+  //@connection_id Unique identifier of the business connection
+  //@message The edited message
+  //updateBusinessMessageEdited connection_id:string message:businessMessage = Update;
+  void process_update(td::td_api::updateBusinessMessageEdited &update) {
+  }
+
+  //@description Messages in a business account were deleted; for bots only
+  //@connection_id Unique identifier of the business connection
+  //@chat_id Identifier of a chat in the business account in which messages were deleted
+  //@message_ids Unique message identifiers of the deleted messages
+  //updateBusinessMessagesDeleted connection_id:string chat_id:int53 message_ids:vector<int53> = Update;
+  void process_update(td::td_api::updateBusinessMessagesDeleted &update) {
+  }
+
+  //@description A new incoming inline query; for bots only
+  //@id Unique query identifier
+  //@sender_user_id Identifier of the user who sent the query
+  //@user_location User location; may be null
+  //@chat_type The type of the chat from which the query originated; may be null if unknown
+  //@query Text of the query
+  //@offset Offset of the first entry to return
+  //updateNewInlineQuery id:int64 sender_user_id:int53 user_location:location chat_type:ChatType query:string offset:string = Update;
   void process_update(td::td_api::updateNewInlineQuery &update) {
   }
 
-  //@description The user has chosen a result of an inline query; for bots only @sender_user_id Identifier of the user who sent the query @user_location User location, provided by the client; may be null @query Text of the query @result_id Identifier of the chosen result @inline_message_id Identifier of the sent inline message, if known
-  //updateNewChosenInlineResult sender_user_id : int32 user_location : location query : string result_id
-  //    : string inline_message_id : string = Update;
+  //@description The user has chosen a result of an inline query; for bots only
+  //@sender_user_id Identifier of the user who sent the query
+  //@user_location User location; may be null
+  //@query Text of the query
+  //@result_id Identifier of the chosen result
+  //@inline_message_id Identifier of the sent inline message, if known
+  //updateNewChosenInlineResult sender_user_id:int53 user_location:location query:string result_id:string inline_message_id:string = Update;
   void process_update(td::td_api::updateNewChosenInlineResult &update) {
   }
 
-  //@description A new incoming callback query; for bots only @id Unique query identifier @sender_user_id Identifier of the user who sent the query @chat_id Identifier of the chat, in which the query was sent
-  //@message_id Identifier of the message, from which the query originated @chat_instance Identifier that uniquely corresponds to the chat to which the message was sent @payload Query payload
-  //updateNewCallbackQuery id : int64 sender_user_id : int32 chat_id : int53 message_id : int53 chat_instance
-  //    : int64 payload : CallbackQueryPayload = Update;
+  //@description A new incoming callback query; for bots only
+  //@id Unique query identifier
+  //@sender_user_id Identifier of the user who sent the query
+  //@chat_id Identifier of the chat where the query was sent
+  //@message_id Identifier of the message from which the query originated
+  //@chat_instance Identifier that uniquely corresponds to the chat to which the message was sent
+  //@payload Query payload
+  //updateNewCallbackQuery id:int64 sender_user_id:int53 chat_id:int53 message_id:int53 chat_instance:int64 payload:CallbackQueryPayload = Update;
   void process_update(td::td_api::updateNewCallbackQuery &update) {
   }
 
-  //@description A new incoming callback query from a message sent via a bot; for bots only @id Unique query identifier @sender_user_id Identifier of the user who sent the query @inline_message_id Identifier of the inline message, from which the query originated
-  //@chat_instance An identifier uniquely corresponding to the chat a message was sent to @payload Query payload
-  //updateNewInlineCallbackQuery id : int64 sender_user_id : int32 inline_message_id : string chat_instance
-  //    : int64 payload : CallbackQueryPayload = Update;
+  //@description A new incoming callback query from a message sent via a bot; for bots only
+  //@id Unique query identifier
+  //@sender_user_id Identifier of the user who sent the query
+  //@inline_message_id Identifier of the inline message from which the query originated
+  //@chat_instance An identifier uniquely corresponding to the chat a message was sent to
+  //@payload Query payload
+  //updateNewInlineCallbackQuery id:int64 sender_user_id:int53 inline_message_id:string chat_instance:int64 payload:CallbackQueryPayload = Update;
   void process_update(td::td_api::updateNewInlineCallbackQuery &update) {
   }
 
-  //@description A new incoming shipping query; for bots only. Only for invoices with flexible price @id Unique query identifier @sender_user_id Identifier of the user who sent the query @invoice_payload Invoice payload @shipping_address User shipping address
-  //updateNewShippingQuery id : int64 sender_user_id : int32 invoice_payload : string shipping_address : address = Update;
+  //@description A new incoming callback query from a business message; for bots only
+  //@id Unique query identifier
+  //@sender_user_id Identifier of the user who sent the query
+  //@connection_id Unique identifier of the business connection
+  //@message The message from the business account from which the query originated
+  //@chat_instance An identifier uniquely corresponding to the chat a message was sent to
+  //@payload Query payload
+  //updateNewBusinessCallbackQuery id:int64 sender_user_id:int53 connection_id:string message:businessMessage chat_instance:int64 payload:CallbackQueryPayload = Update;
+  void process_update(td::td_api::updateNewBusinessCallbackQuery &update) {
+  }
+
+  //@description A new incoming shipping query; for bots only. Only for invoices with flexible price
+  //@id Unique query identifier
+  //@sender_user_id Identifier of the user who sent the query
+  //@invoice_payload Invoice payload
+  //@shipping_address User shipping address
+  //updateNewShippingQuery id:int64 sender_user_id:int53 invoice_payload:string shipping_address:address = Update;
   void process_update(td::td_api::updateNewShippingQuery &update) {
   }
 
-  //@description A new incoming pre-checkout query; for bots only. Contains full information about a checkout @id Unique query identifier @sender_user_id Identifier of the user who sent the query @currency Currency for the product price @total_amount Total price for the product, in the minimal quantity of the currency
-  //@invoice_payload Invoice payload @shipping_option_id Identifier of a shipping option chosen by the user; may be empty if not applicable @order_info Information about the order; may be null
-  //updateNewPreCheckoutQuery id : int64 sender_user_id : int32 currency : string total_amount : int53 invoice_payload
-  //    : bytes shipping_option_id : string order_info : orderInfo = Update;
+  //@description A new incoming pre-checkout query; for bots only. Contains full information about a checkout
+  //@id Unique query identifier
+  //@sender_user_id Identifier of the user who sent the query
+  //@currency Currency for the product price
+  //@total_amount Total price for the product, in the smallest units of the currency
+  //@invoice_payload Invoice payload
+  //@shipping_option_id Identifier of a shipping option chosen by the user; may be empty if not applicable
+  //@order_info Information about the order; may be null
+  //updateNewPreCheckoutQuery id:int64 sender_user_id:int53 currency:string total_amount:int53 invoice_payload:bytes shipping_option_id:string order_info:orderInfo = Update;
   void process_update(td::td_api::updateNewPreCheckoutQuery &update) {
   }
 
-  //@description A new incoming event; for bots only @event A JSON-serialized event
-  //updateNewCustomEvent event : string = Update;
+  //@description A new incoming event; for bots only
+  //@event A JSON-serialized event
+  //updateNewCustomEvent event:string = Update;
   void process_update(td::td_api::updateNewCustomEvent &update) {
   }
 
-  //@description A new incoming query; for bots only @id The query identifier @data JSON-serialized query data @timeout Query timeout
-  //updateNewCustomQuery id : int64 data : string timeout : int32 = Update;
+  //@description A new incoming query; for bots only
+  //@id The query identifier
+  //@data JSON-serialized query data
+  //@timeout Query timeout
+  //updateNewCustomQuery id:int64 data:string timeout:int32 = Update;
   void process_update(td::td_api::updateNewCustomQuery &update) {
   }
 
-  //@description Information about a poll was updated; for bots only @poll New data about the poll
-  //updatePoll poll : poll = Update;
+  //@description A poll was updated; for bots only
+  //@poll New data about the poll
+  //updatePoll poll:poll = Update;
   void process_update(td::td_api::updatePoll &update) {
   }
 
-  //@description A user changed the answer to a poll; for bots only @poll_id Unique poll identifier @user_id The user, who changed the answer to the poll @option_ids 0-based identifiers of answer options, chosen by the user
+  //@description A user changed the answer to a poll; for bots only
+  //@poll_id Unique poll identifier
+  //@voter_id Identifier of the message sender that changed the answer to the poll
+  //@option_ids 0-based identifiers of answer options, chosen by the user
+  //updatePollAnswer poll_id:int64 voter_id:MessageSender option_ids:vector<int32> = Update;
   void process_update(td::td_api::updatePollAnswer &update) {
   }
 
-  //@description User rights changed in a chat; for bots only @chat_id Chat identifier @actor_user_id Identifier of the user, changing the rights
-  //@date Point in time (Unix timestamp) when the user rights was changed @invite_link If user has joined the chat using an invite link, the invite link; may be null
-  //@old_chat_member Previous chat member @new_chat_member New chat member
-  //updateChatMember chat_id:int53 actor_user_id:int53 date:int32 invite_link:chatInviteLink old_chat_member:chatMember new_chat_member:chatMember = Update;
+  //@description User rights changed in a chat; for bots only
+  //@chat_id Chat identifier
+  //@actor_user_id Identifier of the user, changing the rights
+  //@date Point in time (Unix timestamp) when the user rights were changed
+  //@invite_link If user has joined the chat using an invite link, the invite link; may be null
+  //@via_join_request True, if the user has joined the chat after sending a join request and being approved by an administrator
+  //@via_chat_folder_invite_link True, if the user has joined the chat using an invite link for a chat folder
+  //@old_chat_member Previous chat member
+  //@new_chat_member New chat member
+  //updateChatMember chat_id:int53 actor_user_id:int53 date:int32 invite_link:chatInviteLink via_join_request:Bool via_chat_folder_invite_link:Bool old_chat_member:chatMember new_chat_member:chatMember = Update;
   void process_update(td::td_api::updateChatMember &update) {
   }
 
-  //@description A user sent a join request to a chat; for bots only @chat_id Chat identifier @request Join request @invite_link The invite link, which was used to send join request; may be null
-  //updateNewChatJoinRequest chat_id:int53 request:chatJoinRequest invite_link:chatInviteLink = Update;
+  //@description A user sent a join request to a chat; for bots only
+  //@chat_id Chat identifier
+  //@request Join request
+  //@user_chat_id Chat identifier of the private chat with the user
+  //@invite_link The invite link, which was used to send join request; may be null
+  //updateNewChatJoinRequest chat_id:int53 request:chatJoinRequest user_chat_id:int53 invite_link:chatInviteLink = Update;
   void process_update(td::td_api::updateNewChatJoinRequest &update) {
+  }
+
+  //@description A chat boost has changed; for bots only
+  //@chat_id Chat identifier
+  //@boost New information about the boost
+  //updateChatBoost chat_id:int53 boost:chatBoost = Update;
+  void process_update(td::td_api::updateChatBoost &update) {
+  }
+
+  //@description User changed its reactions on a message with public reactions; for bots only
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@actor_id Identifier of the user or chat that changed reactions
+  //@date Point in time (Unix timestamp) when the reactions were changed
+  //@old_reaction_types Old list of chosen reactions
+  //@new_reaction_types New list of chosen reactions
+  //updateMessageReaction chat_id:int53 message_id:int53 actor_id:MessageSender date:int32 old_reaction_types:vector<ReactionType> new_reaction_types:vector<ReactionType> = Update;
+  void process_update(td::td_api::updateMessageReaction &update) {
+  }
+
+  //@description Reactions added to a message with anonymous reactions have changed; for bots only
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@date Point in time (Unix timestamp) when the reactions were changed
+  //@reactions The list of reactions added to the message
+  //updateMessageReactions chat_id:int53 message_id:int53 date:int32 reactions:vector<messageReaction> = Update;
+  void process_update(td::td_api::updateMessageReactions &update) {
   }
 
   void do_send_request(td::tl_object_ptr<td::td_api::Function> func,
@@ -1771,9 +2259,7 @@ int main(int argc, char **argv) {
   tdlib_parameters->application_version_ = TELEGRAM_CURSES_VERSION;
   tdlib_parameters->database_directory_ = db_root + "db/";
   tdlib_parameters->device_model_ = "Console";
-  tdlib_parameters->enable_storage_optimizer_ = enable_storage_optimizer;
   tdlib_parameters->files_directory_ = db_root + "files/";
-  tdlib_parameters->ignore_file_names_ = ignore_file_names;
   tdlib_parameters->system_language_code_ = "EN";
   tdlib_parameters->system_version_ = "Unix";
   tdlib_parameters->use_chat_info_database_ = use_chat_info_database;

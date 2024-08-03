@@ -76,7 +76,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
 
   if (message.interaction_info_ &&
       (message.interaction_info_->view_count_ || message.interaction_info_->forward_count_ ||
-       message.interaction_info_->reactions_.size())) {
+       message.interaction_info_->reactions_)) {
     if (out.as_cslice().size() - start_pos < 100 && out.as_cslice().find('\n') == td::CSlice::npos) {
       out << " ";
     } else {
@@ -88,13 +88,15 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     if (message.interaction_info_->forward_count_ > 0) {
       out << "[" << message.interaction_info_->forward_count_ << "⏭]";
     }
-    for (auto &r : message.interaction_info_->reactions_) {
-      if (r->is_chosen_) {
-        out << Outputter::FgColor(Color::Yellow);
-      }
-      out << "[" << r->total_count_ << r->type_ << "]";
-      if (r->is_chosen_) {
-        out << Outputter::FgColor(Color::Revert);
+    if (message.interaction_info_->reactions_) {
+      for (auto &r : message.interaction_info_->reactions_->reactions_) {
+        if (r->is_chosen_) {
+          out << Outputter::FgColor(Color::Yellow);
+        }
+        out << "[" << r->total_count_ << r->type_ << "]";
+        if (r->is_chosen_) {
+          out << Outputter::FgColor(Color::Revert);
+        }
       }
     }
     out << " ";
@@ -107,33 +109,33 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageForwardInfo &fwd_
   return out << fwd_info.origin_ << " " << Outputter::Date{fwd_info.date_};
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginUser &fwd_info) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageOriginUser &fwd_info) {
   auto U = ChatManager::instance->get_user(fwd_info.sender_user_id_);
   return out << U;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginChannel &fwd_info) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageOriginChannel &fwd_info) {
   auto C = ChatManager::instance->get_chat(fwd_info.chat_id_);
   return out << C;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginChat &fwd_info) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageOriginChat &fwd_info) {
   auto C = ChatManager::instance->get_chat(fwd_info.sender_chat_id_);
   return out << C;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginHiddenUser &fwd_info) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageOriginHiddenUser &fwd_info) {
   return out << Color::Red << fwd_info.sender_name_ << Color::Revert;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginMessageImport &fwd_info) {
+/*Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginMessageImport &fwd_info) {
   return out << Color::Red << fwd_info.sender_name_ << Color::Revert;
-}
+}*/
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageText &content) {
   out << content.text_;
-  if (content.web_page_) {
-    out << " [" << content.web_page_ << "]";
+  if (content.link_preview_) {
+    out << " [" << content.link_preview_ << "]";
   }
   return out;
 }
@@ -162,16 +164,20 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageDocument &content
   return out;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messagePhoto &content) {
-  out << "[" << content.photo_ << "]";
+Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMedia &content) {
+  out << "[paid media]";
   if (content.caption_) {
     out << " " << content.caption_;
   }
   return out;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageExpiredPhoto &content) {
-  return out << "[photo expired]";
+Outputter &operator<<(Outputter &out, const td::td_api::messagePhoto &content) {
+  out << "[" << content.photo_ << "]";
+  if (content.caption_) {
+    out << " " << content.caption_;
+  }
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageSticker &content) {
@@ -186,16 +192,28 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageVideo &content) {
   return out;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageExpiredVideo &content) {
-  return out << "[video expired]";
-}
-
 Outputter &operator<<(Outputter &out, const td::td_api::messageVideoNote &content) {
   return out << "[" << content.video_note_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageVoiceNote &content) {
   return out << "[" << content.voice_note_ << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageExpiredPhoto &content) {
+  return out << "[photo expired]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageExpiredVideo &content) {
+  return out << "[video expired]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageExpiredVideoNote &content) {
+  return out << "[video note expired]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageExpiredVoiceNote &content) {
+  return out << "[voice note expired]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageLocation &content) {
@@ -224,6 +242,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageGame &content) {
 
 Outputter &operator<<(Outputter &out, const td::td_api::messagePoll &content) {
   return out << "[" << content.poll_ << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content) {
+  return out << "[story " << content.story_id_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageInvoice &content) {
@@ -279,7 +301,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatJoinByLink &c
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatJoinByRequest &content) {
-  return out << "[joined by request approval]";
+  return out << "[joined by request]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatDeleteMember &content) {
@@ -314,18 +336,26 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetMessageAut
   return out << "[ttl " << td::format::as_time(content.message_auto_delete_time_) << "]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatBoost &content) {
+  return out << "[boost " << content.boost_count_ << "]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicCreated &content) {
   return out << "[topic " << content.name_ << " created]";
 }
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicEdited &content) {
   return out << "[topic " << content.name_ << " edited]";
 }
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicIsClosedToggled &content) {
   return out << "[topic " << (content.is_closed_ ? "closed" : "opened") << "]";
 }
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicIsHiddenToggled &content) {
   return out << "[topic " << (content.is_hidden_ ? "hidden" : "shown") << "]";
 }
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestProfilePhoto &content) {
   return out << "[profile photo suggested " << content.photo_->animation_->file_ << "]";
 }
@@ -346,12 +376,60 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentSuccessful
   return out << "[payment success]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentRefunded &content) {
+  return out << "[payment refunded]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedPremium &content) {
+  return out << "[gifted premium]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiftCode &content) {
+  return out << "[gift code]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayCreated &content) {
+  return out << "[givaway created]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveaway &content) {
+  return out << "[givaway]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayCompleted &content) {
+  return out << "[givaway completed]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayWinners &content) {
+  return out << "[givaway winners]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {
+  return out << "[gifted " << content.amount_ << " stars ]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content) {
   return out << "[registered]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageWebsiteConnected &content) {
-  return out << "[website " << content.domain_name_ << " connected]";
+Outputter &operator<<(Outputter &out, const td::td_api::messageUsersShared &content) {
+  return out << "[shared users]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatShared &content) {
+  return out << "[shared chat]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageBotWriteAccessAllowed &content) {
+  return out << "[bot write access allowed]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataSent &content) {
+  return out << "[webapp data sent]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataReceived &content) {
+  return out << "[webapp data received]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messagePassportDataSent &content) {
@@ -366,37 +444,17 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageProximityAlertTri
   return out << "[near " << content.traveler_id_ << ", distance " << content.distance_ << "]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedPremium &content) {
-  return out << "[gifted premium]";
-}
-
-Outputter &operator<<(Outputter &out, const td::td_api::messageUserShared &content) {
-  return out << "[user shared]";
-}
-
-Outputter &operator<<(Outputter &out, const td::td_api::messageChatShared &content) {
-  return out << "[chat shared]";
-}
-
-Outputter &operator<<(Outputter &out, const td::td_api::messageBotWriteAccessAllowed &content) {
-  return out << "[bot write access allowed]";
-}
-
-Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataSent &content) {
-  return out << "[webapp data sent]";
-}
-
-Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataReceived &content) {
-  return out << "[webapp datar received]";
-}
-
-Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content) {
-  return out << "[story " << content.story_id_ << "]";
-}
-
 Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &content) {
   return out << "[unsupported]";
 }
+
+/*Outputter &operator<<(Outputter &out, const td::td_api::messageUserShared &content) {
+  return out << "[user shared]";
+}*/
+
+/*Outputter &operator<<(Outputter &out, const td::td_api::messageWebsiteConnected &content) {
+  return out << "[website " << content.domain_name_ << " connected]";
+}*/
 
 Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) {
   auto enable_disable_markup = [&](const td::td_api::TextEntityType *ent, bool enable) {
@@ -416,6 +474,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
             [&](const td::td_api::textEntityTypeStrikethrough &) { out << Outputter::Strike(enable); },
             [&](const td::td_api::textEntityTypeSpoiler &) {}, [&](const td::td_api::textEntityTypeCode &) {},
             [&](const td::td_api::textEntityTypePre &) {}, [&](const td::td_api::textEntityTypePreCode &) {},
+            [&](const td::td_api::textEntityTypeBlockQuote &e) {},
+            [&](const td::td_api::textEntityTypeExpandableBlockQuote &) {},
             [&](const td::td_api::textEntityTypeTextUrl &e) {
               out << Outputter::Underline(enable);
               if (!enable) {
@@ -465,11 +525,16 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
   return out;
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::webPage &content) {
-  out << content.embed_url_;
+Outputter &operator<<(Outputter &out, const td::td_api::linkPreview &content) {
+  out << content.url_;
   if (content.description_) {
     out << " " << content.description_;
   }
+  return out;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::webPageInstantView &content) {
+  out << "instant view";
   return out;
 }
 

@@ -71,8 +71,11 @@ class ChatWindow
   void process_update(td::td_api::updateMessageInteractionInfo &update);
   void process_update(td::td_api::updateMessageContentOpened &update);
   void process_update(td::td_api::updateMessageMentionRead &update);
+  void process_update(td::td_api::updateMessageFactCheck &update);
   void process_update(td::td_api::updateMessageUnreadReactions &update);
   void process_update(td::td_api::updateMessageLiveLocationViewed &update);
+  void process_update(td::td_api::updateDeleteMessages &update);
+  void process_update(td::td_api::updateChatAction &update);
   void process_update(td::td_api::updateFile &update);
 
   void update_file(td::int64 message_id, td::td_api::file &file);

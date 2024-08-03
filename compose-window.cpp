@@ -26,8 +26,8 @@ void ComposeWindow::send_message(std::string message) {
   //formattedText text:string entities:vector<textEntity> = FormattedText;
   auto text =
       td::make_tl_object<td::td_api::formattedText>(message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
-  //inputMessageText text:formattedText disable_web_page_preview:Bool clear_draft:Bool = InputMessageContent;
-  auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), false, false);
+  //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
+  auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, true);
   //sendMessage chat_id:int53 message_thread_id:int53 reply_to:MessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
   auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, 0, nullptr, nullptr, nullptr, std::move(content));
 
@@ -39,10 +39,10 @@ void ComposeWindow::set_draft(std::string message) {
   //formattedText text:string entities:vector<textEntity> = FormattedText;
   auto text =
       td::make_tl_object<td::td_api::formattedText>(message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
-  //inputMessageText text:formattedText disable_web_page_preview:Bool clear_draft:Bool = InputMessageContent;
-  auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), false, false);
-  //draftMessage reply_to_message_id:int53 date:int32 input_message_text:InputMessageContent = DraftMessage;
-  auto draft = td::make_tl_object<td::td_api::draftMessage>(0, 0, std::move(content));
+  //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
+  auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, false);
+  //draftMessage reply_to:InputMessageReplyTo date:int32 input_message_text:InputMessageContent effect_id:int64 = DraftMessage;
+  auto draft = td::make_tl_object<td::td_api::draftMessage>(nullptr, 0, std::move(content), 0);
   //setChatDraftMessage chat_id:int53 message_thread_id:int53 draft_message:draftMessage = Ok;
   auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, 0, std::move(draft));
 

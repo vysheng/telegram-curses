@@ -87,7 +87,7 @@ class Chat {
   }
 
   bool is_blocked() const {
-    return chat_->is_blocked_;
+    return chat_->block_list_ != nullptr;
   }
 
   bool has_scheduled_messages() const {
@@ -209,68 +209,104 @@ class Chat {
 
  public:
   //@description The title of a chat was changed @chat_id Chat identifier @title The new chat title
-  //updateChatTitle chat_id : int53 title : string = Update;
+  //updateChatTitle chat_id:int53 title:string = Update;
   void process_update(td::td_api::updateChatTitle &update) {
     chat_->title_ = update.title_;
   }
 
   //@description A chat photo was changed @chat_id Chat identifier @photo The new chat photo; may be null
-  //updateChatPhoto chat_id : int53 photo : chatPhoto = Update;
+  //updateChatPhoto chat_id:int53 photo:chatPhotoInfo = Update;
   void process_update(td::td_api::updateChatPhoto &update) {
     chat_->photo_ = std::move(update.photo_);
   }
 
-  //@description Chat permissions was changed @chat_id Chat identifier @permissions The new chat permissions
+  //@description Chat accent colors have changed
+  //@chat_id Chat identifier
+  //@accent_color_id The new chat accent color identifier
+  //@background_custom_emoji_id The new identifier of a custom emoji to be shown on the reply header and link preview background; 0 if none
+  //@profile_accent_color_id The new chat profile accent color identifier; -1 if none
+  //@profile_background_custom_emoji_id The new identifier of a custom emoji to be shown on the profile background; 0 if none
+  //updateChatAccentColors chat_id:int53 accent_color_id:int32 background_custom_emoji_id:int64 profile_accent_color_id:int32 profile_background_custom_emoji_id:int64 = Update;
+  void process_update(td::td_api::updateChatAccentColors &update) {
+    chat_->accent_color_id_ = update.accent_color_id_;
+    chat_->background_custom_emoji_id_ = update.background_custom_emoji_id_;
+    chat_->profile_accent_color_id_ = update.profile_accent_color_id_;
+    chat_->profile_background_custom_emoji_id_ = update.profile_background_custom_emoji_id_;
+  }
+
+  //@description Chat permissions were changed @chat_id Chat identifier @permissions The new chat permissions
   //updateChatPermissions chat_id:int53 permissions:chatPermissions = Update;
   void process_update(td::td_api::updateChatPermissions &update) {
     chat_->permissions_ = std::move(update.permissions_);
   }
 
-  //@description The last message of a chat was changed. If last_message is null then the last message in the chat became unknown. Some new unknown messages might be added to the chat in this case @chat_id Chat identifier @last_message The new last message in the chat; may be null @order New value of the chat order
-  //updateChatLastMessage chat_id : int53 last_message : message order : int64 = Update;
+  //@description The last message of a chat was changed
+  //@chat_id Chat identifier
+  //@last_message The new last message in the chat; may be null if the last message became unknown. While the last message is unknown, new messages can be added to the chat without corresponding updateNewMessage update
+  //@positions The new chat positions in the chat lists
+  //updateChatLastMessage chat_id:int53 last_message:message positions:vector<chatPosition> = Update;
   void process_update(td::td_api::updateChatLastMessage &update) {
     chat_->last_message_ = std::move(update.last_message_);
-    for (auto &p : update.positions_) {
-      for (auto &x : chat_->positions_) {
-        if (eq_source(*x->list_, *p->list_)) {
-          x = std::move(p);
-          break;
-        }
-      }
-      if (p) {
-        chat_->positions_.push_back(std::move(p));
-      }
-    }
+    chat_->positions_ = std::move(update.positions_);
   }
 
-  //@description The position of a chat in a chat list has changed. Instead of this update updateChatLastMessage or updateChatDraftMessage might be sent @chat_id Chat identifier @position New chat position. If new order is 0, then the chat needs to be removed from the list
+  //@description The position of a chat in a chat list has changed. An updateChatLastMessage or updateChatDraftMessage update might be sent instead of the update
+  //@chat_id Chat identifier
+  //@position New chat position. If new order is 0, then the chat needs to be removed from the list
   //updateChatPosition chat_id:int53 position:chatPosition = Update;
   void process_update(td::td_api::updateChatPosition &update) {
-    for (auto &x : chat_->positions_) {
-      if (eq_source(*x->list_, *update.position_->list_)) {
-        x = std::move(update.position_);
-        return;
+    auto it = chat_->positions_.begin();
+    for (; it != chat_->positions_.end(); it++) {
+      if (eq_source(*(*it)->list_, *update.position_->list_)) {
+        break;
       }
     }
-    chat_->positions_.push_back(std::move(update.position_));
+    if (it != chat_->positions_.end()) {
+      if (update.position_->order_ != 0) {
+        (*it) = std::move(update.position_);
+      } else {
+        chat_->positions_.erase(it);
+      }
+    } else {
+      if (update.position_->order_ != 0) {
+        chat_->positions_.push_back(std::move(update.position_));
+      }
+    }
   }
 
-  //@description Incoming messages were read or number of unread messages has been changed @chat_id Chat identifier @last_read_inbox_message_id Identifier of the last read incoming message @unread_count The number of unread messages left in the chat
-  //updateChatReadInbox chat_id : int53 last_read_inbox_message_id : int53 unread_count : int32 = Update;
+  //@description A chat was added to a chat list @chat_id Chat identifier @chat_list The chat list to which the chat was added
+  //updateChatAddedToList chat_id:int53 chat_list:ChatList = Update;
+  void process_update(td::td_api::updateChatAddedToList &update) {
+  }
+
+  //@description A chat was removed from a chat list @chat_id Chat identifier @chat_list The chat list from which the chat was removed
+  //updateChatRemovedFromList chat_id:int53 chat_list:ChatList = Update;
+  void process_update(td::td_api::updateChatRemovedFromList &update) {
+  }
+
+  //@description Incoming messages were read or the number of unread messages has been changed @chat_id Chat identifier @last_read_inbox_message_id Identifier of the last read incoming message @unread_count The number of unread messages left in the chat
+  //updateChatReadInbox chat_id:int53 last_read_inbox_message_id:int53 unread_count:int32 = Update;
   void process_update(td::td_api::updateChatReadInbox &update) {
     chat_->last_read_inbox_message_id_ = update.last_read_inbox_message_id_;
     chat_->unread_count_ = update.unread_count_;
   }
 
   //@description Outgoing messages were read @chat_id Chat identifier @last_read_outbox_message_id Identifier of last read outgoing message
-  //updateChatReadOutbox chat_id : int53 last_read_outbox_message_id : int53 = Update;
+  //updateChatReadOutbox chat_id:int53 last_read_outbox_message_id:int53 = Update;
   void process_update(td::td_api::updateChatReadOutbox &update) {
     chat_->last_read_outbox_message_id_ = update.last_read_outbox_message_id_;
   }
 
   //@description The chat action bar was changed @chat_id Chat identifier @action_bar The new value of the action bar; may be null
+  //updateChatActionBar chat_id:int53 action_bar:ChatActionBar = Update;
   void process_update(td::td_api::updateChatActionBar &update) {
     chat_->action_bar_ = std::move(update.action_bar_);
+  }
+
+  //@description The bar for managing business bot was changed in a chat @chat_id Chat identifier @business_bot_manage_bar The new value of the business bot manage bar; may be null
+  //updateChatBusinessBotManageBar chat_id:int53 business_bot_manage_bar:businessBotManageBar = Update;
+  void process_update(td::td_api::updateChatBusinessBotManageBar &update) {
+    chat_->business_bot_manage_bar_ = std::move(update.business_bot_manage_bar_);
   }
 
   //@description The chat available reactions were changed @chat_id Chat identifier @available_reactions The new list of reactions, available in the chat
@@ -279,97 +315,172 @@ class Chat {
     chat_->available_reactions_ = std::move(update.available_reactions_);
   }
 
-  //@description A chat draft has changed. Be aware that the update may come in the currently opened chat but with old content of the draft. If the user has changed the content of the draft, this update shouldn't be applied @chat_id Chat identifier @draft_message The new draft message; may be null @order New value of the chat order
-  //updateChatDraftMessage chat_id : int53 draft_message : draftMessage order : int64 = Update;
+  //@description A chat draft has changed. Be aware that the update may come in the currently opened chat but with old content of the draft. If the user has changed the content of the draft, this update mustn't be applied
+  //@chat_id Chat identifier
+  //@draft_message The new draft message; may be null if none
+  //@positions The new chat positions in the chat lists
+  //updateChatDraftMessage chat_id:int53 draft_message:draftMessage positions:vector<chatPosition> = Update;
   void process_update(td::td_api::updateChatDraftMessage &update) {
     chat_->draft_message_ = std::move(update.draft_message_);
+    chat_->positions_ = std::move(update.positions_);
   }
 
-  //@description The message sender that is selected to send messages in a chat has changed @chat_id Chat identifier @message_sender_id New value of message_sender_id; may be null if the user can't change message sender
+  //@description Chat emoji status has changed
+  //@chat_id Chat identifier
+  //@emoji_status The new chat emoji status; may be null
+  //updateChatEmojiStatus chat_id:int53 emoji_status:emojiStatus = Update;
+  void process_update(td::td_api::updateChatEmojiStatus &update) {
+    chat_->emoji_status_ = std::move(update.emoji_status_);
+  }
+
+  //@description The message sender that is selected to send messages in a chat has changed
+  //@chat_id Chat identifier
+  //@message_sender_id New value of message_sender_id; may be null if the user can't change message sender
   //updateChatMessageSender chat_id:int53 message_sender_id:MessageSender = Update;
   void process_update(td::td_api::updateChatMessageSender &update) {
     chat_->message_sender_id_ = std::move(update.message_sender_id_);
   }
 
-  //@description The message auto-delete or self-destruct timer setting for a chat was changed @chat_id Chat identifier @message_auto_delete_time New value of message_auto_delete_time
+  //@description The message auto-delete or self-destruct timer setting for a chat was changed
+  //@chat_id Chat identifier
+  //@message_auto_delete_time New value of message_auto_delete_time
   //updateChatMessageAutoDeleteTime chat_id:int53 message_auto_delete_time:int32 = Update;
   void process_update(td::td_api::updateChatMessageAutoDeleteTime &update) {
     chat_->message_auto_delete_time_ = update.message_auto_delete_time_;
   }
 
-  //@description Notification settings for a chat were changed @chat_id Chat identifier @notification_settings The new notification settings
-  //updateChatNotificationSettings chat_id : int53 notification_settings : chatNotificationSettings = Update;
+  //@description Notification settings for a chat were changed
+  //@chat_id Chat identifier
+  //@notification_settings The new notification settings
+  //updateChatNotificationSettings chat_id:int53 notification_settings:chatNotificationSettings = Update;
   void process_update(td::td_api::updateChatNotificationSettings &update) {
     chat_->notification_settings_ = std::move(update.notification_settings_);
   }
 
-  //@description The chat pending join requests were changed @chat_id Chat identifier @pending_join_requests The new data about pending join requests; may be null
+  //@description The chat pending join requests were changed
+  //@chat_id Chat identifier
+  //@pending_join_requests The new data about pending join requests; may be null
   //updateChatPendingJoinRequests chat_id:int53 pending_join_requests:chatJoinRequestsInfo = Update;
   void process_update(td::td_api::updateChatPendingJoinRequests &update) {
     chat_->pending_join_requests_ = std::move(update.pending_join_requests_);
   }
 
   //@description The default chat reply markup was changed. Can occur because new messages with reply markup were received or because an old reply markup was hidden by the user
-  //@chat_id Chat identifier @reply_markup_message_id Identifier of the message from which reply markup needs to be used; 0 if there is no default custom reply markup in the chat
-  //updateChatReplyMarkup chat_id : int53 reply_markup_message_id : int53 = Update;
+  //@chat_id Chat identifier
+  //@reply_markup_message_id Identifier of the message from which reply markup needs to be used; 0 if there is no default custom reply markup in the chat
+  //updateChatReplyMarkup chat_id:int53 reply_markup_message_id:int53 = Update;
   void process_update(td::td_api::updateChatReplyMarkup &update) {
     chat_->reply_markup_message_id_ = update.reply_markup_message_id_;
   }
 
-  //@description The chat theme was changed @chat_id Chat identifier @theme_name The new name of the chat theme; may be empty if theme was reset to default
+  //@description The chat background was changed
+  //@chat_id Chat identifier
+  //@background The new chat background; may be null if background was reset to default
+  //updateChatBackground chat_id:int53 background:chatBackground = Update;
+  void process_update(td::td_api::updateChatBackground &update) {
+    chat_->background_ = std::move(update.background_);
+  }
+
+  //@description The chat theme was changed
+  //@chat_id Chat identifier
+  //@theme_name The new name of the chat theme; may be empty if theme was reset to default
   //updateChatTheme chat_id:int53 theme_name:string = Update;
   void process_update(td::td_api::updateChatTheme &update) {
     chat_->theme_name_ = std::move(update.theme_name_);
   }
 
-  //@description The chat unread_mention_count has changed @chat_id Chat identifier @unread_mention_count The number of unread mention messages left in the chat
-  //updateChatUnreadMentionCount chat_id : int53 unread_mention_count : int32 = Update;
+  //@description The chat unread_mention_count has changed
+  //@chat_id Chat identifier
+  //@unread_mention_count The number of unread mention messages left in the chat
+  //updateChatUnreadMentionCount chat_id:int53 unread_mention_count:int32 = Update;
   void process_update(td::td_api::updateChatUnreadMentionCount &update) {
     chat_->unread_mention_count_ = std::move(update.unread_mention_count_);
   }
 
-  //@description The chat unread_reaction_count has changed @chat_id Chat identifier @unread_reaction_count The number of messages with unread reactions left in the chat
+  //@description The chat unread_reaction_count has changed
+  //@chat_id Chat identifier
+  //@unread_reaction_count The number of messages with unread reactions left in the chat
   //updateChatUnreadReactionCount chat_id:int53 unread_reaction_count:int32 = Update;
   void process_update(td::td_api::updateChatUnreadReactionCount &update) {
     chat_->unread_reaction_count_ = std::move(update.unread_reaction_count_);
   }
 
-  //@description A chat video chat state has changed @chat_id Chat identifier @video_chat New value of video_chat
+  //@description A chat video chat state has changed
+  //@chat_id Chat identifier
+  //@video_chat New value of video_chat
   //updateChatVideoChat chat_id:int53 video_chat:videoChat = Update;
   void process_update(td::td_api::updateChatVideoChat &update) {
     chat_->video_chat_ = std::move(update.video_chat_);
   }
 
-  //@description The value of the default disable_notification parameter, used when a message is sent to the chat, was changed @chat_id Chat identifier @default_disable_notification The new default_disable_notification value
-  //updateChatDefaultDisableNotification chat_id : int53 default_disable_notification : Bool = Update;
+  //@description The value of the default disable_notification parameter, used when a message is sent to the chat, was changed
+  //@chat_id Chat identifier
+  //@default_disable_notification The new default_disable_notification value
+  //updateChatDefaultDisableNotification chat_id:int53 default_disable_notification:Bool = Update;
   void process_update(td::td_api::updateChatDefaultDisableNotification &update) {
     chat_->default_disable_notification_ = std::move(update.default_disable_notification_);
   }
 
-  //@description A chat content was allowed or restricted for saving @chat_id Chat identifier @has_protected_content New value of has_protected_content
+  //@description A chat content was allowed or restricted for saving
+  //@chat_id Chat identifier
+  //@has_protected_content New value of has_protected_content
   //updateChatHasProtectedContent chat_id:int53 has_protected_content:Bool = Update;
   void process_update(td::td_api::updateChatHasProtectedContent &update) {
     chat_->has_protected_content_ = std::move(update.has_protected_content_);
   }
 
-  //@description A chat's has_scheduled_messages field has changed @chat_id Chat identifier @has_scheduled_messages New value of has_scheduled_messages
-  void process_update(td::td_api::updateChatHasScheduledMessages &update) {
-    chat_->has_scheduled_messages_ = std::move(update.has_scheduled_messages_);
+  //@description Translation of chat messages was enabled or disabled
+  //@chat_id Chat identifier
+  //@is_translatable New value of is_translatable
+  //updateChatIsTranslatable chat_id:int53 is_translatable:Bool = Update;
+  void process_update(td::td_api::updateChatIsTranslatable &update) {
+    chat_->is_translatable_ = update.is_translatable_;
   }
 
-  //@description A chat was blocked or unblocked @chat_id Chat identifier @is_blocked New value of is_blocked
-  //updateChatIsBlocked chat_id:int53 is_blocked:Bool = Update;
-  void process_update(td::td_api::updateChatIsBlocked &update) {
-    chat_->is_blocked_ = std::move(update.is_blocked_);
-  }
-
-  //@description A chat was marked as unread or was read @chat_id Chat identifier @is_marked_as_unread New value of is_marked_as_unread
-  //updateChatIsMarkedAsUnread chat_id : int53 is_marked_as_unread : Bool = Update;
+  //@description A chat was marked as unread or was read
+  //@chat_id Chat identifier
+  //@is_marked_as_unread New value of is_marked_as_unread
+  //updateChatIsMarkedAsUnread chat_id:int53 is_marked_as_unread:Bool = Update;
   void process_update(td::td_api::updateChatIsMarkedAsUnread &update) {
     chat_->is_marked_as_unread_ = std::move(update.is_marked_as_unread_);
   }
 
-  //@description The number of online group members has changed. This update with non-zero number of online group members is sent only for currently opened chats. There is no guarantee that it will be sent just after the number of online users has changed @chat_id Identifier of the chat @online_member_count New number of online members in the chat, or 0 if unknown
+  //@description A chat default appearance has changed
+  //@chat_id Chat identifier
+  //@view_as_topics New value of view_as_topics
+  //updateChatViewAsTopics chat_id:int53 view_as_topics:Bool = Update;
+  void process_update(td::td_api::updateChatViewAsTopics &update) {
+    chat_->view_as_topics_ = std::move(update.view_as_topics_);
+  }
+
+  //@description A chat was blocked or unblocked
+  //@chat_id Chat identifier
+  //@block_list Block list to which the chat is added; may be null if none
+  //updateChatBlockList chat_id:int53 block_list:BlockList = Update;
+  void process_update(td::td_api::updateChatBlockList &update) {
+    chat_->block_list_ = std::move(update.block_list_);
+  }
+
+  //@description A chat's has_scheduled_messages field has changed
+  //@chat_id Chat identifier
+  //@has_scheduled_messages New value of has_scheduled_messages
+  //updateChatHasScheduledMessages chat_id:int53 has_scheduled_messages:Bool = Update;
+  void process_update(td::td_api::updateChatHasScheduledMessages &update) {
+    chat_->has_scheduled_messages_ = std::move(update.has_scheduled_messages_);
+  }
+
+  //@description The list of chat folders or a chat folder has changed
+  //@chat_folders The new list of chat folders
+  //@main_chat_list_position Position of the main chat list among chat folders, 0-based
+  //@are_tags_enabled True, if folder tags are enabled
+  //updateChatFolders chat_folders:vector<chatFolderInfo> main_chat_list_position:int32 are_tags_enabled:Bool = Update;
+  void process_update(td::td_api::updateChatFolders &update) {
+  }
+
+  //@description The number of online group members has changed. This update with non-zero number of online group members is sent only for currently opened chats.
+  //-There is no guarantee that it is sent just after the number of online users has changed
+  //@chat_id Identifier of the chat
+  //@online_member_count New number of online members in the chat, or 0 if unknown
   //updateChatOnlineMemberCount chat_id:int53 online_member_count:int32 = Update;
   void process_update(td::td_api::updateChatOnlineMemberCount &update) {
     online_ = update.online_member_count_;
@@ -379,10 +490,11 @@ class Chat {
   void process_update(td::td_api::updateForumTopicInfo &update) {
   }
 
-  //@description Translation of chat messages was enabled or disabled @chat_id Chat identifier @is_translatable New value of is_translatable
-  //updateChatIsTranslatable chat_id:int53 is_translatable:Bool = Update;
-  void process_update(td::td_api::updateChatIsTranslatable &update) {
-    chat_->is_translatable_ = update.is_translatable_;
+  //@description The revenue earned from sponsored messages in a chat has changed. If chat revenue screen is opened, then getChatRevenueTransactions may be called to fetch new transactions
+  //@chat_id Identifier of the chat
+  //@revenue_amount New amount of earned revenue
+  //updateChatRevenueAmount chat_id:int53 revenue_amount:chatRevenueAmount = Update;
+  void process_update(td::td_api::updateChatRevenueAmount &update) {
   }
 };
 
@@ -598,6 +710,10 @@ class ChatManager {
       auto group = std::make_shared<BasicGroup>(std::move(upd.basic_group_));
       basic_groups_.emplace(group->group_id(), std::move(group));
     }
+  }
+  void process_update(td::td_api::updateSupergroup &upd) {
+  }
+  void process_update(td::td_api::updateSecretChat &upd) {
   }
 
   static ChatManager *instance;

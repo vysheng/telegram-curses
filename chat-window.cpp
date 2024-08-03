@@ -114,9 +114,11 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
       received_bottom_elements(std::move(R));
     });
   } else {
-    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 = FoundChatMessages;
-    auto req = td::make_tl_object<td::td_api::searchChatMessages>(chat_id_, search_pattern_, nullptr, message_id ?: m,
-                                                                  -10, 10, nullptr, 0);
+    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
+    auto req = td::make_tl_object<td::td_api::searchChatMessages>(
+        chat_id_, search_pattern_, /* sender_id */ nullptr,
+        /* from_message_id */ message_id ?: m, /* offset */ -10, /* limit */ 10,
+        /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
       received_bottom_search_elements(std::move(R));
     });
@@ -161,9 +163,11 @@ void ChatWindow::request_top_elements_ex(td::int32 message_id) {
     send_request(std::move(req),
                  [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) { received_top_elements(std::move(R)); });
   } else {
-    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 = FoundChatMessages;
-    auto req =
-        td::make_tl_object<td::td_api::searchChatMessages>(chat_id_, search_pattern_, nullptr, m, 0, 10, nullptr, 0);
+    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
+    auto req = td::make_tl_object<td::td_api::searchChatMessages>(
+        chat_id_, search_pattern_, /* sender_id */ nullptr,
+        /* from_message_id */ message_id ?: m, /* offset */ 0, /* limit */ 10,
+        /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
       received_top_search_elements(std::move(R));
     });
@@ -337,6 +341,19 @@ void ChatWindow::process_update(td::td_api::updateMessageMentionRead &update) {
   }
 }
 
+//@description A fact-check added to a message was changed
+//@chat_id Chat identifier
+//@message_id Message identifier
+//@fact_check The new fact-check
+//updateMessageFactCheck chat_id:int53 message_id:int53 fact_check:factCheck = Update;
+void ChatWindow::process_update(td::td_api::updateMessageFactCheck &update) {
+  auto it = messages_.find(update.message_id_);
+  if (it != messages_.end()) {
+    it->second->message->fact_check_ = std::move(update.fact_check_);
+    change_element(it->second.get());
+  }
+}
+
 //@description The list of unread reactions added to a message was changed @chat_id Chat identifier @message_id Message identifier @unread_reactions The new list of unread reactions @unread_reaction_count The new number of messages with unread reactions left in the chat
 //updateMessageUnreadReactions chat_id:int53 message_id:int53 unread_reactions:vector<unreadReaction> unread_reaction_count:int32 = Update;
 void ChatWindow::process_update(td::td_api::updateMessageUnreadReactions &update) {
@@ -352,6 +369,25 @@ void ChatWindow::process_update(td::td_api::updateMessageUnreadReactions &update
 void ChatWindow::process_update(td::td_api::updateMessageLiveLocationViewed &update) {
 }
 
+void ChatWindow::process_update(td::td_api::updateDeleteMessages &update) {
+  if (!update.is_permanent_) {
+    return;
+  }
+  for (auto x : update.message_ids_) {
+    auto it = messages_.find(x);
+    if (it != messages_.end()) {
+      delete_element(it->second.get());
+      messages_.erase(it);
+    }
+  }
+}
+
+//@description Some messages were deleted
+//@chat_id Chat identifier
+//@message_ids Identifiers of the deleted messages
+//@is_permanent True, if the messages are permanently deleted by a user (as opposed to just becoming inaccessible)
+//@from_cache True, if the messages are deleted only from the cache and can possibly be retrieved again in the future
+//updateDeleteMessages chat_id:int53 message_ids:vector<int53> is_permanent:Bool from_cache:Bool = Update;
 void ChatWindow::process_update(td::td_api::updateFile &update) {
   auto it = file_id_2_messages_.find(update.file_->id_);
   if (it != file_id_2_messages_.end()) {
@@ -359,6 +395,9 @@ void ChatWindow::process_update(td::td_api::updateFile &update) {
       update_file(x, *update.file_);
     }
   }
+}
+
+void ChatWindow::process_update(td::td_api::updateChatAction &update) {
 }
 
 td::int32 ChatWindow::get_file_id(const td::td_api::message &message) {

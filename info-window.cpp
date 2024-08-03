@@ -45,7 +45,7 @@ void ChatInfoWindow::generate_info() {
         } else {
           out << " notcontact";
         }
-        if (user_full_ && user_full_->is_blocked_) {
+        if (user_full_ && user_full_->block_list_) {
           out << " blocked";
         }
       }
