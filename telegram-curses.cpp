@@ -34,6 +34,7 @@
 #include "telegram-curses.h"
 #include "telegram-curses.hpp"
 #include "telegram-curses-version.h"
+#include "telegram-curses-output.h"
 #include "qrcodegen/qrcodegen.hpp"
 #include "dialog-list-window.h"
 #include "compose-window.h"
@@ -45,6 +46,7 @@
 #include "layout.h"
 #include "status-line-window.h"
 #include "info-window.h"
+#include "global-parameters.h"
 
 #include <atomic>
 #include <cstdio>
@@ -1009,7 +1011,7 @@ class TdcursesImpl : public Tdcurses {
   //@are_tags_enabled True, if folder tags are enabled
   //updateChatFolders chat_folders:vector<chatFolderInfo> main_chat_list_position:int32 are_tags_enabled:Bool = Update;
   void process_update(td::td_api::updateChatFolders &update) {
-    //ChatManager::instance->process_update(update);
+    global_parameters().process_update(update);
   }
 
   //@description The number of online group members has changed. This update with non-zero number of online group members is sent only for currently opened chats.
@@ -1069,12 +1071,14 @@ class TdcursesImpl : public Tdcurses {
   //@notification_settings The new notification settings
   //updateScopeNotificationSettings scope:NotificationSettingsScope notification_settings:scopeNotificationSettings = Update;
   void process_update(td::td_api::updateScopeNotificationSettings &update) {
+    global_parameters().process_update(update);
   }
 
   //@description Notification settings for reactions were updated
   //@notification_settings The new notification settings
   //updateReactionNotificationSettings notification_settings:reactionNotificationSettings = Update;
   void process_update(td::td_api::updateReactionNotificationSettings &update) {
+    global_parameters().process_update(update);
   }
 
   //@description A notification was changed
@@ -1177,7 +1181,7 @@ class TdcursesImpl : public Tdcurses {
   //@user_full_info New full information about the user
   //updateUserFullInfo user_id:int53 user_full_info:userFullInfo = Update;
   void process_update(td::td_api::updateUserFullInfo &update) {
-    //ChatManager::instance->process_update(update);
+    dialog_list_window()->process_user_update(update);
   }
 
   //@description Some data in basicGroupFullInfo has been changed
@@ -1185,14 +1189,14 @@ class TdcursesImpl : public Tdcurses {
   //@basic_group_full_info New full information about the group
   //updateBasicGroupFullInfo basic_group_id:int53 basic_group_full_info:basicGroupFullInfo = Update;
   void process_update(td::td_api::updateBasicGroupFullInfo &update) {
-    //ChatManager::instance->process_update(update);
+    dialog_list_window()->process_user_update(update);
   }
 
   //@description Some data in supergroupFullInfo has been changed @supergroup_id Identifier of the supergroup or channel
   //@supergroup_full_info New full information about the supergroup
   //updateSupergroupFullInfo supergroup_id:int53 supergroup_full_info:supergroupFullInfo = Update;
   void process_update(td::td_api::updateSupergroupFullInfo &update) {
-    //ChatManager::instance->process_update(update);
+    dialog_list_window()->process_user_update(update);
   }
 
   //@description A service notification from the server was received. Upon receiving this the application must show a popup with the content of the notification
@@ -1200,10 +1204,10 @@ class TdcursesImpl : public Tdcurses {
   //@content Notification content
   //updateServiceNotification type:string content:MessageContent = Update;
   void process_update(td::td_api::updateServiceNotification &update) {
-    /*Outputter out;
-    out << color_scheme.get_color(ObjectType::ServiceNotification) << update.content_ << td::TerminalColors::empty()
-        << "\n";
-    td::TerminalIO::out() << td::CSlice{out};*/
+    Outputter out;
+    out << "SERVICE NOTIFICATION\n" << *update.content_;
+
+    spawn_popup_view_window(out.as_str(), out.markup(), 3);
   }
 
   //@description Information about a file was updated
@@ -1236,6 +1240,7 @@ class TdcursesImpl : public Tdcurses {
   //@downloaded_size Total downloaded size of files in the file download list, in bytes
   //updateFileDownloads total_size:int53 total_count:int32 downloaded_size:int53 = Update;
   void process_update(td::td_api::updateFileDownloads &update) {
+    global_parameters().process_update(update);
   }
 
   //@description A file was added to the file download list. This update is sent only after file download list is loaded for the first time
@@ -1268,6 +1273,7 @@ class TdcursesImpl : public Tdcurses {
   //@cloud_project_number Cloud project number to pass to the Play Integrity API on Android
   //updateApplicationVerificationRequired verification_id:int53 nonce:string cloud_project_number:int64 = Update;
   void process_update(td::td_api::updateApplicationVerificationRequired &update) {
+    spawn_popup_view_window("APP VERIFICATION REQUIRED (IMPOSSIBLE TO CONTINUE)", 3);
   }
 
   //@description New call was created or information about a call was updated
@@ -1301,6 +1307,7 @@ class TdcursesImpl : public Tdcurses {
   //@rules New privacy rules
   //updateUserPrivacySettingRules setting:UserPrivacySetting rules:userPrivacySettingRules = Update;
   void process_update(td::td_api::updateUserPrivacySettingRules &update) {
+    global_parameters().process_update(update);
   }
 
   //@description Number of unread messages in a chat list has changed. This update is sent only if the message database is used
@@ -1382,39 +1389,49 @@ class TdcursesImpl : public Tdcurses {
   //@sticker_set The sticker set
   //updateStickerSet sticker_set:stickerSet = Update;
   void process_update(td::td_api::updateStickerSet &update) {
+    global_parameters().process_update(update);
   }
 
-  //@description The list of installed sticker sets was updated @sticker_type Type of the affected stickers @sticker_set_ids The new list of installed ordinary sticker sets
+  //@description The list of installed sticker sets was updated @sticker_type Type of the affected stickers
+  //@sticker_set_ids The new list of installed ordinary sticker sets
   //updateInstalledStickerSets sticker_type:StickerType sticker_set_ids:vector<int64> = Update;
   void process_update(td::td_api::updateInstalledStickerSets &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of trending sticker sets was updated or some of them were viewed @sticker_type Type of the affected stickers @sticker_sets The prefix of the list of trending sticker sets with the newest trending sticker sets
   //updateTrendingStickerSets sticker_type:StickerType sticker_sets:trendingStickerSets = Update;
   void process_update(td::td_api::updateTrendingStickerSets &update) {
+    global_parameters().process_update(update);
   }
 
-  //@description The list of recently used stickers was updated @is_attached True, if the list of stickers attached to photo or video files was updated; otherwise, the list of sent stickers is updated @sticker_ids The new list of file identifiers of recently used stickers
+  //@description The list of recently used stickers was updated
+  //@is_attached True, if the list of stickers attached to photo or video files was updated; otherwise, the list of sent stickers is updated
+  //@sticker_ids The new list of file identifiers of recently used stickers
   //updateRecentStickers is_attached:Bool sticker_ids:vector<int32> = Update;
   void process_update(td::td_api::updateRecentStickers &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of favorite stickers was updated
   //@sticker_ids The new list of file identifiers of favorite stickers
   //updateFavoriteStickers sticker_ids:vector<int32> = Update;
   void process_update(td::td_api::updateFavoriteStickers &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of saved animations was updated
   //@animation_ids The new list of file identifiers of saved animations
   //updateSavedAnimations animation_ids:vector<int32> = Update;
   void process_update(td::td_api::updateSavedAnimations &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of saved notification sounds was updated. This update may not be sent until information about a notification sound was requested for the first time
   //@notification_sound_ids The new list of identifiers of saved notification sounds
   //updateSavedNotificationSounds notification_sound_ids:vector<int64> = Update;
   void process_update(td::td_api::updateSavedNotificationSounds &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The default background has changed
@@ -1422,12 +1439,14 @@ class TdcursesImpl : public Tdcurses {
   //@background The new default background; may be null
   //updateDefaultBackground for_dark_theme:Bool background:background = Update;
   void process_update(td::td_api::updateDefaultBackground &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of available chat themes has changed
   //@chat_themes The new list of chat themes
   //updateChatThemes chat_themes:vector<chatTheme> = Update;
   void process_update(td::td_api::updateChatThemes &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of supported accent colors has changed
@@ -1436,6 +1455,7 @@ class TdcursesImpl : public Tdcurses {
   //@available_accent_color_ids The list of accent color identifiers, which can be set through setAccentColor and setChatAccentColor. The colors must be shown in the specififed order
   //updateAccentColors colors:vector<accentColor> available_accent_color_ids:vector<int32> = Update;
   void process_update(td::td_api::updateAccentColors &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of supported accent colors for user profiles has changed
@@ -1443,6 +1463,7 @@ class TdcursesImpl : public Tdcurses {
   //@available_accent_color_ids The list of accent color identifiers, which can be set through setProfileAccentColor and setChatProfileAccentColor. The colors must be shown in the specififed order
   //updateProfileAccentColors colors:vector<profileAccentColor> available_accent_color_ids:vector<int32> = Update;
   void process_update(td::td_api::updateProfileAccentColors &update) {
+    global_parameters().process_update(update);
   }
 
   //@description Some language pack strings have been updated
@@ -1451,20 +1472,14 @@ class TdcursesImpl : public Tdcurses {
   //@strings List of changed language pack strings; empty if all strings have changed
   //updateLanguagePackStrings localization_target:string language_pack_id:string strings:vector<languagePackString> = Update;
   void process_update(td::td_api::updateLanguagePackStrings &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The connection state has changed. This update must be used only to show a human-readable description of the connection state
   //@state The new connection state
   //updateConnectionState state:ConnectionState = Update;
   void process_update(td::td_api::updateConnectionState &update) {
-    td::td_api::downcast_call(
-        *update.state_,
-        td::overloaded(
-            [&](td::td_api::connectionStateReady &state) { conn_state_ = "ready"; },
-            [&](td::td_api::connectionStateConnectingToProxy &state) { conn_state_ = "connecting to proxy"; },
-            [&](td::td_api::connectionStateConnecting &state) { conn_state_ = "connecting"; },
-            [&](td::td_api::connectionStateUpdating &state) { conn_state_ = "updating"; },
-            [&](td::td_api::connectionStateWaitingForNetwork &state) { conn_state_ = "waitnet"; }));
+    global_parameters().process_update(update);
     update_status_line();
   }
 
@@ -1472,11 +1487,9 @@ class TdcursesImpl : public Tdcurses {
   //@terms_of_service The new terms of service
   //updateTermsOfService terms_of_service_id:string terms_of_service:termsOfService = Update;
   void process_update(td::td_api::updateTermsOfService &update) {
-    /*Outputter out;
-    out << "UPDATED TERMS OF SERVICE:\n"
-        << color_scheme.get_color(ObjectType::UrgentServiceNotification) << update.terms_of_service_->text_->text_
-        << td::TerminalColors::empty() << "\n";
-    td::TerminalIO::out() << td::CSlice{out};*/
+    Outputter out;
+    out << "UPDATED TERMS OF SERVICE:\n" << update.terms_of_service_->text_;
+    spawn_popup_view_window(out.as_str(), out.markup(), 3);
   }
 
   //@description The list of users nearby has changed. The update is guaranteed to be sent only 60 seconds after a successful searchChatsNearby request
@@ -1495,6 +1508,7 @@ class TdcursesImpl : public Tdcurses {
   //@bots The new list of bots. The bots must not be shown on scheduled messages screen
   //updateAttachmentMenuBots bots:vector<attachmentMenuBot> = Update;
   void process_update(td::td_api::updateAttachmentMenuBots &update) {
+    global_parameters().process_update(update);
   }
 
   //@description A message was sent by an opened Web App, so the Web App needs to be closed
@@ -1507,6 +1521,7 @@ class TdcursesImpl : public Tdcurses {
   //@emojis The new list of active emoji reactions
   //updateActiveEmojiReactions emojis:vector<string> = Update;
   void process_update(td::td_api::updateActiveEmojiReactions &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of available message effects has changed
@@ -1514,12 +1529,14 @@ class TdcursesImpl : public Tdcurses {
   //@sticker_effect_ids The new list of available message effects from Premium stickers
   //updateAvailableMessageEffects reaction_effect_ids:vector<int64> sticker_effect_ids:vector<int64> = Update;
   void process_update(td::td_api::updateAvailableMessageEffects &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The type of default reaction has changed
   //@reaction_type The new type of the default reaction
   //updateDefaultReactionType reaction_type:ReactionType = Update;
   void process_update(td::td_api::updateDefaultReactionType &update) {
+    global_parameters().process_update(update);
   }
 
   //@description Tags used in Saved Messages or a Saved Messages topic have changed
@@ -1533,6 +1550,7 @@ class TdcursesImpl : public Tdcurses {
   //@star_count The new number of Telegram Stars owned
   //updateOwnedStarCount star_count:int53 = Update;
   void process_update(td::td_api::updateOwnedStarCount &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The revenue earned from sponsored messages in a chat has changed. If chat revenue screen is opened, then getChatRevenueTransactions may be called to fetch new transactions
@@ -1563,6 +1581,7 @@ class TdcursesImpl : public Tdcurses {
   //@emojis The new list of supported dice emojis
   //updateDiceEmojis emojis:vector<string> = Update;
   void process_update(td::td_api::updateDiceEmojis &update) {
+    global_parameters().process_update(update);
   }
 
   //@description Some animated emoji message was clicked and a big animated sticker must be played if the message is visible on the screen. chatActionWatchingAnimations with the text of the message needs to be sent if the sticker is played
@@ -1578,6 +1597,7 @@ class TdcursesImpl : public Tdcurses {
   //@emojis The new list of emojis suggested for searching
   //updateAnimationSearchParameters provider:string emojis:vector<string> = Update;
   void process_update(td::td_api::updateAnimationSearchParameters &update) {
+    global_parameters().process_update(update);
   }
 
   //@description The list of suggested to the user actions has changed
@@ -1605,12 +1625,14 @@ class TdcursesImpl : public Tdcurses {
   //@settings The new autosave settings; may be null if the settings are reset to default
   //updateAutosaveSettings scope:AutosaveSettingsScope settings:scopeAutosaveSettings = Update;
   void process_update(td::td_api::updateAutosaveSettings &update) {
+    global_parameters().process_update(update);
   }
 
   //@description A business connection has changed; for bots only
   //@connection New data about the connection
   //updateBusinessConnection connection:businessConnection = Update;
   void process_update(td::td_api::updateBusinessConnection &update) {
+    UNREACHABLE();
   }
 
   //@description A new message was added to a business account; for bots only
@@ -1618,6 +1640,7 @@ class TdcursesImpl : public Tdcurses {
   //@message The new message
   //updateNewBusinessMessage connection_id:string message:businessMessage = Update;
   void process_update(td::td_api::updateNewBusinessMessage &update) {
+    UNREACHABLE();
   }
 
   //@description A message in a business account was edited; for bots only
@@ -1625,6 +1648,7 @@ class TdcursesImpl : public Tdcurses {
   //@message The edited message
   //updateBusinessMessageEdited connection_id:string message:businessMessage = Update;
   void process_update(td::td_api::updateBusinessMessageEdited &update) {
+    UNREACHABLE();
   }
 
   //@description Messages in a business account were deleted; for bots only
@@ -1633,6 +1657,7 @@ class TdcursesImpl : public Tdcurses {
   //@message_ids Unique message identifiers of the deleted messages
   //updateBusinessMessagesDeleted connection_id:string chat_id:int53 message_ids:vector<int53> = Update;
   void process_update(td::td_api::updateBusinessMessagesDeleted &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming inline query; for bots only
@@ -1644,6 +1669,7 @@ class TdcursesImpl : public Tdcurses {
   //@offset Offset of the first entry to return
   //updateNewInlineQuery id:int64 sender_user_id:int53 user_location:location chat_type:ChatType query:string offset:string = Update;
   void process_update(td::td_api::updateNewInlineQuery &update) {
+    UNREACHABLE();
   }
 
   //@description The user has chosen a result of an inline query; for bots only
@@ -1654,6 +1680,7 @@ class TdcursesImpl : public Tdcurses {
   //@inline_message_id Identifier of the sent inline message, if known
   //updateNewChosenInlineResult sender_user_id:int53 user_location:location query:string result_id:string inline_message_id:string = Update;
   void process_update(td::td_api::updateNewChosenInlineResult &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming callback query; for bots only
@@ -1665,6 +1692,7 @@ class TdcursesImpl : public Tdcurses {
   //@payload Query payload
   //updateNewCallbackQuery id:int64 sender_user_id:int53 chat_id:int53 message_id:int53 chat_instance:int64 payload:CallbackQueryPayload = Update;
   void process_update(td::td_api::updateNewCallbackQuery &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming callback query from a message sent via a bot; for bots only
@@ -1675,6 +1703,7 @@ class TdcursesImpl : public Tdcurses {
   //@payload Query payload
   //updateNewInlineCallbackQuery id:int64 sender_user_id:int53 inline_message_id:string chat_instance:int64 payload:CallbackQueryPayload = Update;
   void process_update(td::td_api::updateNewInlineCallbackQuery &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming callback query from a business message; for bots only
@@ -1686,6 +1715,7 @@ class TdcursesImpl : public Tdcurses {
   //@payload Query payload
   //updateNewBusinessCallbackQuery id:int64 sender_user_id:int53 connection_id:string message:businessMessage chat_instance:int64 payload:CallbackQueryPayload = Update;
   void process_update(td::td_api::updateNewBusinessCallbackQuery &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming shipping query; for bots only. Only for invoices with flexible price
@@ -1695,6 +1725,7 @@ class TdcursesImpl : public Tdcurses {
   //@shipping_address User shipping address
   //updateNewShippingQuery id:int64 sender_user_id:int53 invoice_payload:string shipping_address:address = Update;
   void process_update(td::td_api::updateNewShippingQuery &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming pre-checkout query; for bots only. Contains full information about a checkout
@@ -1707,12 +1738,14 @@ class TdcursesImpl : public Tdcurses {
   //@order_info Information about the order; may be null
   //updateNewPreCheckoutQuery id:int64 sender_user_id:int53 currency:string total_amount:int53 invoice_payload:bytes shipping_option_id:string order_info:orderInfo = Update;
   void process_update(td::td_api::updateNewPreCheckoutQuery &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming event; for bots only
   //@event A JSON-serialized event
   //updateNewCustomEvent event:string = Update;
   void process_update(td::td_api::updateNewCustomEvent &update) {
+    UNREACHABLE();
   }
 
   //@description A new incoming query; for bots only
@@ -1721,12 +1754,14 @@ class TdcursesImpl : public Tdcurses {
   //@timeout Query timeout
   //updateNewCustomQuery id:int64 data:string timeout:int32 = Update;
   void process_update(td::td_api::updateNewCustomQuery &update) {
+    UNREACHABLE();
   }
 
   //@description A poll was updated; for bots only
   //@poll New data about the poll
   //updatePoll poll:poll = Update;
   void process_update(td::td_api::updatePoll &update) {
+    UNREACHABLE();
   }
 
   //@description A user changed the answer to a poll; for bots only
@@ -1735,6 +1770,7 @@ class TdcursesImpl : public Tdcurses {
   //@option_ids 0-based identifiers of answer options, chosen by the user
   //updatePollAnswer poll_id:int64 voter_id:MessageSender option_ids:vector<int32> = Update;
   void process_update(td::td_api::updatePollAnswer &update) {
+    UNREACHABLE();
   }
 
   //@description User rights changed in a chat; for bots only
@@ -1748,6 +1784,7 @@ class TdcursesImpl : public Tdcurses {
   //@new_chat_member New chat member
   //updateChatMember chat_id:int53 actor_user_id:int53 date:int32 invite_link:chatInviteLink via_join_request:Bool via_chat_folder_invite_link:Bool old_chat_member:chatMember new_chat_member:chatMember = Update;
   void process_update(td::td_api::updateChatMember &update) {
+    UNREACHABLE();
   }
 
   //@description A user sent a join request to a chat; for bots only
@@ -1757,6 +1794,7 @@ class TdcursesImpl : public Tdcurses {
   //@invite_link The invite link, which was used to send join request; may be null
   //updateNewChatJoinRequest chat_id:int53 request:chatJoinRequest user_chat_id:int53 invite_link:chatInviteLink = Update;
   void process_update(td::td_api::updateNewChatJoinRequest &update) {
+    UNREACHABLE();
   }
 
   //@description A chat boost has changed; for bots only
@@ -1764,6 +1802,7 @@ class TdcursesImpl : public Tdcurses {
   //@boost New information about the boost
   //updateChatBoost chat_id:int53 boost:chatBoost = Update;
   void process_update(td::td_api::updateChatBoost &update) {
+    UNREACHABLE();
   }
 
   //@description User changed its reactions on a message with public reactions; for bots only
@@ -1775,6 +1814,7 @@ class TdcursesImpl : public Tdcurses {
   //@new_reaction_types New list of chosen reactions
   //updateMessageReaction chat_id:int53 message_id:int53 actor_id:MessageSender date:int32 old_reaction_types:vector<ReactionType> new_reaction_types:vector<ReactionType> = Update;
   void process_update(td::td_api::updateMessageReaction &update) {
+    UNREACHABLE();
   }
 
   //@description Reactions added to a message with anonymous reactions have changed; for bots only
@@ -1784,6 +1824,7 @@ class TdcursesImpl : public Tdcurses {
   //@reactions The list of reactions added to the message
   //updateMessageReactions chat_id:int53 message_id:int53 date:int32 reactions:vector<messageReaction> = Update;
   void process_update(td::td_api::updateMessageReactions &update) {
+    UNREACHABLE();
   }
 
   void do_send_request(td::tl_object_ptr<td::td_api::Function> func,
@@ -1801,7 +1842,6 @@ class TdcursesImpl : public Tdcurses {
  private:
   std::map<td::uint64, td::Promise<td::tl_object_ptr<td::td_api::Object>>> handlers_;
   td::uint64 last_query_id_;
-  std::string conn_state_ = "none";
   td::int32 unread_chats_{0};
 };
 
@@ -1834,6 +1874,10 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
     }
     void on_command(std::string command) override {
       if (command.size() == 0) {
+        return;
+      }
+      if (command == ":test_popup_window") {
+        curses_->spawn_popup_view_window("TEST POPUP\n1\n2\n3\n4\n5\n6", 2);
         return;
       }
       if (command[0] == '/') {
@@ -1997,7 +2041,16 @@ void TdcursesImpl::update_status_line() {
   auto w = status_line_window();
   if (w) {
     Outputter out;
-    out << conn_state_ << " " << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
+
+    td::td_api::downcast_call(
+        const_cast<td::td_api::ConnectionState &>(*global_parameters().connection_state()),
+        td::overloaded(
+            [&](const td::td_api::connectionStateReady &state) { out << "ready "; },
+            [&](const td::td_api::connectionStateConnectingToProxy &state) { out << "connecting to proxy "; },
+            [&](const td::td_api::connectionStateConnecting &state) { out << "connecting "; },
+            [&](const td::td_api::connectionStateUpdating &state) { out << "updating "; },
+            [&](const td::td_api::connectionStateWaitingForNetwork &state) { out << "waitnet "; }));
+    out << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
 
     if (unread_chats_) {
       out << Outputter::FgColor(Color::Red) << unread_chats_ << Outputter::FgColor(Color::Revert);

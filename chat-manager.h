@@ -715,6 +715,12 @@ class ChatManager {
   }
   void process_update(td::td_api::updateSecretChat &upd) {
   }
+  void process_update(td::td_api::updateUserFullInfo &upd) {
+  }
+  void process_update(td::td_api::updateBasicGroupFullInfo &upd) {
+  }
+  void process_update(td::td_api::updateSupergroupFullInfo &upd) {
+  }
 
   static ChatManager *instance;
 

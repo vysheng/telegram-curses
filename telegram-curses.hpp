@@ -5,6 +5,7 @@
 #include "windows/log-window.h"
 #include "windows/window.h"
 #include "status-line-window.h"
+#include <memory>
 #include <vector>
 
 namespace tdcurses {
@@ -98,6 +99,31 @@ class Tdcurses : public TdcursesInterface {
       del_popup_window(qr_code_window_.get());
       qr_code_window_ = nullptr;
     }
+  }
+
+  void spawn_popup_view_window(std::string text, td::int32 priority) {
+    spawn_popup_view_window(std::move(text), {}, priority);
+  }
+  void spawn_popup_view_window(std::string text, std::vector<windows::MarkupElement> markup, td::int32 priority) {
+    class Callback : public windows::ViewWindow::Callback {
+     public:
+      Callback(Tdcurses *ptr, std::shared_ptr<windows::Window> to_close) : ptr_(ptr), to_close_(std::move(to_close)) {
+      }
+      void on_answer(windows::ViewWindow *window) override {
+        ptr_->del_popup_window(to_close_.get());
+      }
+      void on_abort(windows::ViewWindow *window) override {
+        ptr_->del_popup_window(to_close_.get());
+      }
+
+     private:
+      Tdcurses *ptr_;
+      std::shared_ptr<windows::Window> to_close_;
+    };
+    auto window = std::make_shared<windows::ViewWindow>(std::move(text), std::move(markup), nullptr);
+    auto box = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
+    window->set_callback(std::make_unique<Callback>(this, box));
+    add_popup_window(box, priority);
   }
 
   void add_popup_window(std::shared_ptr<windows::Window> window, td::int32 prio) {
