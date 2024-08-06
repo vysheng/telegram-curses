@@ -3,14 +3,20 @@
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/Random.h"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
 #include "td/utils/overloaded.h"
 #include "telegram-curses-output.h"
+#include "windows/markup.h"
 #include "windows/text.h"
+#include "windows/selection-window.h"
+#include "windows/window.h"
 #include <limits>
 #include <memory>
 #include <tuple>
 #include <vector>
+#include <unistd.h>
+#include "td/utils/utf8.h"
 
 namespace tdcurses {
 
@@ -45,11 +51,287 @@ std::string ChatWindow::draft_message_text() {
   return text.text_->text_;
 }
 
+void ChatWindow::show_message_actions() {
+  std::vector<windows::SelectionWindow::ElementInfo> elements;
+  auto cur_element = get_active_element();
+  if (!cur_element) {
+    return;
+  }
+  auto el = static_cast<Element *>(cur_element.get());
+
+  auto add_user = [&](const std::string &prefix, td::int64 user_id) {
+    auto user = ChatManager::instance->get_user(user_id);
+    if (user) {
+      {
+        Outputter out;
+        out << "info " << prefix << " " << Outputter::FgColor{Color::Red} << user << Outputter::FgColor{Color::Revert};
+        elements.emplace_back(out.as_str(), out.markup(),
+                              [curses = root(), user_id]() { curses->show_user_info_window(user_id); });
+      }
+      {
+        Outputter out;
+        out << "open " << prefix << " " << Outputter::FgColor{Color::Red} << user << Outputter::FgColor{Color::Revert};
+        elements.emplace_back(out.as_str(), out.markup(), [self = this, curses = root(), user_id]() {
+          auto req = td::make_tl_object<td::td_api::createPrivateChat>(user_id, true);
+          self->send_request(std::move(req), [curses](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
+            if (R.is_ok()) {
+              auto chat = R.move_as_ok();
+              curses->open_chat(chat->id_);
+            }
+          });
+        });
+      }
+    } else {
+      elements.emplace_back(PSTRING() << "info " << prefix << " <UNAVAILABLE>", std::vector<windows::MarkupElement>{},
+                            []() {});
+    }
+  };
+
+  auto add_chat = [&](const std::string &prefix, td::int64 chat_id) {
+    auto chat = ChatManager::instance->get_chat(chat_id);
+    if (chat) {
+      {
+        Outputter out;
+        out << "info " << prefix << " " << Outputter::FgColor{Color::Red} << chat << Outputter::FgColor{Color::Revert};
+        elements.emplace_back(out.as_str(), out.markup(),
+                              [curses = root(), chat_id]() { curses->show_chat_info_window(chat_id); });
+      }
+      {
+        Outputter out;
+        out << "open " << prefix << " " << Outputter::FgColor{Color::Red} << chat << Outputter::FgColor{Color::Revert};
+        elements.emplace_back(out.as_str(), out.markup(), [curses = root(), chat_id]() { curses->open_chat(chat_id); });
+      }
+    } else {
+      elements.emplace_back(PSTRING() << "info " << prefix << " <UNAVAILABLE>", std::vector<windows::MarkupElement>{},
+                            []() {});
+    }
+  };
+
+  auto add_user_custom = [&](const std::string &prefix, td::Slice name, td::int64 user_id) {
+    {
+      Outputter out;
+      out << "info " << prefix << " " << Outputter::FgColor{Color::Red} << name << Outputter::FgColor{Color::Revert};
+      elements.emplace_back(out.as_str(), out.markup(),
+                            [curses = root(), user_id]() { curses->show_user_info_window(user_id); });
+    }
+    {
+      Outputter out;
+      out << "open " << prefix << " " << Outputter::FgColor{Color::Red} << name << Outputter::FgColor{Color::Revert};
+      elements.emplace_back(out.as_str(), out.markup(), [self = this, curses = root(), user_id]() {
+        auto req = td::make_tl_object<td::td_api::createPrivateChat>(user_id, true);
+        self->send_request(std::move(req), [curses](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
+          if (R.is_ok()) {
+            auto chat = R.move_as_ok();
+            curses->open_chat(chat->id_);
+          }
+        });
+      });
+    }
+  };
+
+  auto add_chat_username = [&](const std::string &prefix, std::string username) {
+    {
+      Outputter out;
+      out << "view " << prefix << " " << Outputter::FgColor{Color::Red} << username
+          << Outputter::FgColor{Color::Revert};
+      elements.emplace_back(out.as_str(), out.markup(), [self = this, curses = root(), username]() {
+        auto req = td::make_tl_object<td::td_api::searchPublicChat>(username);
+        self->send_request(std::move(req), [curses](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
+          if (R.is_ok()) {
+            auto chat = R.move_as_ok();
+            curses->show_chat_info_window(chat->id_);
+          }
+        });
+      });
+    }
+    {
+      Outputter out;
+      out << "open " << prefix << " " << Outputter::FgColor{Color::Red} << username
+          << Outputter::FgColor{Color::Revert};
+      elements.emplace_back(out.as_str(), out.markup(), [self = this, curses = root(), username]() {
+        auto req = td::make_tl_object<td::td_api::searchPublicChat>(username);
+        self->send_request(std::move(req), [curses](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
+          if (R.is_ok()) {
+            auto chat = R.move_as_ok();
+            curses->open_chat(chat->id_);
+          }
+        });
+      });
+    }
+  };
+
+  auto add_link = [&](std::string link) {
+    {
+      Outputter out;
+      out << "open '" << Outputter::Underline(true) << link << Outputter::Underline(false) << "'";
+      elements.emplace_back(out.as_str(), out.markup(), [link]() {
+        std::string cmd = "xdg-open";
+        const char *args[3];
+        args[0] = cmd.c_str();
+        args[1] = link.c_str();
+        args[2] = nullptr;
+
+        auto p = vfork();
+        if (!p) {
+          execvp(cmd.c_str(), const_cast<char **>(args));
+        }
+      });
+    }
+  };
+
+  auto add_search_pattern = [&](std::string pattern) {
+    {
+      Outputter out;
+      out << "search '" << Outputter::FgColor{Color::Navy} << pattern << Outputter::FgColor{Color::Revert} << "'";
+      elements.emplace_back(out.as_str(), out.markup(),
+                            [pattern, self = this]() { self->set_search_pattern(pattern); });
+    }
+  };
+
+  if (el->message->is_outgoing_) {
+    add_chat("destination", chat_id_);
+  } else {
+    if (el->message->sender_id_) {
+      td::td_api::downcast_call(
+          *el->message->sender_id_,
+          td::overloaded([&](td::td_api::messageSenderUser &sender) { add_user("source", sender.user_id_); },
+                         [&](td::td_api::messageSenderChat &sender) { add_chat("source", sender.chat_id_); }));
+    }
+  }
+
+  if (el->message->forward_info_ && el->message->forward_info_->origin_) {
+    td::td_api::downcast_call(
+        *el->message->forward_info_->origin_,
+        td::overloaded(
+            [&](td::td_api::messageOriginUser &sender) { add_user("forward source", sender.sender_user_id_); },
+            [&](td::td_api::messageOriginChat &sender) { add_chat("forward source", sender.sender_chat_id_); },
+            [&](td::td_api::messageOriginChannel &sender) { add_chat("forward source", sender.chat_id_); },
+            [&](auto &) {}));
+  }
+
+  if (el->message->via_bot_user_id_) {
+    add_user("via bot ", el->message->via_bot_user_id_);
+  }
+
+  auto process_formatted_text = [&](td::td_api::formattedText &content) {
+    auto &text = content.text_;
+    auto get_text_slice = [&](size_t from, size_t to) -> td::Slice {
+      if (from >= to) {
+        return td::Slice();
+      }
+      const unsigned char *text_ptr = (const unsigned char *)text.data();
+      auto text_start = text_ptr;
+      size_t from_pos = text.size();
+      size_t to_pos = text.size();
+      size_t p = 0;
+      while (*text_ptr) {
+        if (from == p) {
+          from_pos = text_ptr - text_start;
+        }
+        if (to == p) {
+          to_pos = text_ptr - text_start;
+          break;
+        }
+        td::uint32 code;
+        text_ptr = td::next_utf8_unsafe(text_ptr, &code);
+        p += (code <= 0xffff) ? 1 : 2;  // UTF16 codepoints =((
+      }
+
+      return td::Slice(text).remove_prefix(from_pos).truncate(to_pos - from_pos);
+    };
+
+    for (auto &ent : content.entities_) {
+      td::td_api::downcast_call(
+          *ent->type_,
+          td::overloaded(
+              [&](const td::td_api::textEntityTypeMention &e) {
+                auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
+                add_chat_username("mentioned chat", us.str());
+              },
+              [&](const td::td_api::textEntityTypeHashtag &e) {
+                auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
+                add_search_pattern(us.str());
+              },
+              [&](const td::td_api::textEntityTypeCashtag &) {
+                auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
+                add_search_pattern(us.str());
+              },
+              [&](const td::td_api::textEntityTypeBotCommand &) {},
+              [&](const td::td_api::textEntityTypeUrl &) {
+                auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
+                add_link(us.str());
+              },
+              [&](const td::td_api::textEntityTypeEmailAddress &) {},
+              [&](const td::td_api::textEntityTypePhoneNumber &) {},
+              [&](const td::td_api::textEntityTypeBankCardNumber &) {}, [&](const td::td_api::textEntityTypeBold &) {},
+              [&](const td::td_api::textEntityTypeItalic &) {},
+              [&](const td::td_api::textEntityTypeUnderline &) {
+                auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
+                add_search_pattern(us.str());
+              },
+              [&](const td::td_api::textEntityTypeStrikethrough &) {},
+              [&](const td::td_api::textEntityTypeSpoiler &) {}, [&](const td::td_api::textEntityTypeCode &) {},
+              [&](const td::td_api::textEntityTypePre &) {}, [&](const td::td_api::textEntityTypePreCode &) {},
+              [&](const td::td_api::textEntityTypeBlockQuote &e) {},
+              [&](const td::td_api::textEntityTypeExpandableBlockQuote &) {},
+              [&](const td::td_api::textEntityTypeTextUrl &e) { add_link(e.url_); },
+              [&](const td::td_api::textEntityTypeMentionName &e) {
+                auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
+                add_user_custom("mentioned chat", us, e.user_id_);
+              },
+              [&](const td::td_api::textEntityTypeCustomEmoji &) {},
+              [&](const td::td_api::textEntityTypeMediaTimestamp &) {}));
+    }
+  };
+
+  if (el->message->content_) {
+    if (el->message->content_->get_id() == td::td_api::messageText::ID) {
+      auto &content = static_cast<td::td_api::messageText &>(*el->message->content_);
+      process_formatted_text(*content.text_);
+    } else if (el->message->content_->get_id() == td::td_api::messagePhoto::ID) {
+      auto &content = static_cast<td::td_api::messagePhoto &>(*el->message->content_);
+      if (content.caption_) {
+        process_formatted_text(*content.caption_);
+      }
+    }
+  }
+
+  auto selection_window = std::make_shared<windows::SelectionWindow>(std::move(elements), nullptr);
+  auto boxed_window =
+      std::make_shared<windows::BorderedWindow>(selection_window, windows::BorderedWindow::BorderType::Double);
+
+  class Callback : public windows::SelectionWindow::Callback {
+   public:
+    Callback(Tdcurses *curses, std::shared_ptr<windows::Window> window) : curses_(curses), window_(std::move(window)) {
+    }
+
+    void on_end() override {
+      curses_->del_popup_window(window_.get());
+    }
+
+    void on_abort() override {
+      curses_->del_popup_window(window_.get());
+    }
+
+   private:
+    Tdcurses *curses_;
+    std::shared_ptr<windows::Window> window_;
+  };
+
+  auto callback = std::make_unique<Callback>(root(), boxed_window);
+  selection_window->set_callback(std::move(callback));
+  root()->add_popup_window(boxed_window, 2);
+}
+
 void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   set_need_refresh();
   if (info->type == TICKIT_KEYEV_KEY) {
     if (!strcmp(info->str, "Escape")) {
       set_search_pattern("");
+    }
+    if (!strcmp(info->str, "Enter")) {
+      show_message_actions();
+      return;
     }
   } else {
     if (!strcmp(info->str, " ")) {
@@ -64,16 +346,7 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
       root()->open_compose_window();
       return;
     } else if (!strcmp(info->str, "I")) {
-      auto cur_element = get_active_element();
-      if (!cur_element) {
-        root()->show_chat_info_window(chat_id_);
-      } else {
-        auto el = static_cast<Element *>(cur_element.get());
-        td::td_api::downcast_call(
-            *el->message->sender_id_,
-            td::overloaded([&](td::td_api::messageSenderUser &user) { root()->show_user_info_window(user.user_id_); },
-                           [&](td::td_api::messageSenderChat &chat) { root()->show_chat_info_window(chat.chat_id_); }));
-      }
+      show_message_actions();
       return;
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);

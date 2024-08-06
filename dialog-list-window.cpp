@@ -25,6 +25,14 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRend
     out << "  ";
   }
   out << title();
+  if (chat_type() == ChatType::User) {
+    auto user = ChatManager::instance->get_user(this->chat_base_id());
+    if (user) {
+      auto &emoji_status = user->emoji_status();
+      if (emoji_status && emoji_status->custom_emoji_id_) {
+      }
+    }
+  }
   if (is_pinned(dialog_list_window.cur_sublist())) {
     out << "🔒";
   }

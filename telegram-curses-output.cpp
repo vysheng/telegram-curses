@@ -55,6 +55,13 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     out << "fwd " << message.forward_info_ << "\n";
   }
 
+  if (message.via_bot_user_id_) {
+    auto user = ChatManager::instance->get_user(message.via_bot_user_id_);
+    if (user) {
+      out << "via bot " << user << "\n";
+    }
+  }
+
   if (message.reply_to_) {
     td::td_api::downcast_call(const_cast<td::td_api::MessageReplyTo &>(*message.reply_to_),
                               td::overloaded(

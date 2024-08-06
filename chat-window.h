@@ -125,6 +125,8 @@ class ChatWindow
     return search_pattern_;
   }
 
+  void show_message_actions();
+
  private:
   td::int64 chat_id_;
   std::map<td::int64, std::shared_ptr<Element>> messages_;

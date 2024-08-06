@@ -568,6 +568,10 @@ class User {
     user_->status_ = std::move(upd.status_);
   }
 
+  const auto &emoji_status() const {
+    return user_->emoji_status_;
+  }
+
  private:
   //user id:int53 first_name:string last_name:string username:string phone_number:string status:UserStatus profile_photo:profilePhoto is_contact:Bool is_mutual_contact:Bool is_verified:Bool is_support:Bool restriction_reason:string is_scam:Bool is_fake:Bool have_access:Bool type:UserType language_code:string = User;
   td::tl_object_ptr<td::td_api::user> user_;
