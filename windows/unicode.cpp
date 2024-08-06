@@ -86,12 +86,18 @@ void override_unicode_width(std::vector<UnicodeWidthBlock> blocks) {
   override_blocks = std::move(blocks);
 }
 
+static bool is_regional_indicator(td::int32 value) {
+  return value >= 0x1f1e6 && value <= 0x1f1ff;
+}
+
 Graphem next_graphem(td::Slice data, size_t pos) {
   auto cur = data.ubegin() + pos;
   auto first = cur;
   auto last = data.uend();
   td::int32 cur_width = 0;
   td::int32 cur_codepoints = 0;
+  td::int32 base_codepoint = 0;
+  td::int32 graphems_cnt = 0;
   while (cur < last) {
     td::uint32 code;
     auto next = next_utf8(cur, last, code);
@@ -120,8 +126,17 @@ Graphem next_graphem(td::Slice data, size_t pos) {
         cur_width += width;
         cur_codepoints++;
         cur = next;
+        base_codepoint = code;
+        graphems_cnt++;
       } else {
-        break;
+        if (graphems_cnt == 1 && is_regional_indicator(base_codepoint) && is_regional_indicator(code)) {
+          graphems_cnt++;
+          cur_width = 2;
+          cur_codepoints++;
+          cur = next;
+        } else {
+          break;
+        }
       }
     }
   }
@@ -175,59 +190,44 @@ size_t tickit_utf8_ncountmore_override(const char *str_tr, size_t len, TickitStr
   TickitStringPos here = *pos;
   size_t start_bytes = pos->bytes;
 
-  const unsigned char *str = (const unsigned char *)str_tr;
-  const unsigned char *str_end = (len == (size_t)-1) ? nullptr : str + len;
-  str += pos->bytes;
-  auto str_start = str;
+  auto S = td::Slice(str_tr, len == (size_t)-1 ? strlen(str_tr) : len);
 
-  while (str < str_end && *str) {
-    td::uint32 cp;
-    str = next_utf8(str, str_end, cp);
-    if (cp == 0) {
-      return -2; /*invalid utf8 */
-    }
+  size_t cur_pos = start_bytes;
 
-    int width = my_wcwidth(cp);
-    /* Abort on C0 or C1 controls */
-    if (width < 0) {
+  while (cur_pos < S.size() && S[cur_pos] != 0) {
+    auto g = next_graphem(S, cur_pos);
+    if (g.width < 0) {
       if (!tickit_compatible) {
         *pos = here;
       }
       return -1;
     }
-    CHECK(width >= 0);
 
-    int is_grapheme = (width > 0) ? 1 : 0;
-    if (is_grapheme) {  // Commit on the previous grapheme
-      *pos = here;
-    }
+    CHECK(g.data.size() > 0);
 
-    if (width == 0 && cp == 0xFE0F && wide_emojis && width == 1) {
-      width += 1;
-    }
-
-    if (limit && limit->bytes != (size_t)-1 && start_bytes + (str - str_start) > limit->bytes) {
-      break;
-    }
-    if (limit && limit->codepoints != -1 && here.codepoints + 1 > limit->codepoints) {
-      break;
-    }
-    if (limit && limit->graphemes != -1 && here.graphemes + is_grapheme > limit->graphemes) {
-      break;
-    }
-    if (limit && limit->columns != -1 && here.columns + width > limit->columns) {
-      break;
-    }
-
-    here.bytes = start_bytes + (str - str_start);
-    here.codepoints += 1;
-    here.graphemes += is_grapheme;
-    here.columns += width;
-  }
-
-  if (str == str_end || *str == 0) {  // Commit on the final grapheme
     *pos = here;
+
+    if (limit && limit->bytes != (size_t)-1 && cur_pos + g.data.size() > limit->bytes) {
+      break;
+    }
+    if (limit && limit->codepoints != -1 && here.codepoints + g.unicode_codepoints > limit->codepoints) {
+      break;
+    }
+    if (limit && limit->graphemes != -1 && here.graphemes + 1 > limit->graphemes) {
+      break;
+    }
+    if (limit && limit->columns != -1 && here.columns + g.width > limit->columns) {
+      break;
+    }
+
+    cur_pos += g.data.size();
+    here.bytes = cur_pos;
+    here.codepoints += g.unicode_codepoints;
+    here.graphemes += 1;
+    here.columns += g.width;
   }
+
+  *pos = here;
 
   return pos->bytes - start_bytes;
 }
