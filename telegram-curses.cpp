@@ -1944,6 +1944,13 @@ void Tdcurses::open_chat(td::int64 chat_id) {
   update_status_line();
 }
 
+void Tdcurses::seek_chat(td::int64 chat_id, td::int64 message_id) {
+  if (chat_window_ && chat_window_->chat_id() == chat_id) {
+    chat_window_->seek(chat_id, message_id);
+    return;
+  }
+}
+
 void Tdcurses::open_compose_window() {
   if (!chat_window_) {
     return;

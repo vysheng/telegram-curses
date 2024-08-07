@@ -92,6 +92,8 @@ class PadWindow : public Window {
 
   void adjust_cur_element(td::int32 lines);
 
+  void scroll_to_element(PadWindowElement *el, bool top);
+
   td::int32 min_width() override {
     return 5;
   }
@@ -125,6 +127,10 @@ class PadWindow : public Window {
     offset_from_window_top_ = 0;
     lines_after_cur_element_ = 0;
     lines_before_cur_element_ = 0;
+  }
+
+  void unglue() {
+    glued_to_ = GluedTo::None;
   }
 
  private:

@@ -133,6 +133,7 @@ class Tdcurses : public TdcursesInterface {
     screen_->del_popup_window(window);
   }
   void open_chat(td::int64 chat_id);
+  void seek_chat(td::int64 chat_id, td::int64 message_id);
   void open_compose_window();
   void close_compose_window();
 

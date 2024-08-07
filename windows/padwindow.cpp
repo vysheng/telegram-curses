@@ -441,6 +441,37 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   }
 }
 
+void PadWindow::scroll_to_element(PadWindowElement *elptr, bool top) {
+  auto it = elements_.find(elptr);
+  if (it == elements_.end()) {
+    return;
+  }
+  auto el = it->second.get();
+  cur_element_ = el;
+  offset_from_window_top_ = 0;
+  offset_in_cur_element_ = 0;
+  lines_before_cur_element_ = 0;
+  lines_after_cur_element_ = 0;
+  for (auto &e : elements_) {
+    if (e.first->is_less(*elptr)) {
+      lines_before_cur_element_ += e.second->height;
+    } else if (elptr->is_less(*e.first)) {
+      lines_after_cur_element_ += e.second->height;
+    }
+  }
+
+  glued_to_ = GluedTo::None;
+  adjust_cur_element(0);
+  set_need_refresh();
+
+  if (lines_before_cur_element_ < 100) {
+    request_top_elements();
+  }
+  if (lines_after_cur_element_ < 100) {
+    request_bottom_elements();
+  }
+}
+
 void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                        TickitCursorShape &cursor_shape, bool force) {
   cursor_x = 0;

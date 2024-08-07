@@ -14,6 +14,7 @@
 #include <limits>
 #include <memory>
 #include <tuple>
+#include <memory>
 #include <vector>
 #include <unistd.h>
 #include "td/utils/utf8.h"
@@ -188,6 +189,19 @@ void ChatWindow::show_message_actions() {
     }
   };
 
+  auto add_message = [&](const std::string &prefix, td::int64 message_id, const td::td_api::message *message) {
+    Outputter out;
+    out << "go to " << prefix << Outputter::FgColor{Color::Navy} << " message" << Outputter::FgColor{Color::Revert};
+    if (message) {
+      out << " " << *message->content_;
+    }
+    elements.emplace_back(out.as_str(), out.markup(), [curses = root(), chat_id = chat_id_, message_id]() {
+      curses->seek_chat(chat_id, message_id);
+    });
+  };
+
+  add_message("current", el->message->id_, el->message.get());
+
   if (el->message->is_outgoing_) {
     add_chat("destination", chat_id_);
   } else {
@@ -199,6 +213,19 @@ void ChatWindow::show_message_actions() {
     }
   }
 
+  if (el->message->reply_to_) {
+    td::td_api::downcast_call(*el->message->reply_to_,
+                              td::overloaded(
+                                  [&](td::td_api::messageReplyToMessage &info) {
+                                    if (info.chat_id_ == chat_id_) {
+                                      auto it = messages_.find(info.message_id_);
+                                      add_message("replied", info.message_id_,
+                                                  (it == messages_.end()) ? nullptr : it->second->message.get());
+                                    }
+                                  },
+                                  [&](td::td_api::messageReplyToStory &info) {}));
+  }
+
   if (el->message->forward_info_ && el->message->forward_info_->origin_) {
     td::td_api::downcast_call(
         *el->message->forward_info_->origin_,
@@ -206,7 +233,7 @@ void ChatWindow::show_message_actions() {
             [&](td::td_api::messageOriginUser &sender) { add_user("forward source", sender.sender_user_id_); },
             [&](td::td_api::messageOriginChat &sender) { add_chat("forward source", sender.sender_chat_id_); },
             [&](td::td_api::messageOriginChannel &sender) { add_chat("forward source", sender.chat_id_); },
-            [&](auto &) {}));
+            [&](td::td_api::messageOriginHiddenUser &sender) {}));
   }
 
   if (el->message->via_bot_user_id_) {
@@ -382,7 +409,7 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
   running_req_bottom_ = true;
   auto m = messages_.rbegin()->first;
   if (search_pattern_.size() == 0) {
-    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, -10, 10, false);
+    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, -10, 11, false);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
       received_bottom_elements(std::move(R));
     });
@@ -390,7 +417,7 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
     //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
     auto req = td::make_tl_object<td::td_api::searchChatMessages>(
         chat_id_, search_pattern_, /* sender_id */ nullptr,
-        /* from_message_id */ message_id ?: m, /* offset */ -10, /* limit */ 10,
+        /* from_message_id */ message_id ?: m, /* offset */ -10, /* limit */ 11,
         /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
       received_bottom_search_elements(std::move(R));
@@ -750,7 +777,6 @@ void ChatWindow::set_search_pattern(std::string pattern) {
     return;
   }
   change_unique_id();
-  messages_.clear();
   file_id_2_messages_.clear();
   search_pattern_ = std::move(pattern);
   running_req_top_ = false;
@@ -758,12 +784,38 @@ void ChatWindow::set_search_pattern(std::string pattern) {
   is_completed_top_ = false;
   is_completed_bottom_ = false;
 
+  std::shared_ptr<Element> cur;
+  if (search_pattern_ == "") {
+    cur = std::static_pointer_cast<Element>(get_active_element());
+  }
+
   PadWindow::clear();
+  messages_.clear();
+
+  if (cur) {
+    messages_.emplace(cur->message->id_, cur);
+    add_element(cur);
+    unglue();
+  }
 
   set_need_refresh();
   request_top_elements_ex(0);
+  if (cur) {
+    request_bottom_elements_ex(0);
+  }
 
   root()->update_status_line();
+}
+
+void ChatWindow::seek(td::int64 chat_id, td::int64 message_id) {
+  if (chat_id_ != chat_id) {
+    return;
+  }
+  auto it = messages_.find(message_id);
+  if (it != messages_.end()) {
+    scroll_to_element(it->second.get(), true);
+    set_search_pattern("");
+  }
 }
 
 }  // namespace tdcurses
