@@ -58,7 +58,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
   if (message.via_bot_user_id_) {
     auto user = ChatManager::instance->get_user(message.via_bot_user_id_);
     if (user) {
-      out << "via bot " << user << "\n";
+      out << "via bot " << Outputter::FgColor{Color::Red} << user << Outputter::FgColor{Color::Revert} << "\n";
     }
   }
 
@@ -113,7 +113,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageForwardInfo &fwd_info) {
-  return out << fwd_info.origin_ << " " << Outputter::Date{fwd_info.date_};
+  return out << Outputter::FgColor{Color::Red} << fwd_info.origin_ << Outputter::FgColor{Color::Revert} << " "
+             << Outputter::Date{fwd_info.date_};
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageOriginUser &fwd_info) {

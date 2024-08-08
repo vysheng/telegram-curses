@@ -615,12 +615,72 @@ class Supergroup {
   auto group_id() const {
     return group_->id_;
   }
-  auto member_count() const {
-    return group_->member_count_;
+  const std::string &username() const {
+    if (!group_->usernames_) {
+      static const std::string empty;
+      return empty;
+    }
+    return group_->usernames_->editable_username_;
+    //return user_->username_;
+  }
+  auto date() const {
+    return group_->date_;
   }
   const auto &status() const {
     return group_->status_;
   }
+  auto member_count() const {
+    return group_->member_count_;
+  }
+  auto boost_leven() const {
+    return group_->boost_level_;
+  }
+  auto has_location() const {
+    return group_->has_location_;
+  }
+  auto has_linked_chat() const {
+    return group_->has_linked_chat_;
+  }
+  auto sign_messages() const {
+    return group_->sign_messages_;
+  }
+  auto join_to_send_messages() const {
+    return group_->join_to_send_messages_;
+  }
+  auto join_by_request() const {
+    return group_->join_by_request_;
+  }
+  auto is_slow_mode_enabled() const {
+    return group_->is_slow_mode_enabled_;
+  }
+  bool is_channel() const {
+    return group_->is_channel_;
+  }
+  auto is_broadcast_group() const {
+    return group_->is_broadcast_group_;
+  }
+  auto is_forum() const {
+    return group_->is_forum_;
+  }
+  auto is_verified() const {
+    return group_->is_verified_;
+  }
+  const auto &restriction_reason() const {
+    return group_->restriction_reason_;
+  }
+  auto is_scam() const {
+    return group_->is_scam_;
+  }
+  auto is_fake() const {
+    return group_->is_fake_;
+  }
+  auto has_active_stories() const {
+    return group_->has_active_stories_;
+  }
+  auto has_unread_active_stories() const {
+    return group_->has_unread_active_stories_;
+  }
+
   void full_update(td::tl_object_ptr<td::td_api::supergroup> group) {
     group_ = std::move(group);
   }
@@ -666,18 +726,34 @@ class ChatManager {
       return nullptr;
     }
   }
-  std::shared_ptr<User> get_user(td::int64 chat_id) {
-    auto it = users_.find(chat_id);
+  std::shared_ptr<User> get_user(td::int64 user_id) {
+    auto it = users_.find(user_id);
     if (it != users_.end()) {
       return it->second;
     } else {
       return nullptr;
     }
   }
-  std::shared_ptr<BasicGroup> get_basic_group(td::int64 chat_id) {
-    auto it = basic_groups_.find(chat_id);
+  std::shared_ptr<BasicGroup> get_basic_group(td::int64 basic_group_id) {
+    auto it = basic_groups_.find(basic_group_id);
     if (it != basic_groups_.end()) {
       return it->second;
+    } else {
+      return nullptr;
+    }
+  }
+  std::shared_ptr<Supergroup> get_supergroup(td::int64 supergroup_id) {
+    auto it = supergroups_.find(supergroup_id);
+    if (it != supergroups_.end()) {
+      return it->second->is_channel() ? nullptr : it->second;
+    } else {
+      return nullptr;
+    }
+  }
+  std::shared_ptr<Supergroup> get_channel(td::int64 channel_id) {
+    auto it = supergroups_.find(channel_id);
+    if (it != supergroups_.end()) {
+      return it->second->is_channel() ? it->second : nullptr;
     } else {
       return nullptr;
     }
@@ -716,6 +792,13 @@ class ChatManager {
     }
   }
   void process_update(td::td_api::updateSupergroup &upd) {
+    auto it = supergroups_.find(upd.supergroup_->id_);
+    if (it != supergroups_.end()) {
+      it->second->full_update(std::move(upd.supergroup_));
+    } else {
+      auto supergroup = std::make_shared<Supergroup>(std::move(upd.supergroup_));
+      supergroups_.emplace(supergroup->group_id(), std::move(supergroup));
+    }
   }
   void process_update(td::td_api::updateSecretChat &upd) {
   }
@@ -739,6 +822,7 @@ class ChatManager {
   std::map<td::int64, std::shared_ptr<Chat>> chats_;
   std::map<td::int64, std::shared_ptr<User>> users_;
   std::map<td::int64, std::shared_ptr<BasicGroup>> basic_groups_;
+  std::map<td::int64, std::shared_ptr<Supergroup>> supergroups_;
 };
 
 }  // namespace tdcurses

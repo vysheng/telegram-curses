@@ -181,7 +181,7 @@ void ViewWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &
   tickit_renderbuffer_save(rb);
   tickit_renderbuffer_translate(rb, -offset_from_top_, 0);
   auto h2 = TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width(), text_, 0, markup_, false, false);
-  CHECK(h == h2);
+  LOG_CHECK(h == h2) << h << " " << h2;
   tickit_renderbuffer_restore(rb);
   cursor_y = 0;
   cursor_x = 0;

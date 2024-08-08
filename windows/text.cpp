@@ -243,7 +243,7 @@ class Builder {
     cur_line_pos_ = 0;
   }
   void add_utf8(td::Slice data, td::int32 width, bool has_cursor) {
-    if (cur_line_pos_ + width > width_) {
+    if (cur_line_pos_ + (is_password_ ? 1 : width) > width_) {
       if (nolb_) {
         return;
       }
@@ -253,7 +253,9 @@ class Builder {
     if (!is_password_) {
       if (rb_) {
         tickit_renderbuffer_setpen(rb_, pen_);
-        tickit_renderbuffer_textn_at(rb_, cur_line_, cur_line_pos_, data.data(), data.size());
+        if (width > 0) {
+          tickit_renderbuffer_textn_at(rb_, cur_line_, cur_line_pos_, data.data(), data.size());
+        }
       }
       cur_line_pos_ += width;
     } else {
@@ -368,19 +370,17 @@ td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int3
   size_t markup_pos = 0;
   std::vector<MarkupElement> rev_markup;
   size_t rev_markup_pos = 0;
-  if (rb) {
-    for (auto &m : input_markup) {
-      markup.push_back(m);
-    }
-    if (is_selected) {
-      markup.push_back(MarkupElement::reverse(0, text.size() + 1));
-    }
-    rev_markup = markup;
-    std::sort(markup.begin(), markup.end(),
-              [&](const MarkupElement &l, const MarkupElement &r) { return l.first_pos < r.first_pos; });
-    std::sort(rev_markup.begin(), rev_markup.end(),
-              [&](const MarkupElement &l, const MarkupElement &r) { return l.last_pos < r.last_pos; });
+  for (auto &m : input_markup) {
+    markup.push_back(m);
   }
+  if (is_selected) {
+    markup.push_back(MarkupElement::reverse(0, text.size() + 1));
+  }
+  rev_markup = markup;
+  std::sort(markup.begin(), markup.end(),
+            [&](const MarkupElement &l, const MarkupElement &r) { return l.first_pos < r.first_pos; });
+  std::sort(rev_markup.begin(), rev_markup.end(),
+            [&](const MarkupElement &l, const MarkupElement &r) { return l.last_pos < r.last_pos; });
 
   Builder builder(rb, width, is_password);
 

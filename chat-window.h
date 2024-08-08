@@ -120,6 +120,15 @@ class ChatWindow
     }
   }
 
+  const td::td_api::message *get_message_as_message(td::int64 message_id) {
+    auto it = messages_.find(message_id);
+    if (it != messages_.end()) {
+      return it->second->message.get();
+    } else {
+      return nullptr;
+    }
+  }
+
   void set_search_pattern(std::string pattern);
   const auto &search_pattern() const {
     return search_pattern_;

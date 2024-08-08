@@ -7,6 +7,7 @@
 #include "td/utils/Status.h"
 #include "td/utils/overloaded.h"
 #include "telegram-curses-output.h"
+#include "windows/editorwindow.h"
 #include "windows/markup.h"
 #include "windows/text.h"
 #include "windows/selection-window.h"
@@ -18,6 +19,7 @@
 #include <vector>
 #include <unistd.h>
 #include "td/utils/utf8.h"
+#include "debug-info-window.hpp"
 
 namespace tdcurses {
 
@@ -200,7 +202,48 @@ void ChatWindow::show_message_actions() {
     });
   };
 
+  auto add_message_debug = [&](const std::string &prefix, td::int64 message_id, const td::td_api::message *message) {
+    Outputter out;
+    out << "debug info of " << prefix << Outputter::FgColor{Color::Navy} << " message"
+        << Outputter::FgColor{Color::Revert};
+    if (message) {
+      out << " " << *message->content_;
+    }
+    elements.emplace_back(out.as_str(), out.markup(), [curses = root(), chat_id = chat_id_, message_id]() {
+      auto chat = curses->chat_window();
+      if (!chat || chat->chat_id() != chat_id) {
+        return;
+      }
+      const auto &message = chat->get_message_as_message(message_id);
+      if (!message) {
+        return;
+      }
+      auto info_window = std::make_shared<DebugInfoWindow>();
+      auto bordered_window =
+          std::make_shared<windows::BorderedWindow>(info_window, windows::BorderedWindow::BorderType::Double);
+      class Callback : public windows::ViewWindow::Callback {
+       public:
+        Callback(Tdcurses *root, std::shared_ptr<windows::Window> window) : root_(root), window_(std::move(window)) {
+        }
+        void on_answer(windows::ViewWindow *window) override {
+          root_->del_popup_window(window_.get());
+        }
+        void on_abort(windows::ViewWindow *window) override {
+          root_->del_popup_window(window_.get());
+        }
+
+       private:
+        Tdcurses *root_;
+        std::shared_ptr<windows::Window> window_;
+      };
+      info_window->set_callback(std::make_unique<Callback>(curses, bordered_window));
+      info_window->create_text(*message);
+      curses->add_popup_window(bordered_window, 1);
+    });
+  };
+
   add_message("current", el->message->id_, el->message.get());
+  add_message_debug("current", el->message->id_, el->message.get());
 
   if (el->message->is_outgoing_) {
     add_chat("destination", chat_id_);

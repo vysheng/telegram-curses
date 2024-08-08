@@ -116,6 +116,11 @@ Graphem next_graphem(td::Slice data, size_t pos) {
         break;
       }
     } else if (width == 0) {
+      if (code == 0x200b /* ZWSP */) {
+        if (!is_first) {
+          break;
+        }
+      }
       cur_codepoints++;
       if (wide_emojis && code == 0xFE0F && cur_width == 1) {
         cur_width++;
