@@ -67,7 +67,7 @@ class ChatInfoWindow
   }
 
   td::int32 best_height() override {
-    return 10;
+    return 40;
   }
 
   auto chat() const {
