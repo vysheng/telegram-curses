@@ -28,8 +28,8 @@ struct MarkupElement {
   int attr;
   td::int32 arg;
 
-  void install(TickitPen *pen);
-  void uninstall(TickitPen *pen);
+  void install(TickitPen *pen) const;
+  void uninstall(TickitPen *pen) const;
 };
 
 }  // namespace windows

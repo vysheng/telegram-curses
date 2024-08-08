@@ -42,7 +42,7 @@ MarkupElement MarkupElement::blink(size_t first_pos, size_t last_pos) {
   return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BLINK, 1);
 }
 
-void MarkupElement::install(TickitPen *pen) {
+void MarkupElement::install(TickitPen *pen) const {
   switch (attr) {
     case Attr::Tickit::TICKIT_PEN_FG:
     case Attr::Tickit::TICKIT_PEN_BG:
@@ -64,7 +64,7 @@ void MarkupElement::install(TickitPen *pen) {
   }
 }
 
-void MarkupElement::uninstall(TickitPen *pen) {
+void MarkupElement::uninstall(TickitPen *pen) const {
   switch (attr) {
     case Attr::Tickit::TICKIT_PEN_FG:
     case Attr::Tickit::TICKIT_PEN_BG:
@@ -321,7 +321,7 @@ class Builder {
     }
   }
 
-  void add_markup(MarkupElement &me) {
+  void add_markup(const MarkupElement &me) {
     if (me.attr == MarkupElement::Attr::NoLB) {
       nolb_++;
     } else if (pen_) {
@@ -330,7 +330,7 @@ class Builder {
     }
   }
 
-  void del_markup(MarkupElement &me) {
+  void del_markup(const MarkupElement &me) {
     if (me.attr == MarkupElement::Attr::NoLB) {
       nolb_--;
     } else if (pen_) {
@@ -366,31 +366,40 @@ class Builder {
 td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                            TickitCursorShape &cursor_shape, td::int32 width, td::Slice text, size_t pos,
                            const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password) {
-  std::vector<MarkupElement> markup;
-  size_t markup_pos = 0;
-  std::vector<MarkupElement> rev_markup;
-  size_t rev_markup_pos = 0;
+  struct Action {
+    Action(size_t pos, bool enable, const MarkupElement *el) : pos(pos), enable(enable), el(el) {
+    }
+    size_t pos;
+    bool enable;
+    const MarkupElement *el;
+    bool operator<(const Action &other) const {
+      return pos < other.pos || (pos == other.pos && !enable && other.enable);
+    }
+  };
+  std::vector<Action> actions;
   for (auto &m : input_markup) {
-    markup.push_back(m);
+    actions.emplace_back(m.first_pos, true, &m);
+    actions.emplace_back(m.last_pos, false, &m);
   }
+  auto reverse_markup = MarkupElement::reverse(0, text.size() + 1);
   if (is_selected) {
-    markup.push_back(MarkupElement::reverse(0, text.size() + 1));
+    actions.emplace_back(0, true, &reverse_markup);
+    actions.emplace_back(text.size(), false, &reverse_markup);
   }
-  rev_markup = markup;
-  std::sort(markup.begin(), markup.end(),
-            [&](const MarkupElement &l, const MarkupElement &r) { return l.first_pos < r.first_pos; });
-  std::sort(rev_markup.begin(), rev_markup.end(),
-            [&](const MarkupElement &l, const MarkupElement &r) { return l.last_pos < r.last_pos; });
+
+  std::sort(actions.begin(), actions.end());
+  size_t actions_pos = 0;
 
   Builder builder(rb, width, is_password);
 
   size_t cur_pos = 0;
   while (cur_pos <= text.size()) {
-    while (rev_markup_pos < rev_markup.size() && rev_markup[rev_markup_pos].last_pos <= cur_pos) {
-      builder.del_markup(rev_markup[rev_markup_pos++]);
-    }
-    while (markup_pos < markup.size() && markup[markup_pos].first_pos <= cur_pos) {
-      builder.add_markup(markup[markup_pos++]);
+    while (actions_pos < actions.size() && actions[actions_pos].pos <= cur_pos) {
+      if (actions[actions_pos].enable) {
+        builder.add_markup(*actions[actions_pos++].el);
+      } else {
+        builder.del_markup(*actions[actions_pos++].el);
+      }
     }
     if (cur_pos == text.size()) {
       break;
