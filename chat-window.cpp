@@ -242,6 +242,27 @@ void ChatWindow::show_message_actions() {
     });
   };
 
+  auto add_poll_option = [&](td::int64 message_id, const td::td_api::formattedText &text, bool is_selected,
+                             td::int32 idx) {
+    Outputter out;
+    if (is_selected) {
+      out << "retract vote from ";
+    } else {
+      out << "vote for ";
+    }
+    out << text;
+    elements.emplace_back(
+        out.as_str(), out.markup(), [idx, is_selected, chat_id = chat_id_, message_id, self = this]() {
+          td::tl_object_ptr<td::td_api::setPollAnswer> req;
+          if (is_selected) {
+            req = td::make_tl_object<td::td_api::setPollAnswer>(chat_id, message_id, std::vector<td::int32>());
+          } else {
+            req = td::make_tl_object<td::td_api::setPollAnswer>(chat_id, message_id, std::vector<td::int32>{idx});
+          }
+          self->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
+        });
+  };
+
   add_message("current", el->message->id_, el->message.get());
   add_message_debug("current", el->message->id_, el->message.get());
 
@@ -283,7 +304,7 @@ void ChatWindow::show_message_actions() {
     add_user("via bot ", el->message->via_bot_user_id_);
   }
 
-  auto process_formatted_text = [&](td::td_api::formattedText &content) {
+  auto process_formatted_text = [&](const td::td_api::formattedText &content) {
     auto &text = content.text_;
     auto get_text_slice = [&](size_t from, size_t to) -> td::Slice {
       if (from >= to) {
@@ -312,7 +333,7 @@ void ChatWindow::show_message_actions() {
 
     for (auto &ent : content.entities_) {
       td::td_api::downcast_call(
-          *ent->type_,
+          const_cast<td::td_api::TextEntityType &>(*ent->type_),
           td::overloaded(
               [&](const td::td_api::textEntityTypeMention &e) {
                 auto us = get_text_slice(ent->offset_, ent->offset_ + ent->length_);
@@ -355,15 +376,80 @@ void ChatWindow::show_message_actions() {
   };
 
   if (el->message->content_) {
-    if (el->message->content_->get_id() == td::td_api::messageText::ID) {
-      auto &content = static_cast<td::td_api::messageText &>(*el->message->content_);
-      process_formatted_text(*content.text_);
-    } else if (el->message->content_->get_id() == td::td_api::messagePhoto::ID) {
-      auto &content = static_cast<td::td_api::messagePhoto &>(*el->message->content_);
-      if (content.caption_) {
-        process_formatted_text(*content.caption_);
-      }
-    }
+    td::td_api::downcast_call(
+        *el->message->content_,
+        td::overloaded(
+            [&](const td::td_api::messageText &content) { process_formatted_text(*content.text_); },
+            [&](const td::td_api::messageAnimation &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messageAudio &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messageDocument &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messagePaidMedia &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messagePhoto &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messageSticker &content) {},
+            [&](const td::td_api::messageVideo &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messageVideoNote &content) {}, [&](const td::td_api::messageVoiceNote &content) {},
+            [&](const td::td_api::messageExpiredPhoto &content) {},
+            [&](const td::td_api::messageExpiredVideo &content) {},
+            [&](const td::td_api::messageExpiredVideoNote &content) {},
+            [&](const td::td_api::messageExpiredVoiceNote &content) {},
+            [&](const td::td_api::messageLocation &content) {}, [&](const td::td_api::messageVenue &content) {},
+            [&](const td::td_api::messageContact &content) {}, [&](const td::td_api::messageAnimatedEmoji &content) {},
+            [&](const td::td_api::messageDice &content) {}, [&](const td::td_api::messageGame &content) {},
+            [&](const td::td_api::messagePoll &content) {
+              td::int32 idx = 0;
+              for (const auto &opt : content.poll_->options_) {
+                add_poll_option(el->message->id_, *opt->text_, opt->is_chosen_ || opt->is_being_chosen_, idx++);
+              }
+            },
+            [&](const td::td_api::messageStory &content) {}, [&](const td::td_api::messageInvoice &content) {},
+            [&](const td::td_api::messageCall &content) {},
+            [&](const td::td_api::messageVideoChatScheduled &content) {},
+            [&](const td::td_api::messageVideoChatStarted &content) {},
+            [&](const td::td_api::messageVideoChatEnded &content) {},
+            [&](const td::td_api::messageInviteVideoChatParticipants &content) {},
+            [&](const td::td_api::messageBasicGroupChatCreate &content) {},
+            [&](const td::td_api::messageSupergroupChatCreate &content) {},
+            [&](const td::td_api::messageChatChangeTitle &content) {},
+            [&](const td::td_api::messageChatChangePhoto &content) {},
+            [&](const td::td_api::messageChatDeletePhoto &content) {},
+            [&](const td::td_api::messageChatAddMembers &content) {},
+            [&](const td::td_api::messageChatJoinByLink &content) {},
+            [&](const td::td_api::messageChatJoinByRequest &content) {},
+            [&](const td::td_api::messageChatDeleteMember &content) {},
+            [&](const td::td_api::messageChatUpgradeTo &content) {},
+            [&](const td::td_api::messageChatUpgradeFrom &content) {},
+            [&](const td::td_api::messagePinMessage &content) {},
+            [&](const td::td_api::messageScreenshotTaken &content) {},
+            [&](const td::td_api::messageChatSetBackground &content) {},
+            [&](const td::td_api::messageChatSetTheme &content) {},
+            [&](const td::td_api::messageChatSetMessageAutoDeleteTime &content) {},
+            [&](const td::td_api::messageChatBoost &content) {},
+            [&](const td::td_api::messageForumTopicCreated &content) {},
+            [&](const td::td_api::messageForumTopicEdited &content) {},
+            [&](const td::td_api::messageForumTopicIsClosedToggled &content) {},
+            [&](const td::td_api::messageForumTopicIsHiddenToggled &content) {},
+            [&](const td::td_api::messageSuggestProfilePhoto &content) {},
+            [&](const td::td_api::messageCustomServiceAction &content) {},
+            [&](const td::td_api::messageGameScore &content) {},
+            [&](const td::td_api::messagePaymentSuccessful &content) {},
+            [&](const td::td_api::messagePaymentSuccessfulBot &content) {},
+            [&](const td::td_api::messagePaymentRefunded &content) {},
+            [&](const td::td_api::messageGiftedPremium &content) {},
+            [&](const td::td_api::messagePremiumGiftCode &content) {},
+            [&](const td::td_api::messagePremiumGiveawayCreated &content) {},
+            [&](const td::td_api::messagePremiumGiveaway &content) {},
+            [&](const td::td_api::messagePremiumGiveawayCompleted &content) {},
+            [&](const td::td_api::messagePremiumGiveawayWinners &content) {},
+            [&](const td::td_api::messageGiftedStars &content) {},
+            [&](const td::td_api::messageContactRegistered &content) {},
+            [&](const td::td_api::messageUsersShared &content) {}, [&](const td::td_api::messageChatShared &content) {},
+            [&](const td::td_api::messageBotWriteAccessAllowed &content) {},
+            [&](const td::td_api::messageWebAppDataSent &content) {},
+            [&](const td::td_api::messageWebAppDataReceived &content) {},
+            [&](const td::td_api::messagePassportDataSent &content) {},
+            [&](const td::td_api::messagePassportDataReceived &content) {},
+            [&](const td::td_api::messageProximityAlertTriggered &content) {},
+            [&](const td::td_api::messageUnsupported &content) {}));
   }
 
   auto selection_window = std::make_shared<windows::SelectionWindow>(std::move(elements), nullptr);
