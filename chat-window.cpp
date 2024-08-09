@@ -24,17 +24,17 @@
 namespace tdcurses {
 
 void ChatWindow::send_open() {
-  auto req = td::make_tl_object<td::td_api::openChat>(chat_id_);
+  auto req = td::make_tl_object<td::td_api::openChat>(main_chat_id());
   send_request(std::move(req), {});
 }
 
 void ChatWindow::send_close() {
-  auto req = td::make_tl_object<td::td_api::closeChat>(chat_id_);
+  auto req = td::make_tl_object<td::td_api::closeChat>(main_chat_id());
   send_request(std::move(req), {});
 }
 
 std::string ChatWindow::draft_message_text() {
-  auto C = ChatManager::instance->get_chat(chat_id_);
+  auto C = ChatManager::instance->get_chat(main_chat_id());
   if (!C) {
     return "";
   }
@@ -191,29 +191,24 @@ void ChatWindow::show_message_actions() {
     }
   };
 
-  auto add_message = [&](const std::string &prefix, td::int64 message_id, const td::td_api::message *message) {
+  auto add_message = [&](const std::string &prefix, MessageId message_id, const td::td_api::message *message) {
     Outputter out;
     out << "go to " << prefix << Outputter::FgColor{Color::Navy} << " message" << Outputter::FgColor{Color::Revert};
     if (message) {
       out << " " << *message->content_;
     }
-    elements.emplace_back(out.as_str(), out.markup(), [curses = root(), chat_id = chat_id_, message_id]() {
-      curses->seek_chat(chat_id, message_id);
-    });
+    elements.emplace_back(out.as_str(), out.markup(),
+                          [curses = root(), chat = this, message_id]() { chat->seek(message_id); });
   };
 
-  auto add_message_debug = [&](const std::string &prefix, td::int64 message_id, const td::td_api::message *message) {
+  auto add_message_debug = [&](const std::string &prefix, MessageId message_id, const td::td_api::message *message) {
     Outputter out;
     out << "debug info of " << prefix << Outputter::FgColor{Color::Navy} << " message"
         << Outputter::FgColor{Color::Revert};
     if (message) {
       out << " " << *message->content_;
     }
-    elements.emplace_back(out.as_str(), out.markup(), [curses = root(), chat_id = chat_id_, message_id]() {
-      auto chat = curses->chat_window();
-      if (!chat || chat->chat_id() != chat_id) {
-        return;
-      }
+    elements.emplace_back(out.as_str(), out.markup(), [curses = root(), chat = this, message_id]() {
       const auto &message = chat->get_message_as_message(message_id);
       if (!message) {
         return;
@@ -242,7 +237,7 @@ void ChatWindow::show_message_actions() {
     });
   };
 
-  auto add_poll_option = [&](td::int64 message_id, const td::td_api::formattedText &text, bool is_selected,
+  auto add_poll_option = [&](MessageId message_id, const td::td_api::formattedText &text, bool is_selected,
                              td::int32 idx) {
     Outputter out;
     if (is_selected) {
@@ -252,22 +247,26 @@ void ChatWindow::show_message_actions() {
     }
     out << text;
     elements.emplace_back(
-        out.as_str(), out.markup(), [idx, is_selected, chat_id = chat_id_, message_id, self = this]() {
+        out.as_str(), out.markup(),
+        [idx, is_selected, chat_id = generation_to_chat_[message_id.generation], message_id, self = this]() {
           td::tl_object_ptr<td::td_api::setPollAnswer> req;
           if (is_selected) {
-            req = td::make_tl_object<td::td_api::setPollAnswer>(chat_id, message_id, std::vector<td::int32>());
+            req =
+                td::make_tl_object<td::td_api::setPollAnswer>(chat_id, message_id.message_id, std::vector<td::int32>());
           } else {
-            req = td::make_tl_object<td::td_api::setPollAnswer>(chat_id, message_id, std::vector<td::int32>{idx});
+            req = td::make_tl_object<td::td_api::setPollAnswer>(chat_id, message_id.message_id,
+                                                                std::vector<td::int32>{idx});
           }
           self->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
         });
   };
 
-  add_message("current", el->message->id_, el->message.get());
-  add_message_debug("current", el->message->id_, el->message.get());
+  add_message("current", MessageId{el->message->id_, chat_to_generation_[el->message->chat_id_]}, el->message.get());
+  add_message_debug("current", MessageId{el->message->id_, chat_to_generation_[el->message->chat_id_]},
+                    el->message.get());
 
   if (el->message->is_outgoing_) {
-    add_chat("destination", chat_id_);
+    add_chat("destination", el->message->chat_id_);
   } else {
     if (el->message->sender_id_) {
       td::td_api::downcast_call(
@@ -281,10 +280,12 @@ void ChatWindow::show_message_actions() {
     td::td_api::downcast_call(*el->message->reply_to_,
                               td::overloaded(
                                   [&](td::td_api::messageReplyToMessage &info) {
-                                    if (info.chat_id_ == chat_id_) {
-                                      auto it = messages_.find(info.message_id_);
-                                      add_message("replied", info.message_id_,
-                                                  (it == messages_.end()) ? nullptr : it->second->message.get());
+                                    auto it = chat_to_generation_.find(info.chat_id_);
+                                    if (it != chat_to_generation_.end()) {
+                                      auto msg_id = MessageId{info.message_id_, it->second};
+                                      auto it2 = messages_.find(msg_id);
+                                      add_message("replied", msg_id,
+                                                  (it2 == messages_.end()) ? nullptr : it2->second->message.get());
                                     }
                                   },
                                   [&](td::td_api::messageReplyToStory &info) {}));
@@ -398,7 +399,8 @@ void ChatWindow::show_message_actions() {
             [&](const td::td_api::messagePoll &content) {
               td::int32 idx = 0;
               for (const auto &opt : content.poll_->options_) {
-                add_poll_option(el->message->id_, *opt->text_, opt->is_chosen_ || opt->is_being_chosen_, idx++);
+                add_poll_option(MessageId{el->message->id_, chat_to_generation_[el->message->chat_id_]}, *opt->text_,
+                                opt->is_chosen_ || opt->is_being_chosen_, idx++);
               }
             },
             [&](const td::td_api::messageStory &content) {}, [&](const td::td_api::messageInvoice &content) {},
@@ -514,8 +516,8 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     auto el = get_active_element();
     if (el) {
       auto &e = static_cast<Element &>(*el);
-      auto req = td::make_tl_object<td::td_api::viewMessages>(chat_id_, std::vector<td::int64>{e.message->id_}, nullptr,
-                                                              false);
+      auto req = td::make_tl_object<td::td_api::viewMessages>(e.message->chat_id_,
+                                                              std::vector<td::int64>{e.message->id_}, nullptr, false);
       send_request(std::move(req), {});
     }
   }
@@ -538,15 +540,16 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
   running_req_bottom_ = true;
   auto m = messages_.rbegin()->first;
   if (search_pattern_.size() == 0) {
-    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, m, -10, 11, false);
+    auto req =
+        td::make_tl_object<td::td_api::getChatHistory>(generation_to_chat_[m.generation], m.message_id, -10, 11, false);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
       received_bottom_elements(std::move(R));
     });
   } else {
     //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
     auto req = td::make_tl_object<td::td_api::searchChatMessages>(
-        chat_id_, search_pattern_, /* sender_id */ nullptr,
-        /* from_message_id */ message_id ?: m, /* offset */ -10, /* limit */ 11,
+        generation_to_chat_[m.generation], search_pattern_, /* sender_id */ nullptr,
+        /* from_message_id */ message_id ?: m.message_id, /* offset */ -10, /* limit */ 11,
         /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
       received_bottom_search_elements(std::move(R));
@@ -580,21 +583,41 @@ void ChatWindow::request_top_elements_ex(td::int32 message_id) {
     return;
   }
   running_req_top_ = true;
-  td::int64 m;
+  td::int64 m = std::numeric_limits<td::int64>::max();
+  td::int64 chat_id = main_chat_id();
   if (messages_.size() != 0) {
-    m = messages_.begin()->first;
-  } else {
-    m = std::numeric_limits<td::int64>::max();
-    is_completed_bottom_ = true;
+    auto &msg = messages_.begin()->second->message;
+    chat_id = msg->chat_id_;
+    m = msg->id_;
+    if (msg->content_->get_id() == td::td_api::messageChatUpgradeFrom::ID) {
+      auto content = static_cast<td::td_api::messageChatUpgradeFrom *>(msg->content_.get());
+      m = std::numeric_limits<td::int64>::max();
+      auto req0 = td::make_tl_object<td::td_api::createBasicGroupChat>(content->basic_group_id_, true);
+      send_request(std::move(req0), [&](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
+        if (R.is_error()) {
+          received_top_elements(R.move_as_error());
+          return;
+        }
+        auto chat = R.move_as_ok();
+        LOG(ERROR) << "received chat, chat_id=" << chat->id_;
+        auto req = td::make_tl_object<td::td_api::getChatHistory>(chat->id_, std::numeric_limits<td::int64>::max(), 0,
+                                                                  10, false);
+        send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+          LOG(ERROR) << "received answer chat";
+          received_top_elements(std::move(R));
+        });
+      });
+      return;
+    }
   }
   if (search_pattern_.size() == 0) {
-    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id_, message_id ?: m, 0, 10, false);
+    auto req = td::make_tl_object<td::td_api::getChatHistory>(chat_id, message_id ?: m, 0, 10, false);
     send_request(std::move(req),
                  [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) { received_top_elements(std::move(R)); });
   } else {
     //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
     auto req = td::make_tl_object<td::td_api::searchChatMessages>(
-        chat_id_, search_pattern_, /* sender_id */ nullptr,
+        chat_id, search_pattern_, /* sender_id */ nullptr,
         /* from_message_id */ message_id ?: m, /* offset */ 0, /* limit */ 10,
         /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
     send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
@@ -604,6 +627,8 @@ void ChatWindow::request_top_elements_ex(td::int32 message_id) {
 }
 void ChatWindow::received_top_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
   if (R.is_error()) {
+    LOG(ERROR) << "failed to received elements: " << R.move_as_error();
+    running_req_top_ = false;
     return;
   }
   CHECK(running_req_top_);
@@ -611,6 +636,7 @@ void ChatWindow::received_top_elements(td::Result<td::tl_object_ptr<td::td_api::
   R.ensure();
   auto res = R.move_as_ok();
   if (res->messages_.size() == 0) {
+    LOG(ERROR) << "received 0 messages, stopping";
     is_completed_top_ = true;
   }
   add_messages(std::move(res->messages_));
@@ -632,13 +658,13 @@ void ChatWindow::received_top_search_elements(td::Result<td::tl_object_ptr<td::t
 
 void ChatWindow::add_messages(std::vector<td::tl_object_ptr<td::td_api::message>> msgs) {
   for (auto &m : msgs) {
-    auto id = m->id_;
+    auto id = build_message_id(*m);
     auto it = messages_.find(id);
     if (it != messages_.end()) {
     } else {
-      auto el = std::make_shared<Element>(std::move(m));
+      auto el = std::make_shared<Element>(std::move(m), id.generation);
       messages_.emplace(id, el);
-      add_file_message_pair(el->message->id_, get_file_id(*el->message));
+      add_file_message_pair(id, get_file_id(*el->message));
       add_element(std::move(el));
     }
   }
@@ -651,13 +677,13 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
     return;
   }
   auto m = std::move(update.message_);
-  auto id = m->id_;
+  auto id = build_message_id(*m);
   auto it = messages_.find(id);
   if (it != messages_.end()) {
   } else {
-    auto el = std::make_shared<Element>(std::move(m));
+    auto el = std::make_shared<Element>(std::move(m), id.generation);
     messages_.emplace(id, el);
-    add_file_message_pair(el->message->id_, get_file_id(*el->message));
+    add_file_message_pair(id, get_file_id(*el->message));
     add_element(std::move(el));
   }
 }
@@ -671,16 +697,17 @@ void ChatWindow::process_update(td::td_api::updateMessageSendAcknowledged &updat
 //@description A message has been successfully sent @message Information about the sent message. Usually only the message identifier, date, and content are changed, but almost all other fields can also change @old_message_id The previous temporary message identifier
 //updateMessageSendSucceeded message:message old_message_id:int53 = Update;
 void ChatWindow::process_update(td::td_api::updateMessageSendSucceeded &update) {
-  auto it = messages_.find(update.old_message_id_);
+  auto new_id = build_message_id(*update.message_);
+  auto old_id = MessageId{update.old_message_id_, new_id.generation};
+  auto it = messages_.find(old_id);
   if (it != messages_.end()) {
-    del_file_message_pair(it->second->message->id_, get_file_id(*it->second->message));
+    del_file_message_pair(old_id, get_file_id(*it->second->message));
     delete_element(it->second.get());
     messages_.erase(it);
     auto m = std::move(update.message_);
-    auto id = m->id_;
-    auto el = std::make_shared<Element>(std::move(m));
-    messages_.emplace(id, el);
-    add_file_message_pair(el->message->id_, get_file_id(*el->message));
+    auto el = std::make_shared<Element>(std::move(m), new_id.generation);
+    messages_.emplace(new_id, el);
+    add_file_message_pair(new_id, get_file_id(*el->message));
     add_element(std::move(el));
   }
 }
@@ -689,16 +716,17 @@ void ChatWindow::process_update(td::td_api::updateMessageSendSucceeded &update) 
 //@message Contains information about the message that failed to send @old_message_id The previous temporary message identifier @error_code An error code @error_message Error message
 //updateMessageSendFailed message:message old_message_id:int53 error_code:int32 error_message:string = Update;
 void ChatWindow::process_update(td::td_api::updateMessageSendFailed &update) {
-  auto it = messages_.find(update.old_message_id_);
+  auto new_id = build_message_id(*update.message_);
+  auto old_id = MessageId{update.old_message_id_, new_id.generation};
+  auto it = messages_.find(old_id);
   if (it != messages_.end()) {
-    del_file_message_pair(it->second->message->id_, get_file_id(*it->second->message));
+    del_file_message_pair(old_id, get_file_id(*it->second->message));
     delete_element(it->second.get());
     messages_.erase(it);
     auto m = std::move(update.message_);
-    auto id = m->id_;
-    auto el = std::make_shared<Element>(std::move(m));
-    messages_.emplace(id, el);
-    add_file_message_pair(el->message->id_, get_file_id(*el->message));
+    auto el = std::make_shared<Element>(std::move(m), new_id.generation);
+    messages_.emplace(new_id, el);
+    add_file_message_pair(new_id, get_file_id(*el->message));
     add_element(std::move(el));
   }
 }
@@ -706,14 +734,15 @@ void ChatWindow::process_update(td::td_api::updateMessageSendFailed &update) {
 //@description The message content has changed @chat_id Chat identifier @message_id Message identifier @new_content New message content
 //updateMessageContent chat_id:int53 message_id:int53 new_content:MessageContent = Update;
 void ChatWindow::process_update(td::td_api::updateMessageContent &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     auto old_f = get_file_id(*it->second->message);
     it->second->message->content_ = std::move(update.new_content_);
     auto new_f = get_file_id(*it->second->message);
     if (old_f != new_f) {
-      del_file_message_pair(update.message_id_, old_f);
-      add_file_message_pair(update.message_id_, new_f);
+      del_file_message_pair(id, old_f);
+      add_file_message_pair(id, new_f);
     }
     change_element(it->second.get());
   }
@@ -722,7 +751,8 @@ void ChatWindow::process_update(td::td_api::updateMessageContent &update) {
 //@description A message was edited. Changes in the message content will come in a separate updateMessageContent @chat_id Chat identifier @message_id Message identifier @edit_date Point in time (Unix timestamp) when the message was edited @reply_markup New message reply markup; may be null
 //updateMessageEdited chat_id : int53 message_id : int53 edit_date : int32 reply_markup : ReplyMarkup = Update;
 void ChatWindow::process_update(td::td_api::updateMessageEdited &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     it->second->message->edit_date_ = update.edit_date_;
     it->second->message->reply_markup_ = std::move(update.reply_markup_);
@@ -733,7 +763,8 @@ void ChatWindow::process_update(td::td_api::updateMessageEdited &update) {
 //@description The message pinned state was changed @chat_id Chat identifier @message_id The message identifier @is_pinned True, if the message is pinned
 //updateMessageIsPinned chat_id:int53 message_id:int53 is_pinned:Bool = Update;
 void ChatWindow::process_update(td::td_api::updateMessageIsPinned &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     it->second->message->is_pinned_ = update.is_pinned_;
     change_element(it->second.get());
@@ -743,7 +774,8 @@ void ChatWindow::process_update(td::td_api::updateMessageIsPinned &update) {
 //@description The information about interactions with a message has changed @chat_id Chat identifier @message_id Message identifier @interaction_info New information about interactions with the message; may be null
 //updateMessageInteractionInfo chat_id:int53 message_id:int53 interaction_info:messageInteractionInfo = Update;
 void ChatWindow::process_update(td::td_api::updateMessageInteractionInfo &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     it->second->message->interaction_info_ = std::move(update.interaction_info_);
     change_element(it->second.get());
@@ -753,7 +785,8 @@ void ChatWindow::process_update(td::td_api::updateMessageInteractionInfo &update
 //@description The message content was opened. Updates voice note messages to "listened", video note messages to "viewed" and starts the TTL timer for self-destructing messages @chat_id Chat identifier @message_id Message identifier
 //updateMessageContentOpened chat_id : int53 message_id : int53 = Update;
 void ChatWindow::process_update(td::td_api::updateMessageContentOpened &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     // ???
     change_element(it->second.get());
@@ -763,7 +796,8 @@ void ChatWindow::process_update(td::td_api::updateMessageContentOpened &update) 
 //@description A message with an unread mention was read @chat_id Chat identifier @message_id Message identifier @unread_mention_count The new number of unread mention messages left in the chat
 //updateMessageMentionRead chat_id : int53 message_id : int53 unread_mention_count : int32 = Update;
 void ChatWindow::process_update(td::td_api::updateMessageMentionRead &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     it->second->message->contains_unread_mention_ = false;
     change_element(it->second.get());
@@ -776,7 +810,8 @@ void ChatWindow::process_update(td::td_api::updateMessageMentionRead &update) {
 //@fact_check The new fact-check
 //updateMessageFactCheck chat_id:int53 message_id:int53 fact_check:factCheck = Update;
 void ChatWindow::process_update(td::td_api::updateMessageFactCheck &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     it->second->message->fact_check_ = std::move(update.fact_check_);
     change_element(it->second.get());
@@ -786,7 +821,8 @@ void ChatWindow::process_update(td::td_api::updateMessageFactCheck &update) {
 //@description The list of unread reactions added to a message was changed @chat_id Chat identifier @message_id Message identifier @unread_reactions The new list of unread reactions @unread_reaction_count The new number of messages with unread reactions left in the chat
 //updateMessageUnreadReactions chat_id:int53 message_id:int53 unread_reactions:vector<unreadReaction> unread_reaction_count:int32 = Update;
 void ChatWindow::process_update(td::td_api::updateMessageUnreadReactions &update) {
-  auto it = messages_.find(update.message_id_);
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
   if (it != messages_.end()) {
     it->second->message->unread_reactions_ = std::move(update.unread_reactions_);
     change_element(it->second.get());
@@ -803,7 +839,8 @@ void ChatWindow::process_update(td::td_api::updateDeleteMessages &update) {
     return;
   }
   for (auto x : update.message_ids_) {
-    auto it = messages_.find(x);
+    auto id = build_message_id(update.chat_id_, x);
+    auto it = messages_.find(id);
     if (it != messages_.end()) {
       delete_element(it->second.get());
       messages_.erase(it);
@@ -879,7 +916,7 @@ void ChatWindow::update_message_file(td::td_api::message &message, const td::td_
   }
 }
 
-void ChatWindow::update_file(td::int64 message_id, td::td_api::file &file) {
+void ChatWindow::update_file(MessageId message_id, td::td_api::file &file) {
   auto it = messages_.find(message_id);
   if (it != messages_.end()) {
     update_message_file(*it->second->message, file);
@@ -890,13 +927,14 @@ void ChatWindow::update_file(td::int64 message_id, td::td_api::file &file) {
 void ChatWindow::Element::run(ChatWindow *window) {
   auto file_id = ChatWindow::get_file_id(*message);
   if (file_id) {
-    window->send_request(td::make_tl_object<td::td_api::downloadFile>(file_id, 16, 0, 0, true),
-                         [id = message->id_, window](td::Result<td::tl_object_ptr<td::td_api::file>> R) {
-                           if (R.is_error()) {
-                             return;
-                           }
-                           window->update_file(id, *R.move_as_ok());
-                         });
+    window->send_request(
+        td::make_tl_object<td::td_api::downloadFile>(file_id, 16, 0, 0, true),
+        [id = MessageId{message->id_, generation}, window](td::Result<td::tl_object_ptr<td::td_api::file>> R) {
+          if (R.is_error()) {
+            return;
+          }
+          window->update_file(id, *R.move_as_ok());
+        });
     //downloadFile file_id:int32 priority:int32 offset:int53 limit:int53 synchronous:Bool = File;
   }
 }
@@ -922,7 +960,7 @@ void ChatWindow::set_search_pattern(std::string pattern) {
   messages_.clear();
 
   if (cur) {
-    messages_.emplace(cur->message->id_, cur);
+    messages_.emplace(cur->message_id(), cur);
     add_element(cur);
     unglue();
   }
@@ -937,9 +975,14 @@ void ChatWindow::set_search_pattern(std::string pattern) {
 }
 
 void ChatWindow::seek(td::int64 chat_id, td::int64 message_id) {
-  if (chat_id_ != chat_id) {
+  auto it = chat_to_generation_.find(chat_id);
+  if (it == chat_to_generation_.end()) {
     return;
   }
+  seek(MessageId{message_id, it->second});
+}
+
+void ChatWindow::seek(MessageId message_id) {
   auto it = messages_.find(message_id);
   if (it != messages_.end()) {
     scroll_to_element(it->second.get(), true);

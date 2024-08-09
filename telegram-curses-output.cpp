@@ -601,7 +601,13 @@ Outputter &operator<<(Outputter &out, const td::td_api::game &content) {
 Outputter &operator<<(Outputter &out, const td::td_api::poll &content) {
   out << "poll " << content.question_ << "\n";
   for (auto &opt : content.options_) {
+    if (opt->is_being_chosen_ || opt->is_chosen_) {
+      out << Color::Yellow;
+    }
     out << "\t" << opt->vote_percentage_ << "% " << opt->text_ << "\n";
+    if (opt->is_being_chosen_ || opt->is_chosen_) {
+      out << Color::Revert;
+    }
   }
   return out;
 }

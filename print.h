@@ -136,7 +136,7 @@ class Outputter {
   void set_attr_ex(td::int32 attr, td::int32 val);
   void set_attr(td::int32 attr, ChangeBool mode);
 
-  td::td_api::message *get_message(td::int64 chat_id, td::int64 message_id);
+  const td::td_api::message *get_message(td::int64 chat_id, td::int64 message_id);
 
   void set_chat(ChatWindow *chat) {
     cur_chat_ = chat;

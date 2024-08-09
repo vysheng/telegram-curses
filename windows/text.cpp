@@ -384,7 +384,7 @@ td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int3
   auto reverse_markup = MarkupElement::reverse(0, text.size() + 1);
   if (is_selected) {
     actions.emplace_back(0, true, &reverse_markup);
-    actions.emplace_back(text.size(), false, &reverse_markup);
+    actions.emplace_back(text.size() + 1, false, &reverse_markup);
   }
 
   std::sort(actions.begin(), actions.end());

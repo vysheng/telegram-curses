@@ -105,18 +105,11 @@ std::vector<windows::MarkupElement> Outputter::markup() {
   return res;
 }
 
-td::td_api::message *Outputter::get_message(td::int64 chat_id, td::int64 message_id) {
+const td::td_api::message *Outputter::get_message(td::int64 chat_id, td::int64 message_id) {
   if (!cur_chat_) {
     return nullptr;
   }
-  if (cur_chat_->chat_id() != chat_id) {
-    return nullptr;
-  }
-  auto el = cur_chat_->get_message(message_id);
-  if (!el) {
-    return nullptr;
-  }
-  return el->message.get();
+  return cur_chat_->get_message_as_message(chat_id, message_id);
 }
 
 }  // namespace tdcurses
