@@ -132,25 +132,39 @@ endif (HAVE_PWD_H)
 add_subdirectory(td)
 add_subdirectory(third-party/libtickit)
 
-add_executable(telegram-curses-test main.cpp third-party/qrcodegen/qrcodegen.cpp windows/screen.cpp windows/window.cpp windows/padwindow.cpp windows/text.cpp windows/editorwindow.cpp windows/unicode.cpp windows/window-layout.cpp print.cpp chat-manager.cpp telegram-curses-window-root.cpp )
-add_executable(telegram-curses telegram-curses.cpp third-party/qrcodegen/qrcodegen.cpp windows/screen.cpp windows/window.cpp windows/padwindow.cpp windows/text.cpp windows/editorwindow.cpp windows/unicode.cpp windows/window-layout.cpp print.cpp dialog-list-window.cpp chat-manager.cpp telegram-curses-window-root.cpp telegram-curses-output.cpp chat-window.cpp compose-window.cpp config-window.cpp info-window.cpp global-parameters.cpp debug-info-window.cpp )
+add_executable(telegram-curses 
+  windows/Screen.cpp 
+  windows/Window.cpp 
+  windows/PadWindow.cpp 
+  windows/TextEdit.cpp 
+  windows/EditorWindow.cpp 
+  windows/unicode.cpp 
+  windows/WindowLayout.cpp 
+  
+  Tdcurses.cpp 
+  TdcursesWindowBase.cpp 
+  
+  Outputter.cpp 
+  TdObjectsOutput.cpp 
+  
+  ChatManager.cpp 
+  GlobalParameters.cpp 
+  
+  ChatSearchWindow.cpp 
+  ChatWindow.cpp 
+  ComposeWindow.cpp 
+  ConfigWindow.cpp 
+  DebugInfoWindow.cpp 
+  DialogListWindow.cpp 
+  InfoWindow.cpp 
+  MessageActionWindow.cpp 
+  
+  third-party/qrcodegen/qrcodegen.cpp 
+)
 target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc)
-target_link_libraries(telegram-curses-test PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc)
 target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS})
-target_include_directories(telegram-curses-test PRIVATE ${CURSES_INCUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tddb/>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tdnet/>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tdactor/>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tdutils/>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/td/generate/>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/>
-  )
-target_include_directories(telegram-curses-test PRIVATE
-  ${TL_TD_AUTO_INCLUDES}
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tddb/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tdnet/>

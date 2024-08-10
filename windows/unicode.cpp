@@ -259,3 +259,53 @@ Graphem next_graphems(td::Slice data, size_t pos, size_t limit_bytes, td::int32 
     return Graphem{.data = data.remove_prefix(pos).truncate(r), .width = p.columns, .unicode_codepoints = p.codepoints};
   }
 }
+
+td::Slice get_utf8_string_substring(td::Slice text, size_t from, size_t to) {
+  if (from >= to) {
+    return td::Slice();
+  }
+  const unsigned char *text_ptr = (const unsigned char *)text.data();
+  auto text_start = text_ptr;
+  size_t from_pos = text.size();
+  size_t to_pos = text.size();
+  size_t p = 0;
+  while (*text_ptr) {
+    if (from == p) {
+      from_pos = text_ptr - text_start;
+    }
+    if (to == p) {
+      to_pos = text_ptr - text_start;
+      break;
+    }
+    td::uint32 code;
+    text_ptr = td::next_utf8_unsafe(text_ptr, &code);
+    p++;
+  }
+
+  return td::Slice(text).remove_prefix(from_pos).truncate(to_pos - from_pos);
+}
+
+td::Slice get_utf8_string_substring_utf16_codepoints(td::Slice text, size_t from, size_t to) {
+  if (from >= to) {
+    return td::Slice();
+  }
+  const unsigned char *text_ptr = (const unsigned char *)text.data();
+  auto text_start = text_ptr;
+  size_t from_pos = text.size();
+  size_t to_pos = text.size();
+  size_t p = 0;
+  while (*text_ptr) {
+    if (from == p) {
+      from_pos = text_ptr - text_start;
+    }
+    if (to == p) {
+      to_pos = text_ptr - text_start;
+      break;
+    }
+    td::uint32 code;
+    text_ptr = td::next_utf8_unsafe(text_ptr, &code);
+    p += (code <= 0xffff) ? 1 : 2;  // UTF16 codepoints =((
+  }
+
+  return td::Slice(text).remove_prefix(from_pos).truncate(to_pos - from_pos);
+}
