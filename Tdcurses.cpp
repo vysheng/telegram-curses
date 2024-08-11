@@ -2222,6 +2222,9 @@ int main(int argc, char **argv) {
   td::int32 log_window_height = 10;
   td::int32 compose_window_height = 10;
 
+  std::string copy_command = "wl-copy";
+  std::string link_open_command = "xdg-open";
+
   struct CodepointInfo {
     CodepointInfo(td::uint32 begin, td::uint32 end, td::int32 width, std::string terms)
         : begin(begin), end(end), width(width), terms(terms) {
@@ -2264,6 +2267,9 @@ int main(int argc, char **argv) {
       g.add("width", libconfig::Setting::TypeInt) = (td::int32)l.width;
       g.add("terms", libconfig::Setting::TypeString) = l.terms;
     }
+    auto &os = root.add("os", libconfig::Setting::Type::TypeGroup);
+    os.add("copy", libconfig::Setting::TypeString) = copy_command;
+    os.add("open_link", libconfig::Setting::TypeString) = link_open_command;
 
     conf.writeFile(config_file_name.c_str());
   }
@@ -2298,6 +2304,9 @@ int main(int argc, char **argv) {
   config.lookupValue("iface.dialog_list_window_width", dialog_list_window_width);
   config.lookupValue("iface.log_window_height", log_window_height);
   config.lookupValue("iface.compose_window_height", compose_window_height);
+
+  config.lookupValue("os.copy_command", copy_command);
+  config.lookupValue("os.link_open_command", link_open_command);
 
   [&]() {
     auto &root = config.getRoot();
@@ -2388,6 +2397,9 @@ int main(int argc, char **argv) {
   tdcurses_params->dialog_list_window_width = dialog_list_window_width;
   tdcurses_params->log_window_height = log_window_height;
   tdcurses_params->compose_window_height = compose_window_height;
+
+  tdcurses::global_parameters().set_copy_command(copy_command);
+  tdcurses::global_parameters().set_link_open_command(link_open_command);
 
   td::ActorOwn<tdcurses::TdcursesImpl> act;
   act = scheduler.create_actor_unsafe<tdcurses::TdcursesImpl>(1, "CliClient");

@@ -43,6 +43,8 @@ class MessageActionWindowBuilder {
                        td::int32 idx);
 
   void add_action_forward(td::int64 chat_id, td::int64 message_id);
+  void add_action_copy(std::string text);
+  void add_action_copy_primary(std::string text);
 
   std::shared_ptr<windows::Window> build();
 

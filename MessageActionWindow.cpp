@@ -7,6 +7,7 @@
 #include "ChatManager.hpp"
 #include "TdObjectsOutput.h"
 #include "DebugInfoWindow.hpp"
+#include "GlobalParameters.hpp"
 #include <vector>
 #include <unistd.h>
 
@@ -129,7 +130,7 @@ void MessageActionWindowBuilder::add_action_link(std::string link) {
   Outputter out;
   out << "open '" << Outputter::Underline(true) << link << Outputter::Underline(false) << "'";
   add_action_custom(out.as_str(), out.markup(), [link]() {
-    std::string cmd = "xdg-open";
+    std::string cmd = global_parameters().link_open_command();
 
     auto p = vfork();
     if (!p) {
@@ -221,6 +222,28 @@ void MessageActionWindowBuilder::add_action_forward(td::int64 chat_id, td::int64
           td::make_tl_object<td::td_api::inputMessageForwarded>(chat_id, message_id, false, nullptr));
       curses->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
     });
+  });
+}
+
+void MessageActionWindowBuilder::add_action_copy(std::string text) {
+  add_action_custom("copy to clipboard", {}, [text = std::move(text)]() {
+    std::string cmd = global_parameters().copy_command();
+
+    auto p = vfork();
+    if (!p) {
+      execlp(cmd.c_str(), cmd.c_str(), "--", text.c_str(), NULL);
+    }
+  });
+}
+
+void MessageActionWindowBuilder::add_action_copy_primary(std::string text) {
+  add_action_custom("copy to primary buffer", {}, [text = std::move(text)]() {
+    std::string cmd = global_parameters().copy_command();
+
+    auto p = vfork();
+    if (!p) {
+      execlp(cmd.c_str(), cmd.c_str(), "--primary", "--", text.c_str(), NULL);
+    }
   });
 }
 

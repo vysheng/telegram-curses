@@ -120,6 +120,11 @@ void ChatWindow::show_message_actions() {
   auto process_formatted_text = [&](const td::td_api::formattedText &content) {
     auto &text = content.text_;
 
+    if (text.size() > 0) {
+      builder.add_action_copy_primary(text);
+      builder.add_action_copy(text);
+    }
+
     for (auto &ent : content.entities_) {
       td::td_api::downcast_call(
           const_cast<td::td_api::TextEntityType &>(*ent->type_),

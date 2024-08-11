@@ -139,6 +139,22 @@ class GlobalParameters {
     return connection_state_;
   }
 
+  void set_copy_command(std::string command) {
+    copy_command_ = std::move(command);
+  }
+
+  const auto &copy_command() const {
+    return copy_command_;
+  }
+
+  void set_link_open_command(std::string command) {
+    link_open_command_ = std::move(command);
+  }
+
+  const auto &link_open_command() const {
+    return link_open_command_;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -164,6 +180,9 @@ class GlobalParameters {
   std::vector<std::string> dice_emojis_;
   std::string animation_search_provider_;
   std::vector<std::string> animation_search_suggested_emojis_;
+
+  std::string copy_command_;
+  std::string link_open_command_;
 };
 
 extern GlobalParameters &global_parameters();
