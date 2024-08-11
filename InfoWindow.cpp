@@ -302,7 +302,9 @@ void ChatInfoWindow::set_chat(std::shared_ptr<Chat> chat) {
             td::make_tl_object<td::td_api::getUserFullInfo>(chat_->chat_base_id()),
             [chat_id = chat_->chat_id(), window = this](td::Result<td::tl_object_ptr<td::td_api::userFullInfo>> R) {
               if (R.is_error()) {
-                LOG(ERROR) << "failed to get userFull: received error: " << R.move_as_error();
+                if (R.error().code() != ErrorCodeWindowDeleted) {
+                  LOG(ERROR) << "failed to get userFull: received error: " << R.move_as_error();
+                }
                 return;
               }
               window->got_full_user(chat_id, R.move_as_ok());
@@ -313,7 +315,9 @@ void ChatInfoWindow::set_chat(std::shared_ptr<Chat> chat) {
                      [chat_id = chat_->chat_id(),
                       window = this](td::Result<td::tl_object_ptr<td::td_api::basicGroupFullInfo>> R) {
                        if (R.is_error()) {
-                         LOG(ERROR) << "failed to get basicGroupFull: received error: " << R.move_as_error();
+                         if (R.error().code() != ErrorCodeWindowDeleted) {
+                           LOG(ERROR) << "failed to get basicGroupFull: received error: " << R.move_as_error();
+                         }
                          return;
                        }
                        window->got_full_basic_group(chat_id, R.move_as_ok());
@@ -325,7 +329,9 @@ void ChatInfoWindow::set_chat(std::shared_ptr<Chat> chat) {
                      [chat_id = chat_->chat_id(),
                       window = this](td::Result<td::tl_object_ptr<td::td_api::supergroupFullInfo>> R) {
                        if (R.is_error()) {
-                         LOG(ERROR) << "failed to get basicGroupFull: received error: " << R.move_as_error();
+                         if (R.error().code() != ErrorCodeWindowDeleted) {
+                           LOG(ERROR) << "failed to get basicGroupFull: received error: " << R.move_as_error();
+                         }
                          return;
                        }
                        window->got_full_super_group(chat_id, R.move_as_ok());
@@ -337,7 +343,9 @@ void ChatInfoWindow::set_chat(std::shared_ptr<Chat> chat) {
         send_request(td::make_tl_object<td::td_api::getChat>(chat_->chat_base_id()),
                      [chat_id = chat_->chat_id(), window = this](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
                        if (R.is_error()) {
-                         LOG(ERROR) << "failed to get basicGroupFull: received error: " << R.move_as_error();
+                         if (R.error().code() != ErrorCodeWindowDeleted) {
+                           LOG(ERROR) << "failed to get basicGroupFull: received error: " << R.move_as_error();
+                         }
                          return;
                        }
                        window->got_chat_info(chat_id, R.move_as_ok());
@@ -364,7 +372,9 @@ void ChatInfoWindow::set_chat(std::shared_ptr<User> user) {
   send_request(td::make_tl_object<td::td_api::createPrivateChat>(chat_inner_id_, true),
                [window = this](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
                  if (R.is_error()) {
-                   LOG(ERROR) << "failed to start chat: received error: " << R.move_as_error();
+                   if (R.error().code() != ErrorCodeWindowDeleted) {
+                     LOG(ERROR) << "failed to start chat: received error: " << R.move_as_error();
+                   }
                    return;
                  }
                  window->got_chat(R.move_as_ok());

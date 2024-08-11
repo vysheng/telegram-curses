@@ -70,8 +70,10 @@ void ChatSearchWindow::try_run_request() {
 
   auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, height() - 1);
   send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::chats>> R) {
-    R.ensure();
-    self->got_chats(R.move_as_ok());
+    if (R.error().code() != ErrorCodeWindowDeleted) {
+      R.ensure();
+      self->got_chats(R.move_as_ok());
+    }
   });
 }
 

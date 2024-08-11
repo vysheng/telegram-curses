@@ -7,6 +7,7 @@
 #include "TdcursesWindowBase.hpp"
 #include <memory>
 #include <set>
+#include <vector>
 
 namespace tdcurses {
 
@@ -17,18 +18,17 @@ class ChatWindow
     , public TdcursesWindowBase {
  public:
   struct MessageId {
-    MessageId(td::int64 message_id, td::int32 generation) : message_id(message_id), generation(generation) {
+    MessageId(td::int64 chat_id, td::int64 message_id) : chat_id(chat_id), message_id(message_id) {
     }
+    td::int64 chat_id;
     td::int64 message_id;
-    td::int32 generation;
     bool operator<(const MessageId &other) const {
-      return std::tie(generation, message_id) < std::tie(other.generation, other.message_id);
+      return std::tie(chat_id, message_id) < std::tie(other.chat_id, other.message_id);
     }
   };
   ChatWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id)
       : TdcursesWindowBase(root, std::move(root_actor)) {
-    generation_to_chat_[0] = chat_id;
-    chat_to_generation_[chat_id] = 0;
+    main_chat_id_ = chat_id;
     set_pad_to(PadTo::Bottom);
     scroll_last_line();
     send_open();
@@ -54,14 +54,12 @@ class ChatWindow
     td::int32 generation;
 
     auto message_id() const {
-      return MessageId{message->id_, generation};
+      return MessageId{message->chat_id_, message->id_};
     }
   };
 
   td::int64 main_chat_id() const {
-    auto it = generation_to_chat_.find(0);
-    CHECK(it != generation_to_chat_.end());
-    return it->second;
+    return main_chat_id_;
   }
 
   void handle_input(TickitKeyEventInfo *info) override;
@@ -149,11 +147,7 @@ class ChatWindow
   }
 
   const td::td_api::message *get_message_as_message(td::int64 chat_id, td::int64 message_id) {
-    auto it = chat_to_generation_.find(chat_id);
-    if (it == chat_to_generation_.end()) {
-      return nullptr;
-    }
-    return get_message_as_message(MessageId{message_id, it->second});
+    return get_message_as_message(MessageId{chat_id, message_id});
   }
 
   void set_search_pattern(std::string pattern);
@@ -166,28 +160,22 @@ class ChatWindow
   void seek(td::int64 chat_id, td::int64 message_id);
   void seek(MessageId message_id);
 
-  auto build_message_id(const td::td_api::message &m) {
-    auto it = chat_to_generation_.find(m.chat_id_);
-    if (it != chat_to_generation_.end()) {
-      auto generation = -(td::int32)generation_to_chat_.size();
-      generation_to_chat_[generation] = m.chat_id_;
-      it = chat_to_generation_.emplace(m.chat_id_, generation).first;
-    }
-    return MessageId{m.id_, it->second};
+  static auto build_message_id(const td::td_api::message &m) {
+    return MessageId{m.chat_id_, m.id_};
   }
-  auto build_message_id(td::int64 chat_id, td::int64 message_id) {
-    auto it = chat_to_generation_.find(chat_id);
-    if (it != chat_to_generation_.end()) {
-      auto generation = -(td::int32)generation_to_chat_.size();
-      generation_to_chat_[generation] = chat_id;
-      it = chat_to_generation_.emplace(chat_id, generation).first;
-    }
-    return MessageId{message_id, it->second};
+  static auto build_message_id(td::int64 chat_id, td::int64 message_id) {
+    return MessageId{chat_id, message_id};
   }
 
+  td::int32 get_chat_generation(td::int64 chat_id) const {
+    return chat_id == main_chat_id_ ? 0 : -1;
+  }
+
+  MessageId get_oldest_message_id();
+  MessageId get_newest_message_id();
+
  private:
-  std::map<td::int64, td::int32> chat_to_generation_;
-  std::map<td::int32, td::int64> generation_to_chat_;
+  td::int64 main_chat_id_;
   std::map<MessageId, std::shared_ptr<Element>> messages_;
   std::map<td::int32, std::set<MessageId>> file_id_2_messages_;
   std::string search_pattern_;

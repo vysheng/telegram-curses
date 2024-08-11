@@ -6,6 +6,8 @@
 
 namespace tdcurses {
 
+#define ErrorCodeWindowDeleted -999
+
 class Tdcurses;
 
 class TdcursesWindowBase {
@@ -26,7 +28,7 @@ class TdcursesWindowBase {
                                             td::Result<td::tl_object_ptr<td::td_api::Object>> R) mutable {
       td::send_lambda(self, [id, self_ptr, R = std::move(R), P = std::move(P)]() mutable {
         if (!self_ptr->window_exists(id)) {
-          P.set_error(td::Status::Error("window already deleted"));
+          P.set_error(td::Status::Error(ErrorCodeWindowDeleted, "window already deleted"));
           return;
         }
         if (R.is_error()) {

@@ -1246,7 +1246,8 @@ class TdcursesImpl : public Tdcurses {
   }
 
   //@description A file was added to the file download list. This update is sent only after file download list is loaded for the first time
-  //@file_download The added file download @counts New number of being downloaded and recently downloaded files found
+  //@file_download The added file download
+  //@counts New number of being downloaded and recently downloaded files found
   //updateFileAddedToDownloads file_download:fileDownload counts:downloadedFileCounts = Update;
   void process_update(td::td_api::updateFileAddedToDownloads &update) {
   }

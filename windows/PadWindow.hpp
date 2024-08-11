@@ -133,6 +133,19 @@ class PadWindow : public Window {
     glued_to_ = GluedTo::None;
   }
 
+  const PadWindowElement *first_element() const {
+    if (!elements_.size()) {
+      return nullptr;
+    }
+    return elements_.begin()->first;
+  }
+  const PadWindowElement *last_element() const {
+    if (!elements_.size()) {
+      return nullptr;
+    }
+    return elements_.rbegin()->first;
+  }
+
  private:
   class Compare {
    public:
