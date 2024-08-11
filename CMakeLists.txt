@@ -149,7 +149,8 @@ add_executable(telegram-curses
   
   ChatManager.cpp 
   GlobalParameters.cpp 
-  
+  StickerManager.cpp
+
   ChatSearchWindow.cpp 
   ChatWindow.cpp 
   ComposeWindow.cpp 

@@ -51,25 +51,6 @@ class GlobalParameters {
   void process_update(td::td_api::updateUserPrivacySettingRules &update) {
   }
 
-  void process_update(td::td_api::updateStickerSet &update) {
-    auto id = update.sticker_set_->id_;
-    sticker_sets_[id] = std::move(update.sticker_set_);
-  }
-
-  void process_update(td::td_api::updateInstalledStickerSets &update) {
-  }
-
-  void process_update(td::td_api::updateTrendingStickerSets &update) {
-  }
-
-  void process_update(td::td_api::updateRecentStickers &update) {
-    recent_stickers_ = std::move(update.sticker_ids_);
-  }
-
-  void process_update(td::td_api::updateFavoriteStickers &update) {
-    favorite_stickers_ = std::move(update.sticker_ids_);
-  }
-
   void process_update(td::td_api::updateSavedAnimations &update) {
     saved_animations_ = std::move(update.animation_ids_);
   }
@@ -163,9 +144,6 @@ class GlobalParameters {
       scope_notification_settings_{};
   std::vector<td::tl_object_ptr<td::td_api::chatFolderInfo>> chat_folders_;
   td::int64 download_list_bytes_{0}, download_list_files_{0}, downloaded_bytes_{0};
-  std::map<td::int64, td::tl_object_ptr<td::td_api::stickerSet>> sticker_sets_;
-  std::vector<td::int32> recent_stickers_;
-  std::vector<td::int32> favorite_stickers_;
   std::vector<td::int32> saved_animations_;
   std::vector<td::int64> saved_notification_sounds_;
   td::tl_object_ptr<td::td_api::background> default_dark_background_;

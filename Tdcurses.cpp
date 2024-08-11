@@ -31,6 +31,7 @@
 #include "windows/unicode.h"
 
 //#include "telegram-cli-output.h"
+#include "StickerManager.hpp"
 #include "Tdcurses.hpp"
 #include "Outputter.hpp"
 #include "TdObjectsOutput.h"
@@ -1390,20 +1391,20 @@ class TdcursesImpl : public Tdcurses {
   //@sticker_set The sticker set
   //updateStickerSet sticker_set:stickerSet = Update;
   void process_update(td::td_api::updateStickerSet &update) {
-    global_parameters().process_update(update);
+    sticker_manager().process_update(update);
   }
 
   //@description The list of installed sticker sets was updated @sticker_type Type of the affected stickers
   //@sticker_set_ids The new list of installed ordinary sticker sets
   //updateInstalledStickerSets sticker_type:StickerType sticker_set_ids:vector<int64> = Update;
   void process_update(td::td_api::updateInstalledStickerSets &update) {
-    global_parameters().process_update(update);
+    sticker_manager().process_update(update);
   }
 
   //@description The list of trending sticker sets was updated or some of them were viewed @sticker_type Type of the affected stickers @sticker_sets The prefix of the list of trending sticker sets with the newest trending sticker sets
   //updateTrendingStickerSets sticker_type:StickerType sticker_sets:trendingStickerSets = Update;
   void process_update(td::td_api::updateTrendingStickerSets &update) {
-    global_parameters().process_update(update);
+    sticker_manager().process_update(update);
   }
 
   //@description The list of recently used stickers was updated
@@ -1411,14 +1412,14 @@ class TdcursesImpl : public Tdcurses {
   //@sticker_ids The new list of file identifiers of recently used stickers
   //updateRecentStickers is_attached:Bool sticker_ids:vector<int32> = Update;
   void process_update(td::td_api::updateRecentStickers &update) {
-    global_parameters().process_update(update);
+    sticker_manager().process_update(update);
   }
 
   //@description The list of favorite stickers was updated
   //@sticker_ids The new list of file identifiers of favorite stickers
   //updateFavoriteStickers sticker_ids:vector<int32> = Update;
   void process_update(td::td_api::updateFavoriteStickers &update) {
-    global_parameters().process_update(update);
+    sticker_manager().process_update(update);
   }
 
   //@description The list of saved animations was updated
@@ -2364,6 +2365,8 @@ int main(int argc, char **argv) {
   auto R = td::FileLog::create(log_dir + "log.txt");
   auto f = R.move_as_ok();
   td::log_interface = f.get();
+
+  LOG(ERROR) << "starting";
 
   auto tdlib_parameters = td::td_api::make_object<td::td_api::setTdlibParameters>();
   tdlib_parameters->api_hash_ = api_hash;

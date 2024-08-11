@@ -1,4 +1,5 @@
 #include "DialogListWindow.hpp"
+#include "StickerManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/overloaded.h"
@@ -6,6 +7,7 @@
 #include "td/utils/Random.h"
 #include "td/utils/Status.h"
 #include <memory>
+#include <vector>
 
 namespace tdcurses {
 
@@ -13,6 +15,7 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRend
   auto &dialog_list_window = static_cast<DialogListWindow &>(root);
   Outputter out;
   std::string prefix;
+  std::vector<td::int64> unknown_custom_emoji_ids;
   if (unread_count() > 0) {
     if (is_muted()) {
       out << Color::Grey << (unread_count() > 9 ? 9 : unread_count()) << Color::Revert << " ";
@@ -30,8 +33,27 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRend
     if (user) {
       auto &emoji_status = user->emoji_status();
       if (emoji_status && emoji_status->custom_emoji_id_) {
+        auto S = sticker_manager().get_custom_emoji(emoji_status->custom_emoji_id_);
+        if (S.size() > 0) {
+          out << sticker_manager().get_custom_emoji(emoji_status->custom_emoji_id_);
+        } else {
+          unknown_custom_emoji_ids.push_back(emoji_status->custom_emoji_id_);
+        }
       }
     }
+  }
+  if (unknown_custom_emoji_ids.size() > 0) {
+    if (unknown_custom_emoji_ids.size() > 200) {
+      unknown_custom_emoji_ids.resize(200);
+    }
+    dialog_list_window.send_request(
+        td::make_tl_object<td::td_api::getCustomEmojiStickers>(std::move(unknown_custom_emoji_ids)),
+        [window = &dialog_list_window](td::Result<td::tl_object_ptr<td::td_api::stickers>> R) {
+          if (R.is_ok()) {
+            sticker_manager().process_custom_emoji_stickers(*R.move_as_ok());
+            window->set_need_refresh();
+          }
+        });
   }
   if (is_pinned(dialog_list_window.cur_sublist())) {
     out << "🔒";
