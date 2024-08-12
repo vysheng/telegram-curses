@@ -1950,17 +1950,23 @@ void Tdcurses::seek_chat(td::int64 chat_id, td::int64 message_id) {
   }
 }
 
-void Tdcurses::open_compose_window() {
+void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 reply_message_id) {
   if (!chat_window_) {
     return;
   }
+  if (chat_window_->main_chat_id() != chat_id) {
+    chat_id = 0;
+    reply_message_id = 0;
+  }
   if (compose_window_) {
+    compose_window_->set_reply_message_id(reply_message_id);
     return;
   }
 
   //ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text)
-  compose_window_ = std::make_shared<ComposeWindow>(this, actor_id(this), chat_window_->main_chat_id(),
-                                                    chat_window_->draft_message_text());
+  compose_window_ =
+      std::make_shared<ComposeWindow>(this, actor_id(this), chat_window_->main_chat_id(),
+                                      chat_window_->draft_message_text(), reply_message_id, chat_window_.get());
   layout_->replace_compose_window(compose_window_);
   layout_->activate_window(compose_window_);
 }
@@ -2225,6 +2231,7 @@ int main(int argc, char **argv) {
 
   std::string copy_command = "wl-copy";
   std::string link_open_command = "xdg-open";
+  std::string file_open_command = "mimeopen";
 
   struct CodepointInfo {
     CodepointInfo(td::uint32 begin, td::uint32 end, td::int32 width, std::string terms)
@@ -2269,8 +2276,9 @@ int main(int argc, char **argv) {
       g.add("terms", libconfig::Setting::TypeString) = l.terms;
     }
     auto &os = root.add("os", libconfig::Setting::Type::TypeGroup);
-    os.add("copy", libconfig::Setting::TypeString) = copy_command;
-    os.add("open_link", libconfig::Setting::TypeString) = link_open_command;
+    os.add("copy_command", libconfig::Setting::TypeString) = copy_command;
+    os.add("link_open_command", libconfig::Setting::TypeString) = link_open_command;
+    os.add("file_open_command", libconfig::Setting::TypeString) = file_open_command;
 
     conf.writeFile(config_file_name.c_str());
   }
@@ -2308,6 +2316,7 @@ int main(int argc, char **argv) {
 
   config.lookupValue("os.copy_command", copy_command);
   config.lookupValue("os.link_open_command", link_open_command);
+  config.lookupValue("os.file_open_command", file_open_command);
 
   [&]() {
     auto &root = config.getRoot();
@@ -2401,6 +2410,7 @@ int main(int argc, char **argv) {
 
   tdcurses::global_parameters().set_copy_command(copy_command);
   tdcurses::global_parameters().set_link_open_command(link_open_command);
+  tdcurses::global_parameters().set_file_open_command(file_open_command);
 
   td::ActorOwn<tdcurses::TdcursesImpl> act;
   act = scheduler.create_actor_unsafe<tdcurses::TdcursesImpl>(1, "CliClient");

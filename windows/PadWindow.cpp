@@ -1,4 +1,5 @@
 #include "PadWindow.hpp"
+#include "stdio.h"
 #include <memory>
 #include <vector>
 
@@ -53,21 +54,21 @@ void PadWindow::handle_input(TickitKeyEventInfo *info) {
   set_need_refresh();
   if (info->type == TICKIT_KEYEV_KEY) {
     if (!strcmp(info->str, "PageUp")) {
-      scroll_up(height() / 2);
+      scroll_up(effective_height() / 2);
     } else if (!strcmp(info->str, "Up")) {
       scroll_up(1);
     } else if (!strcmp(info->str, "PageDown")) {
-      scroll_down(height() / 2);
+      scroll_down(effective_height() / 2);
     } else if (!strcmp(info->str, "Down")) {
       scroll_down(1);
     } else if (!strcmp(info->str, "C-u")) {
-      scroll_up(height() / 2);
+      scroll_up(effective_height() / 2);
     } else if (!strcmp(info->str, "C-d")) {
-      scroll_down(height() / 2);
+      scroll_down(effective_height() / 2);
     } else if (!strcmp(info->str, "C-b")) {
-      scroll_up(height() - 1);
+      scroll_up(effective_height() - 1);
     } else if (!strcmp(info->str, "C-f")) {
-      scroll_down(height() - 1);
+      scroll_down(effective_height() - 1);
     } else {
       pad_handle_input(info);
     }
@@ -413,8 +414,8 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   if (offset_from_window_top_ < 0) {
     offset_from_window_top_ = 0;
   }
-  if (offset_from_window_top_ >= height()) {
-    offset_from_window_top_ = height() - 1;
+  if (offset_from_window_top_ >= effective_height()) {
+    offset_from_window_top_ = effective_height() - 1;
   }
   if (pad_to_ == PadTo::Top) {
     auto off = offset_in_cur_element_ + lines_before_cur_element_;
@@ -427,8 +428,8 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
     auto off = cur_element_->height - offset_in_cur_element_ + lines_after_cur_element_;
     CHECK(cur_element_->height - offset_in_cur_element_ >= 0);
     CHECK(lines_after_cur_element_ >= 0);
-    if (offset_from_window_top_ + off < height()) {
-      offset_from_window_top_ = height() - off;
+    if (offset_from_window_top_ + off < effective_height()) {
+      offset_from_window_top_ = effective_height() - off;
     }
   }
 
@@ -473,16 +474,29 @@ void PadWindow::scroll_to_element(PadWindowElement *elptr, bool top) {
 
 void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                        TickitCursorShape &cursor_shape, bool force) {
+  {
+    auto rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
+    tickit_renderbuffer_eraserect(rb, &rect);
+
+    rect.top = height() - 1;
+    tickit_renderbuffer_eraserect(rb, &rect);
+  }
+  auto pad_rect = TickitRect{.top = 1, .left = 0, .lines = effective_height(), .cols = width()};
+  tickit_renderbuffer_save(rb);
+  tickit_renderbuffer_clip(rb, &pad_rect);
+  tickit_renderbuffer_translate(rb, 1, 0);
+
   cursor_x = 0;
   cursor_y = 0;
   cursor_shape = (TickitCursorShape)0;
   if (!elements_.size()) {
     cursor_x = 0;
     cursor_y = 0;
-    auto rect = TickitRect{.top = 0, .left = 0, .lines = height(), .cols = width()};
+    auto rect = TickitRect{.top = 0, .left = 0, .lines = effective_height(), .cols = width()};
     tickit_renderbuffer_eraserect(rb, &rect);
     return;
   }
+
   auto offset = offset_from_window_top_ - offset_in_cur_element_;
   auto it = elements_.find(cur_element_->element.get());
   CHECK(it != elements_.end());
@@ -502,7 +516,7 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     request_top_elements();
   }
 
-  while (offset < height() && it != elements_.end()) {
+  while (offset < effective_height() && it != elements_.end()) {
     auto rect = TickitRect{.top = offset, .left = 0, .lines = it->second->height, .cols = width()};
     tickit_renderbuffer_save(rb);
     tickit_renderbuffer_clip(rb, &rect);
@@ -530,14 +544,46 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     it++;
   }
 
-  if (offset < height()) {
-    auto rect = TickitRect{.top = offset, .left = 0, .lines = height() - offset, .cols = width()};
+  if (offset < effective_height()) {
+    auto rect = TickitRect{.top = offset, .left = 0, .lines = effective_height() - offset, .cols = width()};
     tickit_renderbuffer_eraserect(rb, &rect);
     request_bottom_elements();
   }
 
   if (need_refresh()) {
     adjust_cur_element(0);
+  }
+
+  tickit_renderbuffer_restore(rb);
+  cursor_x++;
+
+  td::int32 lines_over_window = lines_before_cur_element_ + offset_in_cur_element_ - offset_from_window_top_;
+  td::int32 lines_under_window = lines_after_cur_element_ + (cur_element_->height - offset_in_cur_element_) -
+                                 (effective_height() - offset_from_window_top_);
+
+  if (lines_over_window < 0) {
+    lines_over_window = 0;
+  }
+
+  if (lines_under_window < 0) {
+    lines_under_window = 0;
+  }
+
+  {
+    char buf[20];
+    size_t l;
+    if (glued_to_ == GluedTo::Top) {
+      l = sprintf(buf, "↑%s", "glued");
+    } else {
+      l = sprintf(buf, "↑%d", lines_over_window);
+    }
+    tickit_renderbuffer_textn_at(rb, 0, width() - 1 - (int)l, buf, l);
+    if (false && glued_to_ == GluedTo::Bottom) {
+      l = sprintf(buf, "↓%s", "glued");
+    } else {
+      l = sprintf(buf, "↓%d", lines_under_window);
+    }
+    tickit_renderbuffer_textn_at(rb, height() - 1, width() - 1 - (int)l, buf, l);
   }
 }
 

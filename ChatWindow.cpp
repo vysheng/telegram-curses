@@ -63,6 +63,7 @@ void ChatWindow::show_message_actions() {
   MessageActionWindowBuilder builder(root(), this);
 
   builder.add_action_forward(el->message->chat_id_, el->message->id_);
+  builder.add_action_reply(el->message->chat_id_, el->message->id_);
   builder.add_action_message_goto("current", el->message->chat_id_, el->message->id_, el->message.get());
   builder.add_action_message_debug_info("current", el->message->chat_id_, el->message->id_, el->message.get());
 
@@ -176,14 +177,34 @@ void ChatWindow::show_message_actions() {
         *el->message->content_,
         td::overloaded(
             [&](const td::td_api::messageText &content) { process_formatted_text(*content.text_); },
-            [&](const td::td_api::messageAnimation &content) { process_formatted_text(*content.caption_); },
-            [&](const td::td_api::messageAudio &content) { process_formatted_text(*content.caption_); },
-            [&](const td::td_api::messageDocument &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messageAnimation &content) {
+              process_formatted_text(*content.caption_);
+              builder.add_action_open_file(*content.animation_->animation_);
+            },
+            [&](const td::td_api::messageAudio &content) {
+              process_formatted_text(*content.caption_);
+              builder.add_action_open_file(*content.audio_->audio_);
+            },
+            [&](const td::td_api::messageDocument &content) {
+              process_formatted_text(*content.caption_);
+              builder.add_action_open_file(*content.document_->document_);
+            },
             [&](const td::td_api::messagePaidMedia &content) { process_formatted_text(*content.caption_); },
-            [&](const td::td_api::messagePhoto &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messagePhoto &content) {
+              process_formatted_text(*content.caption_);
+              builder.add_action_open_file(*content.photo_->sizes_.back()->photo_);
+            },
             [&](const td::td_api::messageSticker &content) {},
-            [&](const td::td_api::messageVideo &content) { process_formatted_text(*content.caption_); },
-            [&](const td::td_api::messageVideoNote &content) {}, [&](const td::td_api::messageVoiceNote &content) {},
+            [&](const td::td_api::messageVideo &content) {
+              process_formatted_text(*content.caption_);
+              builder.add_action_open_file(*content.video_->video_);
+            },
+            [&](const td::td_api::messageVideoNote &content) {
+              builder.add_action_open_file(*content.video_note_->video_);
+            },
+            [&](const td::td_api::messageVoiceNote &content) {
+              builder.add_action_open_file(*content.voice_note_->voice_);
+            },
             [&](const td::td_api::messageExpiredPhoto &content) {},
             [&](const td::td_api::messageExpiredVideo &content) {},
             [&](const td::td_api::messageExpiredVideoNote &content) {},
@@ -272,10 +293,19 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
       e.run(this);
       return;
     } else if (!strcmp(info->str, "i")) {
-      root()->open_compose_window();
+      root()->open_compose_window(main_chat_id_, 0);
       return;
     } else if (!strcmp(info->str, "I")) {
       show_message_actions();
+      return;
+    } else if (!strcmp(info->str, "r")) {
+      auto el = get_active_element();
+      if (!el) {
+        return;
+      }
+      auto &e = static_cast<Element &>(*el);
+
+      root()->open_compose_window(main_chat_id_, e.message_id().message_id);
       return;
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
@@ -330,6 +360,7 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
     });
   }
 }
+
 void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
   if (R.is_error() && R.error().code() == ErrorCodeWindowDeleted) {
     return;
@@ -461,6 +492,14 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
     add_file_message_pair(id, get_file_id(*el->message));
     add_element(std::move(el));
   }
+}
+
+void ChatWindow::process_update_sent_message(td::tl_object_ptr<td::td_api::message> message) {
+  auto id = build_message_id(*message);
+  auto el = std::make_shared<Element>(std::move(message), get_chat_generation(id.chat_id));
+  messages_.emplace(id, el);
+  add_file_message_pair(id, get_file_id(*el->message));
+  add_element(std::move(el));
 }
 
 //@description A request to send a message has reached the Telegram server. This doesn't mean that the message will be sent successfully or even that the send message request will be processed. This update will be sent only if the option "use_quick_ack" is set to true. This update may be sent multiple times for the same message

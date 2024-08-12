@@ -199,6 +199,7 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
         auto el = std::static_pointer_cast<Element>(std::move(a));
         root()->open_chat(el->chat_id());
       }
+      scroll_first_line();
       return;
     }
   } else {

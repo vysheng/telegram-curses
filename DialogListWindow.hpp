@@ -29,6 +29,8 @@ class DialogListWindow
 
   using Sublist = td::Variant<SublistGlobal, SublistArchive, SublistSublist, SublistSearch>;
   DialogListWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : TdcursesWindowBase(root, std::move(root_actor)) {
+    set_pad_to(PadTo::Top);
+    clear();
   }
   class Element;
 

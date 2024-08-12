@@ -170,7 +170,7 @@ class Tdcurses : public TdcursesInterface {
   }
   void open_chat(td::int64 chat_id);
   void seek_chat(td::int64 chat_id, td::int64 message_id);
-  void open_compose_window();
+  void open_compose_window(td::int64 chat_id, td::int64 message_id);
   void close_compose_window();
 
   void hide_config_window();

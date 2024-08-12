@@ -79,6 +79,7 @@ class ChatWindow
   void add_messages(std::vector<td::tl_object_ptr<td::td_api::message>> msgs);
 
   void process_update(td::td_api::updateNewMessage &update);
+  void process_update_sent_message(td::tl_object_ptr<td::td_api::message> message);
   void process_update(td::td_api::updateMessageSendAcknowledged &update);
   void process_update(td::td_api::updateMessageSendSucceeded &update);
   void process_update(td::td_api::updateMessageSendFailed &update);

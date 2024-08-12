@@ -146,6 +146,10 @@ class PadWindow : public Window {
     return elements_.rbegin()->first;
   }
 
+  auto effective_height() const {
+    return height() - 2;
+  }
+
  private:
   class Compare {
    public:

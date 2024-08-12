@@ -247,6 +247,22 @@ void MessageActionWindowBuilder::add_action_copy_primary(std::string text) {
   });
 }
 
+void MessageActionWindowBuilder::add_action_open_file(std::string file_path) {
+  add_action_custom("open document", {}, [file_path = std::move(file_path)]() {
+    std::string cmd = global_parameters().file_open_command();
+
+    auto p = vfork();
+    if (!p) {
+      execlp(cmd.c_str(), cmd.c_str(), "--", file_path.c_str(), NULL);
+    }
+  });
+}
+
+void MessageActionWindowBuilder::add_action_reply(td::int64 chat_id, td::int64 message_id) {
+  add_action_custom("reply", {},
+                    [chat_id, message_id, curses = tdcurses_]() { curses->open_compose_window(chat_id, message_id); });
+}
+
 /*
  *
  * DEBUG

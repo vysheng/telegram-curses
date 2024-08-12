@@ -45,6 +45,13 @@ class MessageActionWindowBuilder {
   void add_action_forward(td::int64 chat_id, td::int64 message_id);
   void add_action_copy(std::string text);
   void add_action_copy_primary(std::string text);
+  void add_action_open_file(std::string file_path);
+  void add_action_open_file(const td::td_api::file &file) {
+    if (file.local_->is_downloading_completed_) {
+      add_action_open_file(file.local_->path_);
+    }
+  }
+  void add_action_reply(td::int64 chat_id, td::int64 message_id);
 
   std::shared_ptr<windows::Window> build();
 

@@ -155,6 +155,14 @@ class GlobalParameters {
     return link_open_command_;
   }
 
+  void set_file_open_command(std::string command) {
+    file_open_command_ = std::move(command);
+  }
+
+  const auto &file_open_command() const {
+    return file_open_command_;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -183,6 +191,7 @@ class GlobalParameters {
 
   std::string copy_command_;
   std::string link_open_command_;
+  std::string file_open_command_;
 };
 
 extern GlobalParameters &global_parameters();
