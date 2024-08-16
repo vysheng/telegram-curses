@@ -10,6 +10,7 @@
 #include "td/utils/utf8.h"
 
 #include "TdObjectsOutput.h"
+#include "StickerManager.hpp"
 
 #include "utf8proc.h"
 
@@ -664,11 +665,21 @@ Outputter &operator<<(Outputter &out, const std::shared_ptr<User> &chat) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeEmoji &e) {
+  LOG(ERROR) << "EMOJI!" << e.emoji_;
   return out << e.emoji_;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeCustomEmoji &e) {
-  return out << "?";
+  auto x = sticker_manager().get_custom_emoji(e.custom_emoji_id_);
+  if (x.size() > 0) {
+    return out << x;
+  } else {
+    return out << "?";
+  }
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::reactionTypePaid &e) {
+  return out << "☆";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::chatPhoto &file) {

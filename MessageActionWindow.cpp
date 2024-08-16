@@ -8,6 +8,9 @@
 #include "TdObjectsOutput.h"
 #include "DebugInfoWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "ReactionSelectionWindow.hpp"
+#include "windows/Window.hpp"
+#include <memory>
 #include <vector>
 #include <unistd.h>
 
@@ -261,6 +264,36 @@ void MessageActionWindowBuilder::add_action_open_file(std::string file_path) {
 void MessageActionWindowBuilder::add_action_reply(td::int64 chat_id, td::int64 message_id) {
   add_action_custom("reply", {},
                     [chat_id, message_id, curses = tdcurses_]() { curses->open_compose_window(chat_id, message_id); });
+}
+
+void MessageActionWindowBuilder::add_action_reactions(td::int64 chat_id, td::int64 message_id) {
+  add_action_custom("update reactions", {},
+                    [chat_id, message_id, curses = tdcurses_, curses_id = tdcurses_actor_id_, chat = chat_window_]() {
+                      auto msg_id = chat->build_message_id(chat_id, message_id);
+                      auto msg = chat->get_message_as_message(msg_id);
+                      if (!msg) {
+                        return;
+                      }
+
+                      auto window = std::make_shared<ReactionSelectionWindow>(curses, curses_id, *msg);
+                      auto boxed_window = std::make_shared<windows::BorderedWindow>(
+                          window, windows::BorderedWindow::BorderType::Double);
+                      class Callback : public ReactionSelectionWindow::Callback {
+                       public:
+                        Callback(Tdcurses *curses, std::shared_ptr<windows::Window> window)
+                            : curses_(curses), window_(std::move(window)) {
+                        }
+                        void on_exit() override {
+                          curses_->del_popup_window(window_.get());
+                        }
+
+                       private:
+                        Tdcurses *curses_;
+                        std::shared_ptr<windows::Window> window_;
+                      };
+                      window->set_callback(std::make_unique<Callback>(curses, boxed_window));
+                      curses->add_popup_window(boxed_window, 1);
+                    });
 }
 
 /*

@@ -123,6 +123,7 @@ Outputter &operator<<(Outputter &, const td::td_api::messageSenderUser &sender);
 
 Outputter &operator<<(Outputter &, const td::td_api::reactionTypeEmoji &file);
 Outputter &operator<<(Outputter &, const td::td_api::reactionTypeCustomEmoji &file);
+Outputter &operator<<(Outputter &, const td::td_api::reactionTypePaid &file);
 
 Outputter &operator<<(Outputter &, const td::td_api::chatPhoto &file);
 }  // namespace tdcurses

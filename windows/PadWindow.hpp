@@ -165,7 +165,7 @@ class PadWindow : public Window {
   td::int32 offset_from_window_top_{0};
   ElementInfo *cur_element_{nullptr};
 
-  GluedTo glued_to_{GluedTo::None};
+  GluedTo glued_to_{GluedTo::Top};
   PadTo pad_to_{PadTo::Top};
 };
 

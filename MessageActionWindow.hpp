@@ -18,8 +18,8 @@ class ChatWindow;
 
 class MessageActionWindowBuilder {
  public:
-  MessageActionWindowBuilder(Tdcurses *tdcurses, ChatWindow *chat_window)
-      : tdcurses_(tdcurses), chat_window_(chat_window) {
+  MessageActionWindowBuilder(Tdcurses *tdcurses, td::ActorId<Tdcurses> tdcurses_actor_id, ChatWindow *chat_window)
+      : tdcurses_(tdcurses), tdcurses_actor_id_(std::move(tdcurses_actor_id)), chat_window_(chat_window) {
     CHECK(chat_window_);
   }
   std::function<void()> wrap_callback(std::function<void()> callback);
@@ -52,11 +52,13 @@ class MessageActionWindowBuilder {
     }
   }
   void add_action_reply(td::int64 chat_id, td::int64 message_id);
+  void add_action_reactions(td::int64 chat_id, td::int64 message_id);
 
   std::shared_ptr<windows::Window> build();
 
  private:
   Tdcurses *tdcurses_;
+  td::ActorId<Tdcurses> tdcurses_actor_id_;
   ChatWindow *chat_window_;
   std::vector<windows::SelectionWindow::ElementInfo> elements_;
 };

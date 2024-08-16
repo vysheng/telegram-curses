@@ -60,10 +60,11 @@ void ChatWindow::show_message_actions() {
     return;
   }
   auto el = static_cast<Element *>(cur_element.get());
-  MessageActionWindowBuilder builder(root(), this);
+  MessageActionWindowBuilder builder(root(), root_actor_id(), this);
 
   builder.add_action_forward(el->message->chat_id_, el->message->id_);
   builder.add_action_reply(el->message->chat_id_, el->message->id_);
+  builder.add_action_reactions(el->message->chat_id_, el->message->id_);
   builder.add_action_message_goto("current", el->message->chat_id_, el->message->id_, el->message.get());
   builder.add_action_message_debug_info("current", el->message->chat_id_, el->message->id_, el->message.get());
 

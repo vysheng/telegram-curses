@@ -19,6 +19,9 @@ class TdcursesWindowBase {
   Tdcurses *root() {
     return root_;
   }
+  td::ActorId<Tdcurses> root_actor_id() {
+    return root_actor_;
+  }
 
   template <class T>
   void send_request(td::tl_object_ptr<T> func, td::Promise<typename T::ReturnType> P) {

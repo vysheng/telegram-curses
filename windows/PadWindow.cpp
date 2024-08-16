@@ -91,7 +91,7 @@ void PadWindow::handle_input(TickitKeyEventInfo *info) {
   }
 }
 
-void PadWindow::on_resize(td::int32, td::int32, td::int32 new_width, td::int32 new_height) {
+void PadWindow::on_resize(td::int32, td::int32 old_height, td::int32 new_width, td::int32 new_height) {
   if (elements_.size() == 0) {
     return;
   }
@@ -112,6 +112,12 @@ void PadWindow::on_resize(td::int32, td::int32, td::int32 new_width, td::int32 n
       auto p = offset_in_cur_element_ * 1.0 / old_height;
       CHECK(p < 1.0);
       offset_in_cur_element_ = (td::int32)(p * new_height);
+    }
+  }
+
+  if (old_height != new_height) {
+    if (pad_to_ == PadTo::Bottom) {
+      offset_from_window_top_ += (new_height - old_height);
     }
   }
 
@@ -570,20 +576,26 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
   }
 
   {
+    if (is_active()) {
+      tickit_renderbuffer_textn_at(rb, 0, 0, "active", 6);
+    }
     char buf[20];
     size_t l;
+    int text_width;
     if (glued_to_ == GluedTo::Top) {
       l = sprintf(buf, "↑%s", "glued");
     } else {
       l = sprintf(buf, "↑%d", lines_over_window);
     }
-    tickit_renderbuffer_textn_at(rb, 0, width() - 1 - (int)l, buf, l);
-    if (false && glued_to_ == GluedTo::Bottom) {
+    text_width = (int)l - 2;
+    tickit_renderbuffer_textn_at(rb, 0, width() - 1 - text_width, buf, l);
+    if (glued_to_ == GluedTo::Bottom) {
       l = sprintf(buf, "↓%s", "glued");
     } else {
       l = sprintf(buf, "↓%d", lines_under_window);
     }
-    tickit_renderbuffer_textn_at(rb, height() - 1, width() - 1 - (int)l, buf, l);
+    text_width = (int)l - 2;
+    tickit_renderbuffer_textn_at(rb, height() - 1, width() - 1 - text_width, buf, l);
   }
 }
 

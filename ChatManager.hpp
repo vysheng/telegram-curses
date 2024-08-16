@@ -680,6 +680,9 @@ class Supergroup {
   auto has_unread_active_stories() const {
     return group_->has_unread_active_stories_;
   }
+  bool has_sensitive_content() const {
+    return group_->has_sensitive_content_;
+  }
 
   void full_update(td::tl_object_ptr<td::td_api::supergroup> group) {
     group_ = std::move(group);

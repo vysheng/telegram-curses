@@ -1,3 +1,4 @@
+#pragma once
 #include "td/actor/impl/ActorId-decl.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"

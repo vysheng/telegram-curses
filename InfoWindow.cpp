@@ -147,6 +147,9 @@ void ChatInfoWindow::generate_info() {
         if (supergroup->is_fake()) {
           out << " fake";
         }
+        if (supergroup->has_sensitive_content()) {
+          out << " 18+";
+        }
       }
       out << " ]\n";
 
@@ -205,6 +208,9 @@ void ChatInfoWindow::generate_info() {
         }
         if (channel->is_fake()) {
           out << " fake";
+        }
+        if (channel->has_sensitive_content()) {
+          out << " 18+";
         }
       }
       out << " ]\n";

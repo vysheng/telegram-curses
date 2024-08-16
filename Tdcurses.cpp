@@ -1549,6 +1549,12 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateSavedMessagesTags &update) {
   }
 
+  //@description The list of messages with active live location that need to be updated by the application has changed. The list is persistent across application restarts only if the message database is used
+  //@messages The list of messages with active live locations
+  //updateActiveLiveLocationMessages messages:vector<message> = Update;
+  void process_update(td::td_api::updateActiveLiveLocationMessages &update) {
+  }
+
   //@description The number of Telegram Stars owned by the current user has changed
   //@star_count The new number of Telegram Stars owned
   //updateOwnedStarCount star_count:int53 = Update;
