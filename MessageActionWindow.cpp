@@ -212,7 +212,7 @@ std::shared_ptr<windows::Window> MessageActionWindowBuilder::build() {
 
 void MessageActionWindowBuilder::add_action_forward(td::int64 chat_id, td::int64 message_id) {
   add_action_custom("forward", {}, [chat_id, message_id, curses = tdcurses_]() {
-    curses->spawn_chat_selection_window([chat_id, message_id, curses](td::Result<std::shared_ptr<Chat>> R) {
+    curses->spawn_chat_selection_window(true, [chat_id, message_id, curses](td::Result<std::shared_ptr<Chat>> R) {
       if (R.is_error()) {
         return;
       }

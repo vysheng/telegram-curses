@@ -210,6 +210,13 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
         root()->show_chat_info_window(el->chat_id());
       }
       return;
+    } else if (!strcmp(info->str, "s") || !strcmp(info->str, "S")) {
+      root()->spawn_chat_selection_window(info->str[0] == 's', [curses = root()](td::Result<std::shared_ptr<Chat>> R) {
+        if (R.is_ok()) {
+          auto chat = R.move_as_ok();
+          curses->open_chat(chat->chat_id());
+        }
+      });
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
     }

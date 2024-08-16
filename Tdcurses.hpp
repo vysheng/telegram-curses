@@ -160,7 +160,7 @@ class Tdcurses : public TdcursesInterface {
   }
   void spawn_popup_view_window(std::string text, std::vector<windows::MarkupElement> markup, td::int32 priority);
 
-  void spawn_chat_selection_window(td::Promise<std::shared_ptr<Chat>> promise);
+  void spawn_chat_selection_window(bool local, td::Promise<std::shared_ptr<Chat>> promise);
 
   void add_popup_window(std::shared_ptr<windows::Window> window, td::int32 prio) {
     screen_->add_popup_window(std::move(window), prio);

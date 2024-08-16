@@ -20,7 +20,8 @@ class ChatSearchWindow
     virtual void on_answer(std::shared_ptr<Chat> chat) = 0;
     virtual void on_abort() = 0;
   };
-  ChatSearchWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : TdcursesWindowBase(root, std::move(root_actor)) {
+  ChatSearchWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, bool local)
+      : TdcursesWindowBase(root, std::move(root_actor)), local_(local) {
     build_subwindows();
   }
 
@@ -35,6 +36,7 @@ class ChatSearchWindow
 
   void try_run_request();
   void got_chats(td::tl_object_ptr<td::td_api::chats> res);
+  void failed_to_get_chats(td::Status error);
 
   td::int32 best_width() override {
     return 30;
@@ -54,6 +56,7 @@ class ChatSearchWindow
   std::string last_request_text_;
   bool running_request_{false};
   std::unique_ptr<Callback> callback_;
+  bool local_{false};
 };
 
 }  // namespace tdcurses

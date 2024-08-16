@@ -665,7 +665,6 @@ Outputter &operator<<(Outputter &out, const std::shared_ptr<User> &chat) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeEmoji &e) {
-  LOG(ERROR) << "EMOJI!" << e.emoji_;
   return out << e.emoji_;
 }
 
@@ -679,7 +678,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::reactionTypeCustomEmoji 
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::reactionTypePaid &e) {
-  return out << "☆";
+  return out << "⭐";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::chatPhoto &file) {

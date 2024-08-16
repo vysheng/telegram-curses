@@ -57,7 +57,7 @@ class ReactionSelectionWindow
                                       out << "?";
                                     }
                                   },
-                                  [&](const PaidReaction &) { out << "☆"; }));
+                                  [&](const PaidReaction &) { out << "⭐"; }));
       out << " " << count_;
       if (selected_) {
         out << Color::Revert;

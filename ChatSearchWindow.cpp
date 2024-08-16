@@ -2,6 +2,7 @@
 #include "td/telegram/StickerType.h"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
+#include "td/utils/Promise.h"
 #include "td/utils/Random.h"
 #include "td/utils/Status.h"
 #include "windows/EditorWindow.hpp"
@@ -68,13 +69,26 @@ void ChatSearchWindow::try_run_request() {
   running_request_ = true;
   last_request_text_ = std::move(text);
 
-  auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, height() - 1);
-  send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::chats>> R) {
-    if (R.error().code() != ErrorCodeWindowDeleted) {
-      R.ensure();
-      self->got_chats(R.move_as_ok());
+  auto P = td::PromiseCreator::lambda([self = this](td::Result<td::tl_object_ptr<td::td_api::chats>> R) {
+    if (R.is_ok() || R.error().code() != ErrorCodeWindowDeleted) {
+      if (self->local_) {
+        R.ensure();
+      }
+      if (R.is_ok()) {
+        self->got_chats(R.move_as_ok());
+      } else {
+        self->failed_to_get_chats(R.move_as_error());
+      }
     }
   });
+
+  if (local_) {
+    auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, height() - 1);
+    send_request(std::move(req), std::move(P));
+  } else {
+    auto req = td::make_tl_object<td::td_api::searchPublicChats>(last_request_text_);
+    send_request(std::move(req), std::move(P));
+  }
 }
 
 void ChatSearchWindow::got_chats(td::tl_object_ptr<td::td_api::chats> res) {
@@ -88,6 +102,18 @@ void ChatSearchWindow::got_chats(td::tl_object_ptr<td::td_api::chats> res) {
       found_chats_.push_back(chat);
     }
   }
+  if (cur_selected_ > found_chats_.size()) {
+    cur_selected_ = found_chats_.size();
+  }
+  set_need_refresh();
+  try_run_request();
+}
+
+void ChatSearchWindow::failed_to_get_chats(td::Status error) {
+  CHECK(running_request_);
+  running_request_ = false;
+
+  found_chats_.clear();
   if (cur_selected_ > found_chats_.size()) {
     cur_selected_ = found_chats_.size();
   }
