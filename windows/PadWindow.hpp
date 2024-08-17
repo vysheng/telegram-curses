@@ -150,6 +150,14 @@ class PadWindow : public Window {
     return height() - 2;
   }
 
+  void set_title(std::string title) {
+    title_ = std::move(title);
+  }
+
+  td::CSlice title() const {
+    return title_;
+  }
+
  private:
   class Compare {
    public:
@@ -167,6 +175,8 @@ class PadWindow : public Window {
 
   GluedTo glued_to_{GluedTo::Top};
   PadTo pad_to_{PadTo::Top};
+
+  std::string title_;
 };
 
 }  // namespace windows

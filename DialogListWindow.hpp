@@ -31,6 +31,7 @@ class DialogListWindow
   DialogListWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : TdcursesWindowBase(root, std::move(root_actor)) {
     set_pad_to(PadTo::Top);
     clear();
+    set_title("global");
   }
   class Element;
 

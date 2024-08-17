@@ -1,5 +1,7 @@
 #include "PadWindow.hpp"
 #include "stdio.h"
+#include "td/utils/Slice-decl.h"
+#include "td/utils/StringBuilder.h"
 #include <memory>
 #include <vector>
 
@@ -576,26 +578,46 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
   }
 
   {
-    if (is_active()) {
-      tickit_renderbuffer_textn_at(rb, 0, 0, "active", 6);
-    }
-    char buf[20];
-    size_t l;
-    int text_width;
+    td::int32 t_x, t_y;
+    TickitCursorShape t_cursor;
+    TickitRect rect;
+    td::CSlice text;
+
+    td::StringBuilder sb;
+    sb << "↑";
     if (glued_to_ == GluedTo::Top) {
-      l = sprintf(buf, "↑%s", "glued");
+      sb << "glued";
     } else {
-      l = sprintf(buf, "↑%d", lines_over_window);
+      sb << lines_over_window;
     }
-    text_width = (int)l - 2;
-    tickit_renderbuffer_textn_at(rb, 0, width() - 1 - text_width, buf, l);
+    sb << " ";
+    sb << title() << "\n";
+    rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
+    tickit_renderbuffer_save(rb);
+    tickit_renderbuffer_clip(rb, &rect);
+    text = sb.as_cslice();
+    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
+                     is_active(), false);
+    tickit_renderbuffer_restore(rb);
+
+    sb.clear();
+
+    sb << "↓";
     if (glued_to_ == GluedTo::Bottom) {
-      l = sprintf(buf, "↓%s", "glued");
+      sb << "glued";
     } else {
-      l = sprintf(buf, "↓%d", lines_under_window);
+      sb << lines_under_window;
     }
-    text_width = (int)l - 2;
-    tickit_renderbuffer_textn_at(rb, height() - 1, width() - 1 - text_width, buf, l);
+    sb << " ";
+    sb << title() << "\n";
+    rect = TickitRect{.top = height() - 1, .left = 0, .lines = 1, .cols = width()};
+    tickit_renderbuffer_save(rb);
+    tickit_renderbuffer_clip(rb, &rect);
+    tickit_renderbuffer_translate(rb, height() - 1, 0);
+    text = sb.as_cslice();
+    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
+                     is_active(), false);
+    tickit_renderbuffer_restore(rb);
   }
 }
 
