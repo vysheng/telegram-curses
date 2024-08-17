@@ -1386,6 +1386,11 @@ class TdcursesImpl : public Tdcurses {
   //@value The new option value
   //updateOption name:string value:OptionValue = Update;
   void process_update(td::td_api::updateOption &update) {
+    if (update.name_ == "my_id") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueInteger::ID);
+      auto id = static_cast<const td::td_api::optionValueInteger &>(*update.value_).value_;
+      global_parameters().update_my_user_id(id);
+    }
   }
 
   //@description A sticker set has changed

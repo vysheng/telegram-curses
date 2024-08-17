@@ -163,6 +163,14 @@ class GlobalParameters {
     return file_open_command_;
   }
 
+  void update_my_user_id(td::int64 id) {
+    my_user_id_ = id;
+  }
+
+  td::int64 my_user_id() const {
+    return my_user_id_;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -192,6 +200,8 @@ class GlobalParameters {
   std::string copy_command_;
   std::string link_open_command_;
   std::string file_open_command_;
+
+  td::int64 my_user_id_{0};
 };
 
 extern GlobalParameters &global_parameters();
