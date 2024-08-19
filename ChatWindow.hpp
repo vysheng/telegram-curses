@@ -171,7 +171,7 @@ class ChatWindow
   MessageId get_newest_message_id();
 
  private:
-  td::int64 main_chat_id_;
+  const td::int64 main_chat_id_;
   std::map<MessageId, std::shared_ptr<Element>> messages_;
   std::map<td::int32, std::set<MessageId>> file_id_2_messages_;
   std::string search_pattern_;

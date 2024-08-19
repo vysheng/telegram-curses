@@ -209,11 +209,13 @@ class TdcursesImpl : public Tdcurses {
     auto it = handlers_.find(id);
     it->second.set_result(std::move(result));
     handlers_.erase(it);
+    refresh();
   }
   void on_error(td::uint64 id, td::tl_object_ptr<td::td_api::error> result) {
     auto it = handlers_.find(id);
     it->second.set_error(td::Status::Error(result->code_, result->message_));
     handlers_.erase(it);
+    refresh();
   }
 
   void on_update(td::tl_object_ptr<td::td_api::Update> update) {
@@ -2101,6 +2103,7 @@ void TdcursesImpl::update_status_line() {
       out << ch->search_pattern() << " ";
     }
     out << Outputter::Reverse(Outputter::ChangeBool::Revert) << " ";
+    out << "\n";
     auto markup = out.markup();
     auto str = out.as_str();
     markup.push_back(windows::MarkupElement::bg_color(0, 1000, (td::int32)Color::Grey));

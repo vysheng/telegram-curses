@@ -208,6 +208,13 @@ class Tdcurses : public TdcursesInterface {
   void on_close() {
   }
 
+  auto &screen() {
+    return screen_;
+  }
+  auto &layout() {
+    return layout_;
+  }
+
   void register_alive_window(TdcursesWindowBase *window);
   void unregister_alive_window(TdcursesWindowBase *window);
 

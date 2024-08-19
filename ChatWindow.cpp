@@ -24,8 +24,7 @@
 namespace tdcurses {
 
 ChatWindow::ChatWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id)
-    : TdcursesWindowBase(root, std::move(root_actor)) {
-  main_chat_id_ = chat_id;
+    : TdcursesWindowBase(root, std::move(root_actor)), main_chat_id_(chat_id) {
   set_pad_to(PadTo::Bottom);
   scroll_last_line();
   send_open();

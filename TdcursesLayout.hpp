@@ -2,6 +2,7 @@
 #include "windows/Window.hpp"
 #include "TdcursesWindowBase.hpp"
 #include <memory>
+#include <tickit.h>
 
 namespace tdcurses {
 
@@ -81,8 +82,10 @@ class TdcursesLayout
   }
 
   void render_borders(TickitRenderBuffer *rb) override {
-    tickit_renderbuffer_hline_at(rb, dialog_list_window_->height() + 2, 0, width() - 1,
-                                 TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
+    /*if (log_window_enabled_) {
+      tickit_renderbuffer_hline_at(rb, dialog_list_window_->height() + 2, 0, width() - 1,
+                                   TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
+    }*/
     tickit_renderbuffer_vline_at(rb, 0, dialog_list_window_->height() - 1, dialog_list_window_->width(),
                                  TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
     if (compose_window_) {

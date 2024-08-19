@@ -133,33 +133,61 @@ add_subdirectory(td)
 add_subdirectory(third-party/libtickit)
 
 add_executable(telegram-curses 
-  windows/Screen.cpp 
-  windows/Window.cpp 
-  windows/PadWindow.cpp 
-  windows/TextEdit.cpp 
-  windows/EditorWindow.cpp 
-  windows/unicode.cpp 
-  windows/WindowLayout.cpp 
-  
-  Tdcurses.cpp 
-  TdcursesWindowBase.cpp 
-  
-  Outputter.cpp 
-  TdObjectsOutput.cpp 
-  
-  ChatManager.cpp 
-  GlobalParameters.cpp 
-  StickerManager.cpp
+  windows/EditorWindow.cpp
+  windows/EditorWindow.hpp
+  windows/LogWindow.hpp
+  windows/Markup.hpp
+  windows/PadWindow.cpp
+  windows/PadWindow.hpp
+  windows/Screen.cpp
+  windows/Screen.hpp
+  windows/SelectionWindow.hpp
+  windows/TextEdit.cpp
+  windows/TextEdit.hpp
+  windows/unicode.cpp
+  windows/unicode.h
+  windows/Window.cpp
+  windows/Window.hpp
+  windows/WindowLayout.cpp
+  windows/WindowLayout.hpp
+  windows/WindowLayoutSplit.hpp
 
-  ChatSearchWindow.cpp 
-  ChatWindow.cpp 
-  ComposeWindow.cpp 
-  ConfigWindow.cpp 
-  DebugInfoWindow.cpp 
-  DialogListWindow.cpp 
-  InfoWindow.cpp 
-  MessageActionWindow.cpp 
-  
+  ChatManager.cpp
+  ChatManager.hpp
+  ChatSearchWindow.cpp
+  ChatSearchWindow.hpp
+  ChatWindow.cpp
+  ChatWindow.hpp
+  CommandLineWindow.hpp
+  ComposeWindow.cpp
+  ComposeWindow.hpp
+  ConfigWindow.cpp
+  ConfigWindow.hpp
+  DebugInfoWindow.cpp
+  DebugInfoWindow.hpp
+  DialogListWindow.cpp
+  DialogListWindow.hpp
+  GlobalParameters.cpp
+  GlobalParameters.hpp
+  InfoWindow.cpp
+  InfoWindow.hpp
+  MessageActionWindow.cpp
+  MessageActionWindow.hpp
+  Outputter.cpp
+  Outputter.hpp
+  ReactionSelectionWindow.hpp
+  StatusLineWindow.hpp
+  StickerManager.cpp
+  StickerManager.hpp
+  Tdcurses.cpp
+  Tdcurses.hpp
+  TdcursesLayout.hpp
+  TdcursesWindowBase.cpp
+  TdcursesWindowBase.hpp
+  TdObjectsOutput.cpp
+  TdObjectsOutput.h
+
+
   third-party/qrcodegen/qrcodegen.cpp 
 )
 target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc)

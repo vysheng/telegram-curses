@@ -152,7 +152,7 @@ void Screen::loop() {
   }
 
   tickit_tick(tickit_root_, TICKIT_RUN_NOHANG);
-  refresh();
+  refresh(true);
 }
 
 void Screen::handle_input(TickitKeyEventInfo *info) {
@@ -228,7 +228,7 @@ void Screen::refresh(bool force) {
 
   if (layout_) {
     layout_->resize(screen_width, screen_height);
-    if (force || (layout_->need_refresh() || layout_->need_refresh_at().is_in_past())) {
+    if (force || (layout_->need_refresh() && layout_->need_refresh_at().is_in_past())) {
       tickit_renderbuffer_save(rb);
       td::int32 cursor_x, cursor_y;
       TickitCursorShape cursor_shape;
