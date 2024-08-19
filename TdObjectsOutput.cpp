@@ -302,7 +302,17 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatDeletePhoto &
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatAddMembers &content) {
-  return out << "[added members]";
+  out << "[added members";
+  for (auto member : content.member_user_ids_) {
+    auto user = chat_manager().get_user(member);
+    if (user) {
+      out << " " << Color::Red << user << Color::Revert;
+    } else {
+      out << " ???";
+    }
+  }
+  out << " ]";
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatJoinByLink &content) {

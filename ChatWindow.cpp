@@ -244,13 +244,24 @@ void ChatWindow::show_message_actions() {
             [&](const td::td_api::messageChatChangeTitle &content) {},
             [&](const td::td_api::messageChatChangePhoto &content) {},
             [&](const td::td_api::messageChatDeletePhoto &content) {},
-            [&](const td::td_api::messageChatAddMembers &content) {},
+            [&](const td::td_api::messageChatAddMembers &content) {
+              for (auto x : content.member_user_ids_) {
+                builder.add_action_user_info("added user", x);
+                builder.add_action_user_chat_open("added user", x);
+              }
+            },
             [&](const td::td_api::messageChatJoinByLink &content) {},
             [&](const td::td_api::messageChatJoinByRequest &content) {},
-            [&](const td::td_api::messageChatDeleteMember &content) {},
+            [&](const td::td_api::messageChatDeleteMember &content) {
+              builder.add_action_user_info("removed user", content.user_id_);
+              builder.add_action_user_chat_open("removed user", content.user_id_);
+            },
             [&](const td::td_api::messageChatUpgradeTo &content) {},
             [&](const td::td_api::messageChatUpgradeFrom &content) {},
-            [&](const td::td_api::messagePinMessage &content) {},
+            [&](const td::td_api::messagePinMessage &content) {
+              auto msg = get_message_as_message(main_chat_id(), content.message_id_);
+              builder.add_action_message_goto("replied", main_chat_id(), content.message_id_, msg);
+            },
             [&](const td::td_api::messageScreenshotTaken &content) {},
             [&](const td::td_api::messageChatSetBackground &content) {},
             [&](const td::td_api::messageChatSetTheme &content) {},
