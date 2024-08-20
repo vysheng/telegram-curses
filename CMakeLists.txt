@@ -152,6 +152,8 @@ add_executable(telegram-curses
   windows/WindowLayout.hpp
   windows/WindowLayoutSplit.hpp
 
+  ChatInfoWindow.cpp
+  ChatInfoWindow.hpp
   ChatManager.cpp
   ChatManager.hpp
   ChatSearchWindow.cpp
@@ -159,6 +161,8 @@ add_executable(telegram-curses
   ChatWindow.cpp
   ChatWindow.hpp
   CommandLineWindow.hpp
+  CommonGroupsWindow.cpp
+  CommonGroupsWindow.hpp
   ComposeWindow.cpp
   ComposeWindow.hpp
   ConfigWindow.cpp
@@ -169,8 +173,10 @@ add_executable(telegram-curses
   DialogListWindow.hpp
   GlobalParameters.cpp
   GlobalParameters.hpp
-  InfoWindow.cpp
-  InfoWindow.hpp
+  MenuWindow.cpp
+  MenuWindow.hpp
+  MenuWindowCommon.cpp
+  MenuWindowCommon.hpp
   MessageActionWindow.cpp
   MessageActionWindow.hpp
   Outputter.cpp

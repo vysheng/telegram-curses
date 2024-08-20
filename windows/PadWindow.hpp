@@ -29,6 +29,9 @@ class PadWindowElement {
     return true;
   }
 
+  virtual void handle_input(PadWindow &root, TickitKeyEventInfo *info) {
+  }
+
   /*virtual td::uint32 empty_element_effects() {
     return 0;
   }*/
@@ -70,9 +73,7 @@ class PadWindow : public Window {
   void change_selection();
 
   void handle_input(TickitKeyEventInfo *info) override;
-
-  virtual void pad_handle_input(TickitKeyEventInfo *info) {
-  }
+  void active_element_handle_input(TickitKeyEventInfo *info);
 
   td::int32 pad_height() const {
     return lines_before_cur_element_ + lines_after_cur_element_ + (cur_element_ ? cur_element_->height : 0);

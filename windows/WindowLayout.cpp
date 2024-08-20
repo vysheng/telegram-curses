@@ -88,6 +88,7 @@ void WindowLayout::handle_input(TickitKeyEventInfo *info) {
   }
 
   if (active_window_) {
+    auto saved_window = active_window_;
     active_window_->handle_input(info);
   }
 }

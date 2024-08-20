@@ -10,6 +10,13 @@ namespace tdcurses {
 
 class Tdcurses;
 
+#define DROP_IF_DELETED(R)                                            \
+  do {                                                                \
+    if (R.is_error() && R.error().code() == ErrorCodeWindowDeleted) { \
+      return;                                                         \
+    }                                                                 \
+  } while (0)
+
 class TdcursesWindowBase {
  public:
   TdcursesWindowBase(Tdcurses *root, td::ActorId<Tdcurses> root_actor)

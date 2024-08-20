@@ -44,7 +44,10 @@ class ConfigWindow
         return;
       }
     } else {
-      if (!strcmp(info->str, " ")) {
+      if (!strcmp(info->str, "q")) {
+        root()->hide_config_window();
+        return;
+      } else if (!strcmp(info->str, " ")) {
         auto el = get_active_element();
         if (el) {
           auto e = std::static_pointer_cast<Element>(std::move(el));

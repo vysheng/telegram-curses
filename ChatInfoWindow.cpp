@@ -1,4 +1,5 @@
-#include "InfoWindow.hpp"
+#include "ChatInfoWindow.hpp"
+#include "CommonGroupsWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -12,151 +13,165 @@
 namespace tdcurses {
 
 void ChatInfoWindow::generate_info() {
+  clear();
   if (is_empty() || !chat_ || chat_->chat_type() == ChatType::Unknown) {
-    replace_text("");
     return;
   }
-  Outputter out;
-  out << Outputter::NoLb(true) << "title          " << chat_->title() << Outputter::NoLb(false) << "\n";
-  out << "id             " << chat_->chat_id() << "\n";
+  add_element("chat", chat_->title(), {}, [root = root(), chat_id = chat_->chat_id()]() { root->open_chat(chat_id); });
+  add_element("id", PSTRING() << chat_->chat_id());
   auto chat_type = chat_->chat_type();
   switch (chat_type) {
     case ChatType::User: {
-      out << "type           "
-          << "user [";
       auto user = chat_ ? chat_manager().get_user(chat_->chat_base_id()) : user_;
-      if (user) {
-        if (user->is_verified()) {
-          out << " verified";
+      {
+        Outputter out;
+        out << "user [";
+        if (user) {
+          if (user->is_verified()) {
+            out << " verified";
+          }
+          if (user->is_scam()) {
+            out << " scam";
+          }
+          if (user->is_support()) {
+            out << " support";
+          }
+          if (user->is_fake()) {
+            out << " fake";
+          }
+          if (user->is_mutual_contact()) {
+            out << " mutual_contact";
+          } else if (user->is_contact()) {
+            out << " contact";
+          } else {
+            out << " notcontact";
+          }
+          if (user_full_ && user_full_->block_list_) {
+            out << " blocked";
+          }
         }
-        if (user->is_scam()) {
-          out << " scam";
-        }
-        if (user->is_support()) {
-          out << " support";
-        }
-        if (user->is_fake()) {
-          out << " fake";
-        }
-        if (user->is_mutual_contact()) {
-          out << " mutual_contact";
-        } else if (user->is_contact()) {
-          out << " contact";
-        } else {
-          out << " notcontact";
-        }
-        if (user_full_ && user_full_->block_list_) {
-          out << " blocked";
-        }
+        out << " ]";
+        add_element("type", out.as_str(), out.markup());
       }
-      out << " ]\n";
       if (user) {
-        out << Outputter::NoLb(true) << "first name     " << user->first_name() << Outputter::NoLb(false) << "\n";
-        out << Outputter::NoLb(true) << "last name      " << user->last_name() << Outputter::NoLb(false) << "\n";
+        add_element("first name", user->first_name());
+        add_element("last name", user->last_name());
         if (user->username().size()) {
-          out << Outputter::NoLb(true) << "username       @" << user->username() << Outputter::NoLb(false) << "\n";
+          add_element("username", "@" + user->username());
         }
         if (user->phone_number().size() > 0) {
-          out << Outputter::NoLb(true) << "phone          +" << user->phone_number() << Outputter::NoLb(false) << "\n";
+          add_element("phone", "+" + user->phone_number());
         }
-        out << "user_id        " << user->user_id() << "\n";
-        out << "status         ";
+        add_element("user_id", PSTRING() << user->user_id());
 
-        const auto &status = user->status();
-        td::td_api::downcast_call(
-            const_cast<td::td_api::UserStatus &>(*status),
-            td::overloaded([&](td::td_api::userStatusEmpty &status) { out << "unknown"; },
-                           [&](td::td_api::userStatusRecently &status) { out << "last seen recently"; },
-                           [&](td::td_api::userStatusOnline &status) { out << "online"; },
-                           [&](td::td_api::userStatusOffline &status) {
-                             out << "last seen at " << Outputter::Date{status.was_online_};
-                           },
-                           [&](td::td_api::userStatusLastWeek &status) { out << "last seen last week"; },
-                           [&](td::td_api::userStatusLastMonth &status) { out << "last seen last month"; }));
-        out << "\n";
+        {
+          Outputter out;
+          const auto &status = user->status();
+          td::td_api::downcast_call(
+              const_cast<td::td_api::UserStatus &>(*status),
+              td::overloaded([&](td::td_api::userStatusEmpty &status) { out << "unknown"; },
+                             [&](td::td_api::userStatusRecently &status) { out << "last seen recently"; },
+                             [&](td::td_api::userStatusOnline &status) { out << "online"; },
+                             [&](td::td_api::userStatusOffline &status) {
+                               out << "last seen at " << Outputter::Date{status.was_online_};
+                             },
+                             [&](td::td_api::userStatusLastWeek &status) { out << "last seen last week"; },
+                             [&](td::td_api::userStatusLastMonth &status) { out << "last seen last month"; }));
+          add_element("status", out.as_str(), out.markup());
+        }
       }
       if (user_full_) {
         if (user_full_->bio_) {
-          out << "bio            " << user_full_->bio_ << "\n";
+          Outputter out;
+          out << *user_full_->bio_;
+          add_element("bio", out.as_str(), out.markup());
         }
         if (user_full_->bot_info_) {
-          out << "botinfo        " << user_full_->bot_info_->description_ << "\n";
+          add_element("botinfo", user_full_->bot_info_->description_);
         }
-        out << "commongroups   " << user_full_->group_in_common_count_ << "\n";
+        add_element("commongroups", PSTRING() << user_full_->group_in_common_count_, {},
+                    CommonGroupsWindow::spawn_function(user));
         if (user_full_->photo_) {
-          out << "photo          " << user_full_->photo_ << "\n";
+          Outputter out;
+          out << user_full_->photo_;
+          add_element("photo", out.as_str(), out.markup());
         };
       }
     } break;
     case ChatType::Basicgroup: {
-      out << "type           "
-          << "group"
-          << "\n";
       auto group = chat_manager().get_basic_group(chat_->chat_base_id());
+      add_element("type", "group");
       if (group) {
-        out << "group_id       " << group->group_id() << "\n";
-        out << "status         ";
-        const auto &status = group->status();
-        td::td_api::downcast_call(const_cast<td::td_api::ChatMemberStatus &>(*status),
-                                  td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
-                                                 [&](td::td_api::chatMemberStatusBanned &status) {
-                                                   out << "banned until " << Outputter::Date{status.banned_until_date_};
-                                                 },
-                                                 [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
-                                                 [&](td::td_api::chatMemberStatusCreator &status) {
-                                                   out << "creator";
-                                                   if (status.is_anonymous_) {
-                                                     out << " (anonymous)";
-                                                   }
-                                                 },
-                                                 [&](td::td_api::chatMemberStatusRestricted &status) {
-                                                   out << "restricted until "
-                                                       << Outputter::Date{status.restricted_until_date_};
-                                                 },
-                                                 [&](td::td_api::chatMemberStatusAdministrator &status) {
-                                                   out << "administrator";
-                                                   if (status.custom_title_.size() > 0) {
-                                                     out << "(title " << status.custom_title_ << ")";
-                                                   }
-                                                 }));
-        out << "\n";
-        out << "members        " << group->member_count() << "\n";
-      } else {
-        out << "group_id       " << chat_->chat_base_id() << "\n";
+        add_element("group_id", PSTRING() << group->group_id());
+        {
+          Outputter out;
+          const auto &status = group->status();
+          td::td_api::downcast_call(
+              const_cast<td::td_api::ChatMemberStatus &>(*status),
+              td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
+                             [&](td::td_api::chatMemberStatusBanned &status) {
+                               out << "banned until " << Outputter::Date{status.banned_until_date_};
+                             },
+                             [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
+                             [&](td::td_api::chatMemberStatusCreator &status) {
+                               if (status.is_anonymous_) {
+                                 out << "creator (anonymous)";
+                               } else {
+                                 out << "creator (public)";
+                               }
+                             },
+                             [&](td::td_api::chatMemberStatusRestricted &status) {
+                               out << "restricted until " << Outputter::Date{status.restricted_until_date_};
+                             },
+                             [&](td::td_api::chatMemberStatusAdministrator &status) {
+                               if (status.custom_title_.size() > 0) {
+                                 out << "administrator (title " << status.custom_title_ << ")";
+                               } else {
+                                 out << "administrator";
+                               }
+                             }));
+          add_element("status", out.as_str(), out.markup());
+        }
+        add_element("members", PSTRING() << group->member_count());
       }
       if (basic_group_full_) {
         if (basic_group_full_->description_.size() > 0) {
-          out << "description    " << basic_group_full_->description_ << "\n";
+          add_element("description", basic_group_full_->description_);
         }
         if (basic_group_full_->photo_) {
-          out << "photo          " << basic_group_full_->photo_ << "\n";
+          Outputter out;
+          out << basic_group_full_->photo_;
+          add_element("photo", out.as_str(), out.markup());
         };
       }
     } break;
     case ChatType::Supergroup: {
-      out << "type           "
-          << "supergroup [";
       auto supergroup = chat_manager().get_supergroup(chat_->chat_base_id());
-      if (supergroup) {
-        if (supergroup->is_verified()) {
-          out << " verified";
+      {
+        Outputter out;
+        out << "supergroup [";
+        if (supergroup) {
+          if (supergroup->is_verified()) {
+            out << " verified";
+          }
+          if (supergroup->is_scam()) {
+            out << " scam";
+          }
+          if (supergroup->is_fake()) {
+            out << " fake";
+          }
+          if (supergroup->has_sensitive_content()) {
+            out << " 18+";
+          }
         }
-        if (supergroup->is_scam()) {
-          out << " scam";
-        }
-        if (supergroup->is_fake()) {
-          out << " fake";
-        }
-        if (supergroup->has_sensitive_content()) {
-          out << " 18+";
-        }
+        out << " ]";
+        add_element("type", out.as_str(), out.markup());
       }
-      out << " ]\n";
 
       if (supergroup) {
-        const auto &status = supergroup->status();
-        if (status) {
-          out << "status         ";
+        {
+          Outputter out;
+          const auto &status = supergroup->status();
           td::td_api::downcast_call(
               const_cast<td::td_api::ChatMemberStatus &>(*status),
               td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
@@ -165,60 +180,67 @@ void ChatInfoWindow::generate_info() {
                              },
                              [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
                              [&](td::td_api::chatMemberStatusCreator &status) {
-                               out << "creator";
                                if (status.is_anonymous_) {
-                                 out << " (anonymous)";
+                                 out << "creator (anonymous)";
+                               } else {
+                                 out << "creator (public)";
                                }
                              },
                              [&](td::td_api::chatMemberStatusRestricted &status) {
                                out << "restricted until " << Outputter::Date{status.restricted_until_date_};
                              },
                              [&](td::td_api::chatMemberStatusAdministrator &status) {
-                               out << "administrator";
                                if (status.custom_title_.size() > 0) {
-                                 out << "(title " << status.custom_title_ << ")";
+                                 out << "administrator (title " << status.custom_title_ << ")";
+                               } else {
+                                 out << "administrator";
                                }
                              }));
-          out << "\n";
+          add_element("status", out.as_str(), out.markup());
         }
-        out << "members        " << supergroup->member_count() << "\n";
+        add_element("members", PSTRING() << supergroup->member_count());
       }
       if (supergroup_full_) {
         if (supergroup_full_->description_.size() > 0) {
-          out << "description    " << supergroup_full_->description_ << "\n";
+          add_element("description", supergroup_full_->description_);
         }
         if (supergroup_full_->photo_) {
-          out << "photo          " << supergroup_full_->photo_ << "\n";
+          Outputter out;
+          out << supergroup_full_->photo_;
+          add_element("photo", out.as_str(), out.markup());
         }
         if (supergroup_full_->invite_link_) {
-          out << "invite_link    " << supergroup_full_->invite_link_->name_ << "\n";
+          add_element("invite_link", supergroup_full_->invite_link_->name_);
         }
       }
     } break;
     case ChatType::Channel: {
-      out << "type           "
-          << "channel [";
       auto channel = chat_manager().get_channel(chat_->chat_base_id());
-      if (channel) {
-        if (channel->is_verified()) {
-          out << " verified";
+      {
+        Outputter out;
+        out << "channel [";
+        if (channel) {
+          if (channel->is_verified()) {
+            out << " verified";
+          }
+          if (channel->is_scam()) {
+            out << " scam";
+          }
+          if (channel->is_fake()) {
+            out << " fake";
+          }
+          if (channel->has_sensitive_content()) {
+            out << " 18+";
+          }
         }
-        if (channel->is_scam()) {
-          out << " scam";
-        }
-        if (channel->is_fake()) {
-          out << " fake";
-        }
-        if (channel->has_sensitive_content()) {
-          out << " 18+";
-        }
+        out << " ]";
+        add_element("type", out.as_str(), out.markup());
       }
-      out << " ]\n";
 
       if (channel) {
-        const auto &status = channel->status();
-        if (status) {
-          out << "status         ";
+        {
+          Outputter out;
+          const auto &status = channel->status();
           td::td_api::downcast_call(
               const_cast<td::td_api::ChatMemberStatus &>(*status),
               td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
@@ -227,65 +249,53 @@ void ChatInfoWindow::generate_info() {
                              },
                              [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
                              [&](td::td_api::chatMemberStatusCreator &status) {
-                               out << "creator";
                                if (status.is_anonymous_) {
-                                 out << " (anonymous)";
+                                 out << "creator (anonymous)";
+                               } else {
+                                 out << "creator (public)";
                                }
                              },
                              [&](td::td_api::chatMemberStatusRestricted &status) {
                                out << "restricted until " << Outputter::Date{status.restricted_until_date_};
                              },
                              [&](td::td_api::chatMemberStatusAdministrator &status) {
-                               out << "administrator";
                                if (status.custom_title_.size() > 0) {
-                                 out << "(title " << status.custom_title_ << ")";
+                                 out << "administrator (title " << status.custom_title_ << ")";
+                               } else {
+                                 out << "administrator";
                                }
                              }));
-          out << "\n";
+          add_element("status", out.as_str(), out.markup());
         }
-        out << "members        " << channel->member_count() << "\n";
+        add_element("members", PSTRING() << channel->member_count());
       }
       if (supergroup_full_) {
         if (supergroup_full_->description_.size() > 0) {
-          out << "description    " << supergroup_full_->description_ << "\n";
+          add_element("description", supergroup_full_->description_);
         }
         if (supergroup_full_->photo_) {
-          out << "photo          " << supergroup_full_->photo_ << "\n";
+          Outputter out;
+          out << supergroup_full_->photo_;
+          add_element("photo", out.as_str(), out.markup());
         }
         if (supergroup_full_->invite_link_) {
-          out << "invite_link    " << supergroup_full_->invite_link_->name_ << "\n";
+          add_element("invite_link", supergroup_full_->invite_link_->name_);
         }
       }
+
     } break;
     case ChatType::SecretChat: {
-      out << "type           "
-          << "secret chat"
-          << "\n";
+      add_element("type", "secret_chat");
     } break;
     case ChatType::Unknown: {
     }; break;
   }
 
   if (chat_->message_ttl() > 0) {
-    out << "ttl            " << chat_->message_ttl() << "\n";
+    add_element("ttl", PSTRING() << chat_->message_ttl());
   }
-  out << "online         " << chat_->online_count() << "\n";
-  if (chat_->theme_name().size() > 0) {
-    out << "theme          " << chat_->theme_name() << "\n";
-  }
-  replace_text(out.as_str(), out.markup());
+  add_element("online", PSTRING() << chat_->online_count());
   set_need_refresh();
-}
-
-void ChatInfoWindow::clear() {
-  change_unique_id();
-  chat_ = nullptr;
-  user_full_ = nullptr;
-  basic_group_full_ = nullptr;
-  supergroup_full_ = nullptr;
-  chat_type_ = ChatType::User;
-  chat_inner_id_ = 0;
-  generate_info();
 }
 
 void ChatInfoWindow::set_chat(std::shared_ptr<Chat> chat) {
@@ -300,6 +310,7 @@ void ChatInfoWindow::set_chat(std::shared_ptr<Chat> chat) {
   chat_ = std::move(chat);
 
   if (chat_) {
+    set_title(PSTRING() << "info " << chat_->title());
     chat_type_ = chat_->chat_type();
     chat_inner_id_ = chat_->chat_base_id();
     switch (chat_->chat_type()) {

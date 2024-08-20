@@ -72,7 +72,7 @@ void PadWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "C-f")) {
       scroll_down(effective_height() - 1);
     } else {
-      pad_handle_input(info);
+      active_element_handle_input(info);
     }
   } else {
     if (!strcmp(info->str, "k")) {
@@ -88,8 +88,15 @@ void PadWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "N")) {
       scroll_prev_element();
     } else {
-      pad_handle_input(info);
+      active_element_handle_input(info);
     }
+  }
+}
+
+void PadWindow::active_element_handle_input(TickitKeyEventInfo *info) {
+  auto el = get_active_element();
+  if (el) {
+    el->handle_input(*this, info);
   }
 }
 
@@ -502,6 +509,7 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     cursor_y = 0;
     auto rect = TickitRect{.top = 0, .left = 0, .lines = effective_height(), .cols = width()};
     tickit_renderbuffer_eraserect(rb, &rect);
+    tickit_renderbuffer_restore(rb);
     return;
   }
 

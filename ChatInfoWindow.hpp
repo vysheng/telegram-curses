@@ -6,25 +6,15 @@
 #include "windows/PadWindow.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "ChatManager.hpp"
+#include "MenuWindowCommon.hpp"
 #include <functional>
 #include <memory>
 #include <vector>
 
 namespace tdcurses {
 
-class ChatInfoWindow
-    : public windows::ViewWindow
-    , public TdcursesWindowBase {
+class ChatInfoWindow : public MenuWindowCommon {
  public:
-  class Callback : public windows::ViewWindow::Callback {
-   public:
-    void on_answer(ViewWindow *window) override {
-      static_cast<ChatInfoWindow *>(window)->root()->hide_chat_info_window();
-    }
-    void on_abort(ViewWindow *window) override {
-      static_cast<ChatInfoWindow *>(window)->root()->hide_chat_info_window();
-    }
-  };
   class Element : public windows::PadWindowElement {
    public:
     Element(ConfigWindow &win, size_t idx) : win_(win), idx_(idx) {
@@ -41,11 +31,27 @@ class ChatInfoWindow
     ConfigWindow &win_;
     size_t idx_;
   };
+  struct user_id {};
+  struct chat_id {};
   ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Chat> chat)
-      : windows::ViewWindow("", std::make_unique<Callback>())
-      , TdcursesWindowBase(root, std::move(root_actor))
-      , chat_(std::move(chat)) {
-    generate_info();
+      : MenuWindowCommon(root, std::move(root_actor)) {
+    set_chat(std::move(chat));
+  }
+  ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<User> user)
+      : MenuWindowCommon(root, std::move(root_actor)) {
+    set_chat(std::move(user));
+  }
+  ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<BasicGroup> group)
+      : MenuWindowCommon(root, std::move(root_actor)) {
+    set_chat(std::move(group));
+  }
+  ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Supergroup> group)
+      : MenuWindowCommon(root, std::move(root_actor)) {
+    set_chat(std::move(group));
+  }
+  ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<SecretChat> group)
+      : MenuWindowCommon(root, std::move(root_actor)) {
+    set_chat(std::move(group));
   }
 
   void generate_info();
@@ -54,16 +60,6 @@ class ChatInfoWindow
   void set_chat(std::shared_ptr<BasicGroup> chat);
   void set_chat(std::shared_ptr<Supergroup> chat);
   void set_chat(std::shared_ptr<SecretChat> chat);
-
-  void handle_input(TickitKeyEventInfo *info) override {
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Enter") || !strcmp(info->str, "Escape")) {
-        root()->hide_chat_info_window();
-        return;
-      }
-    }
-    return ViewWindow::handle_input(info);
-  }
 
   td::int32 best_height() override {
     return 40;
@@ -79,9 +75,19 @@ class ChatInfoWindow
   void got_full_super_group(td::int64 chat_id, td::tl_object_ptr<td::td_api::supergroupFullInfo> group);
   void got_chat_info(td::int64 chat_id, td::tl_object_ptr<td::td_api::chat> chat);
 
-  void clear();
   bool is_empty() const {
     return chat_type_ == ChatType::Unknown && chat_inner_id_ == 0;
+  }
+
+  static MenuWindowSpawnFunction spawn_function(std::shared_ptr<Chat> chat) {
+    return [chat](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
+      return std::make_shared<ChatInfoWindow>(root, root_id, chat);
+    };
+  }
+  static MenuWindowSpawnFunction spawn_function(std::shared_ptr<User> user) {
+    return [user](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
+      return std::make_shared<ChatInfoWindow>(root, root_id, user);
+    };
   }
 
  private:

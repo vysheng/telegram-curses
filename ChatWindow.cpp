@@ -302,6 +302,7 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   if (info->type == TICKIT_KEYEV_KEY) {
     if (!strcmp(info->str, "Escape")) {
       set_search_pattern("");
+      return;
     }
     if (!strcmp(info->str, "Enter")) {
       show_message_actions();
@@ -318,6 +319,9 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
       return;
     } else if (!strcmp(info->str, "i")) {
       root()->open_compose_window(main_chat_id_, 0);
+      return;
+    } else if (!strcmp(info->str, "q")) {
+      set_search_pattern("");
       return;
     } else if (!strcmp(info->str, "I")) {
       show_message_actions();

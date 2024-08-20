@@ -167,6 +167,10 @@ class ReactionSelectionWindow
         toggle();
         return;
       }
+      if (!strcmp(info->str, "q")) {
+        callback_->on_exit();
+        return;
+      }
     }
     PadWindow::handle_input(info);
   }

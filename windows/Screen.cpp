@@ -114,6 +114,7 @@ void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority
     active_window_ = window;
     active_window_->set_active(true);
   }
+
   refresh(true);
 }
 
@@ -121,12 +122,15 @@ void Screen::del_popup_window(Window *window) {
   if (!tickit_term_ || finished_) {
     return;
   }
+  bool found = false;
   for (auto it = popup_windows_.begin(); it != popup_windows_.end(); it++) {
     if (it->second.get() == window) {
       popup_windows_.erase(it);
+      found = true;
       break;
     }
   }
+  CHECK(found);
   if (active_window_.get() == window) {
     active_window_->set_active(false);
     active_window_ = nullptr;
@@ -135,6 +139,7 @@ void Screen::del_popup_window(Window *window) {
       active_window_->set_active(true);
     }
   }
+
   refresh(true);
 }
 
@@ -168,8 +173,10 @@ void Screen::handle_input(TickitKeyEventInfo *info) {
   }
 
   if (active_window_) {
+    auto saved_window = active_window_;
     active_window_->handle_input(info);
   } else if (layout_) {
+    auto saved_layout = layout_;
     layout_->handle_input(info);
   }
 
