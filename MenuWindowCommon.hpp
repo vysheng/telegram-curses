@@ -1,5 +1,6 @@
 #pragma once
 #include "MenuWindow.hpp"
+#include <memory>
 
 namespace tdcurses {
 
@@ -47,7 +48,6 @@ class MenuWindowCommon : public MenuWindow {
   MenuWindowCommon(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : MenuWindow(root, root_actor) {
   }
   class Element : public windows::PadWindowElement {
-   private:
    public:
     Element(size_t idx, std::shared_ptr<MenuWindowElement> element) : idx_(idx), element_(std::move(element)) {
     }
@@ -77,28 +77,35 @@ class MenuWindowCommon : public MenuWindow {
                                         is_selected);
     }
 
+    void update_element(std::shared_ptr<MenuWindowElement> element) {
+      element_ = std::move(element);
+    }
+
    private:
     size_t idx_;
     std::shared_ptr<MenuWindowElement> element_;
   };
 
-  void add_element(std::shared_ptr<MenuWindowElement> element) {
+  std::shared_ptr<Element> add_element(std::shared_ptr<MenuWindowElement> element) {
     if (element->name.size() > max_size_) {
       max_size_ = element->name.size();
     }
-    PadWindow::add_element(std::make_shared<Element>(last_idx_++, std::move(element)));
+    auto el = std::make_shared<Element>(last_idx_++, std::move(element));
+    PadWindow::add_element(el);
+    return el;
   }
-  void add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup = {}) {
-    add_element(std::make_shared<MenuWindowElement>(std::move(name), std::move(data), std::move(markup)));
+  std::shared_ptr<Element> add_element(std::string name, std::string data,
+                                       std::vector<windows::MarkupElement> markup = {}) {
+    return add_element(std::make_shared<MenuWindowElement>(std::move(name), std::move(data), std::move(markup)));
   }
-  void add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
-                   MenuWindowSpawnFunction spawn) {
-    add_element(std::make_shared<MenuWindowElementSpawn>(std::move(name), std::move(data), std::move(markup),
-                                                         std::move(spawn)));
+  std::shared_ptr<Element> add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
+                                       MenuWindowSpawnFunction spawn) {
+    return add_element(std::make_shared<MenuWindowElementSpawn>(std::move(name), std::move(data), std::move(markup),
+                                                                std::move(spawn)));
   }
-  void add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
-                   std::function<void()> cb) {
-    add_element(
+  std::shared_ptr<Element> add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
+                                       std::function<void()> cb) {
+    return add_element(
         std::make_shared<MenuWindowElementRun>(std::move(name), std::move(data), std::move(markup), std::move(cb)));
   }
 

@@ -7,6 +7,7 @@
 #include "td/utils/Status.h"
 #include "td/utils/overloaded.h"
 #include "TdObjectsOutput.h"
+#include "FileManager.hpp"
 #include "MessageActionWindow.hpp"
 #include "CommandLineWindow.hpp"
 #include "windows/EditorWindow.hpp"
@@ -696,10 +697,10 @@ void ChatWindow::process_update(td::td_api::updateDeleteMessages &update) {
 //@is_permanent True, if the messages are permanently deleted by a user (as opposed to just becoming inaccessible)
 //@from_cache True, if the messages are deleted only from the cache and can possibly be retrieved again in the future
 //updateDeleteMessages chat_id:int53 message_ids:vector<int53> is_permanent:Bool from_cache:Bool = Update;
-void ChatWindow::process_update(td::td_api::updateFile &update) {
+void ChatWindow::process_file_update(const td::td_api::updateFile &update) {
   auto it = file_id_2_messages_.find(update.file_->id_);
   if (it != file_id_2_messages_.end()) {
-    for (auto x : it->second) {
+    for (auto x : it->second.messages) {
       update_file(x, *update.file_);
     }
   }
@@ -758,12 +759,38 @@ void ChatWindow::update_message_file(td::td_api::message &message, const td::td_
   }
 }
 
-void ChatWindow::update_file(MessageId message_id, td::td_api::file &file) {
+void ChatWindow::update_file(MessageId message_id, const td::td_api::file &file) {
   auto it = messages_.find(message_id);
   if (it != messages_.end()) {
     update_message_file(*it->second->message, file);
     change_element(it->second.get());
   }
+}
+
+void ChatWindow::del_file_message_pair(MessageId msg_id, td::int32 file_id) {
+  if (!file_id) {
+    return;
+  }
+  auto it = file_id_2_messages_.find(file_id);
+  CHECK(it != file_id_2_messages_.end());
+  it->second.messages.erase(msg_id);
+  if (it->second.messages.size() == 0) {
+    file_manager().unsubscribe_from_file_updates(file_id, it->second.subscription_id);
+    file_id_2_messages_.erase(it);
+  }
+}
+
+void ChatWindow::add_file_message_pair(MessageId msg_id, td::int32 file_id) {
+  if (!file_id) {
+    return;
+  }
+  auto it = file_id_2_messages_.find(file_id);
+  if (it == file_id_2_messages_.end()) {
+    auto subscription_id = file_manager().subscribe_to_file_updates(
+        file_id, [ptr = this](const td::td_api::updateFile &update) { ptr->process_file_update(update); });
+    it = file_id_2_messages_.emplace(file_id, subscription_id).first;
+  }
+  it->second.messages.emplace(msg_id);
 }
 
 void ChatWindow::Element::run(ChatWindow *window) {
@@ -780,6 +807,13 @@ void ChatWindow::Element::run(ChatWindow *window) {
   }
 }
 
+void ChatWindow::clear_file_subscriptions() {
+  for (auto &x : file_id_2_messages_) {
+    file_manager().unsubscribe_from_file_updates(x.first, x.second.subscription_id);
+  }
+  file_id_2_messages_.clear();
+}
+
 void ChatWindow::set_search_pattern(std::string pattern) {
   if (pattern == search_pattern_) {
     return;
@@ -792,7 +826,7 @@ void ChatWindow::set_search_pattern(std::string pattern) {
   PadWindow::clear();
   change_unique_id();
 
-  file_id_2_messages_.clear();
+  clear_file_subscriptions();
   search_pattern_ = std::move(pattern);
   running_req_top_ = false;
   running_req_bottom_ = false;
@@ -803,6 +837,7 @@ void ChatWindow::set_search_pattern(std::string pattern) {
 
   if (cur) {
     messages_.emplace(cur->message_id(), cur);
+    add_file_message_pair(cur->message_id(), get_file_id(*cur->message));
     add_element(cur);
     unglue();
   }

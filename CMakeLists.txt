@@ -171,6 +171,8 @@ add_executable(telegram-curses
   DebugInfoWindow.hpp
   DialogListWindow.cpp
   DialogListWindow.hpp
+  FileManager.cpp
+  FileManager.hpp
   GlobalParameters.cpp
   GlobalParameters.hpp
   GroupMembersWindow.cpp

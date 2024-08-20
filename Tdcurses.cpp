@@ -41,6 +41,7 @@
 #include "ComposeWindow.hpp"
 #include "ConfigWindow.hpp"
 #include "DialogListWindow.hpp"
+#include "FileManager.hpp"
 #include "ChatInfoWindow.hpp"
 #include "StatusLineWindow.hpp"
 #include "TdcursesLayout.hpp"
@@ -1218,10 +1219,7 @@ class TdcursesImpl : public Tdcurses {
   //@file New data about the file
   //updateFile file:file = Update;
   void process_update(td::td_api::updateFile &update) {
-    auto c = chat_window();
-    if (c) {
-      c->process_update(update);
-    }
+    file_manager().process_update(update);
   }
 
   //@description The file generation process needs to be started by the application

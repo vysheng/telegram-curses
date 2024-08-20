@@ -90,9 +90,9 @@ class ChatWindow
   void process_update(td::td_api::updateMessageLiveLocationViewed &update);
   void process_update(td::td_api::updateDeleteMessages &update);
   void process_update(td::td_api::updateChatAction &update);
-  void process_update(td::td_api::updateFile &update);
+  void process_file_update(const td::td_api::updateFile &update);
 
-  void update_file(MessageId message_id, td::td_api::file &file);
+  void update_file(MessageId message_id, const td::td_api::file &file);
 
   std::string draft_message_text();
 
@@ -101,29 +101,15 @@ class ChatWindow
 
   ~ChatWindow() {
     send_close();
+    clear_file_subscriptions();
   }
 
   static td::int32 get_file_id(const td::td_api::message &message);
   static void update_message_file(td::td_api::message &message, const td::td_api::file &file);
 
-  void del_file_message_pair(MessageId msg_id, td::int32 file_id) {
-    if (!file_id) {
-      return;
-    }
-    auto it = file_id_2_messages_.find(file_id);
-    CHECK(it != file_id_2_messages_.end());
-    it->second.erase(msg_id);
-    if (it->second.size() == 0) {
-      file_id_2_messages_.erase(it);
-    }
-  }
-
-  void add_file_message_pair(MessageId msg_id, td::int32 file_id) {
-    if (!file_id) {
-      return;
-    }
-    file_id_2_messages_[file_id].insert(msg_id);
-  }
+  void del_file_message_pair(MessageId msg_id, td::int32 file_id);
+  void add_file_message_pair(MessageId msg_id, td::int32 file_id);
+  void clear_file_subscriptions();
 
   std::shared_ptr<Element> get_message(MessageId message_id) {
     auto it = messages_.find(message_id);
@@ -174,7 +160,13 @@ class ChatWindow
  private:
   const td::int64 main_chat_id_;
   std::map<MessageId, std::shared_ptr<Element>> messages_;
-  std::map<td::int32, std::set<MessageId>> file_id_2_messages_;
+  struct FileSubscription {
+    FileSubscription(td::int64 id) : subscription_id(id) {
+    }
+    const td::int64 subscription_id;
+    std::set<MessageId> messages;
+  };
+  std::map<td::int32, FileSubscription> file_id_2_messages_;
   std::string search_pattern_;
   bool running_req_top_{false};
   bool running_req_bottom_{false};

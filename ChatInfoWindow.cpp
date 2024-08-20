@@ -8,6 +8,7 @@
 #include "td/utils/Status.h"
 #include "td/utils/overloaded.h"
 #include "TdObjectsOutput.h"
+#include "FileManager.hpp"
 #include <memory>
 #include <vector>
 
