@@ -41,7 +41,7 @@ void CommonGroupsWindow::request_bottom_elements() {
     return;
   }
   running_req_ = true;
-  auto req = td::make_tl_object<td::td_api::getGroupsInCommon>(user_->user_id(), last_chat_id_, 10);
+  auto req = td::make_tl_object<td::td_api::getGroupsInCommon>(user_->user_id(), last_chat_id_, 100);
   send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::chats>> R) {
     DROP_IF_DELETED(R);
     if (R.is_ok()) {
@@ -56,6 +56,7 @@ void CommonGroupsWindow::got_chats(td::Result<td::tl_object_ptr<td::td_api::chat
     is_completed_ = true;
     return;
   }
+  is_completed_ = true;
   auto chats = R.move_as_ok();
   if (!chats->chat_ids_.size()) {
     is_completed_ = true;

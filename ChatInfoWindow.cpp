@@ -1,5 +1,6 @@
 #include "ChatInfoWindow.hpp"
 #include "CommonGroupsWindow.hpp"
+#include "GroupMembersWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -132,7 +133,7 @@ void ChatInfoWindow::generate_info() {
                              }));
           add_element("status", out.as_str(), out.markup());
         }
-        add_element("members", PSTRING() << group->member_count());
+        add_element("members", PSTRING() << group->member_count(), {}, GroupMembersWindow::spawn_function(chat_));
       }
       if (basic_group_full_) {
         if (basic_group_full_->description_.size() > 0) {
@@ -198,7 +199,7 @@ void ChatInfoWindow::generate_info() {
                              }));
           add_element("status", out.as_str(), out.markup());
         }
-        add_element("members", PSTRING() << supergroup->member_count());
+        add_element("members", PSTRING() << supergroup->member_count(), {}, GroupMembersWindow::spawn_function(chat_));
       }
       if (supergroup_full_) {
         if (supergroup_full_->description_.size() > 0) {
