@@ -34,6 +34,7 @@ void PadWindow::scroll_next_element() {
   if (!cur_element_) {
     return;
   }
+  glued_to_ = GluedTo::None;
   adjust_cur_element(cur_element_->height - offset_in_cur_element_);
 }
 

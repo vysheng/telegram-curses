@@ -272,6 +272,38 @@ class Builder {
     }
   }
 
+  void pad_left(td::int32 size, bool has_cursor) {
+    if (size < 0) {
+      return;
+    }
+    if (size >= width_) {
+      return;
+    }
+    if (cur_line_pos_ <= size) {
+      while (cur_line_pos_ < size) {
+        add_utf8(" ", 1, has_cursor);
+      }
+      return;
+    } else {
+      start_new_line();
+      CHECK(!cur_line_pos_);
+      while (cur_line_pos_ < size) {
+        add_utf8(" ", 1, has_cursor);
+      }
+      return;
+    }
+  }
+
+  void pad_right(td::int32 size, bool has_cursor) {
+    if (size <= 0) {
+      return;
+    }
+    if (size > width_) {
+      return;
+    }
+    pad_left(width_ - size, has_cursor);
+  }
+
   void add_control(td::int32 ch, bool has_cursor) {
     if (is_password_) {
       return add_utf8("*", 1, has_cursor);
@@ -405,7 +437,11 @@ td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int3
       break;
     }
     auto x = next_graphem(text, cur_pos);
-    if (x.width >= 0) {
+    if (x.first_codepoint >= LEFT_ALIGN_BLOCK_START && x.first_codepoint <= LEFT_ALIGN_BLOCK_END) {
+      builder.pad_left(x.first_codepoint - LEFT_ALIGN_BLOCK_START, cur_pos == pos);
+    } else if (x.first_codepoint >= RIGHT_ALIGN_BLOCK_START && x.first_codepoint <= RIGHT_ALIGN_BLOCK_END) {
+      builder.pad_right(x.first_codepoint - RIGHT_ALIGN_BLOCK_START, cur_pos == pos);
+    } else if (x.width >= 0) {
       builder.add_utf8(x.data, x.width, cur_pos == pos);
     } else if (x.width == -1) {
       builder.add_control(x.data.size() > 1 ? 0 : x.data[0], cur_pos == pos);

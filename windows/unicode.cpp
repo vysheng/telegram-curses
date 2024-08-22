@@ -74,6 +74,11 @@ td::int32 my_wcwidth(td::int32 cp) {
   return utf8proc_charwidth(cp);
 }
 
+bool is_control_char(td::int32 op) {
+  return (op >= LEFT_ALIGN_BLOCK_START && op <= LEFT_ALIGN_BLOCK_END) ||
+         (op >= RIGHT_ALIGN_BLOCK_START && op <= RIGHT_ALIGN_BLOCK_END);
+}
+
 }  // namespace
 
 void enable_wide_emojis() {
@@ -98,6 +103,7 @@ Graphem next_graphem(td::Slice data, size_t pos) {
   td::int32 cur_codepoints = 0;
   td::int32 base_codepoint = 0;
   td::int32 graphems_cnt = 0;
+  td::int32 first_codepoint = 0;
   while (cur < last) {
     td::uint32 code;
     auto next = next_utf8(cur, last, code);
@@ -108,14 +114,19 @@ Graphem next_graphem(td::Slice data, size_t pos) {
     if (code == 0) {
       return Graphem{.data = td::Slice(first, cur), .width = -2, .unicode_codepoints = 1};
     }
+    if (is_first) {
+      first_codepoint = code;
+    }
+    bool control_symbol = is_control_char(code);
     auto width = my_wcwidth(code);
     if (width < 0) {
       if (is_first) {
-        return Graphem{.data = td::Slice(first, next), .width = -1, .unicode_codepoints = 1};
+        return Graphem{
+            .data = td::Slice(first, next), .width = -1, .unicode_codepoints = 1, .first_codepoint = (td::int32)code};
       } else {
         break;
       }
-    } else if (width == 0) {
+    } else if (width == 0 && !control_symbol) {
       cur_codepoints++;
       if (wide_emojis && code == 0xFE0F && cur_width == 1) {
         cur_width++;
@@ -128,6 +139,9 @@ Graphem next_graphem(td::Slice data, size_t pos) {
         cur = next;
         base_codepoint = code;
         graphems_cnt++;
+        if (control_symbol) {
+          break;
+        }
       } else {
         if (graphems_cnt == 1 && is_regional_indicator(base_codepoint) && is_regional_indicator(code)) {
           graphems_cnt++;
@@ -141,7 +155,10 @@ Graphem next_graphem(td::Slice data, size_t pos) {
     }
   }
 
-  return Graphem{.data = td::Slice(first, cur), .width = cur_width, .unicode_codepoints = cur_codepoints};
+  return Graphem{.data = td::Slice(first, cur),
+                 .width = cur_width,
+                 .unicode_codepoints = cur_codepoints,
+                 .first_codepoint = first_codepoint};
 }
 
 Graphem prev_graphem(td::Slice data, size_t pos) {
@@ -308,4 +325,24 @@ td::Slice get_utf8_string_substring_utf16_codepoints(td::Slice text, size_t from
   }
 
   return td::Slice(text).remove_prefix(from_pos).truncate(to_pos - from_pos);
+}
+
+void utf8_code_to_str(td::int32 code, char buf[6]) {
+  td::int32 p = 0;
+  if (code <= 0x7f) {
+    buf[p++] = static_cast<char>(code);
+  } else if (code <= 0x7ff) {
+    buf[p++] = static_cast<char>(0xc0 | (code >> 6));  // implementation-defined
+    buf[p++] = static_cast<char>(0x80 | (code & 0x3f));
+  } else if (code <= 0xffff) {
+    buf[p++] = static_cast<char>(0xe0 | (code >> 12));  // implementation-defined
+    buf[p++] = static_cast<char>(0x80 | ((code >> 6) & 0x3f));
+    buf[p++] = static_cast<char>(0x80 | (code & 0x3f));
+  } else {
+    buf[p++] = static_cast<char>(0xf0 | (code >> 18));  // implementation-defined
+    buf[p++] = static_cast<char>(0x80 | ((code >> 12) & 0x3f));
+    buf[p++] = static_cast<char>(0x80 | ((code >> 6) & 0x3f));
+    buf[p++] = static_cast<char>(0x80 | (code & 0x3f));
+  }
+  buf[p++] = 0;
 }

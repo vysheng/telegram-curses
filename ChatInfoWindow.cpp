@@ -19,7 +19,13 @@ void ChatInfoWindow::generate_info() {
   if (is_empty() || !chat_ || chat_->chat_type() == ChatType::Unknown) {
     return;
   }
-  add_element("chat", chat_->title(), {}, [root = root(), chat_id = chat_->chat_id()]() { root->open_chat(chat_id); });
+  {
+    Outputter out;
+    out << chat_->title() << Outputter::RightPad{"<open>"};
+    add_element("chat", out.as_str(), out.markup(),
+                [root = root(), chat_id = chat_->chat_id()]() { root->open_chat(chat_id); });
+  }
+  add_element("title", chat_->title());
   add_element("id", PSTRING() << chat_->chat_id());
   auto chat_type = chat_->chat_type();
   switch (chat_type) {
@@ -91,8 +97,11 @@ void ChatInfoWindow::generate_info() {
         if (user_full_->bot_info_) {
           add_element("botinfo", user_full_->bot_info_->description_);
         }
-        add_element("commongroups", PSTRING() << user_full_->group_in_common_count_, {},
-                    CommonGroupsWindow::spawn_function(user));
+        {
+          Outputter out;
+          out << user_full_->group_in_common_count_ << " " << Outputter::RightPad{"<view>"};
+          add_element("commongroups", out.as_str(), out.markup(), CommonGroupsWindow::spawn_function(user));
+        }
         if (user_full_->photo_) {
           Outputter out;
           out << user_full_->photo_;
@@ -134,7 +143,11 @@ void ChatInfoWindow::generate_info() {
                              }));
           add_element("status", out.as_str(), out.markup());
         }
-        add_element("members", PSTRING() << group->member_count(), {}, GroupMembersWindow::spawn_function(chat_));
+        {
+          Outputter out;
+          out << group->member_count() << " " << Outputter::RightPad{"<view>"};
+          add_element("members", out.as_str(), out.markup(), GroupMembersWindow::spawn_function(chat_));
+        }
       }
       if (basic_group_full_) {
         if (basic_group_full_->description_.size() > 0) {
@@ -200,7 +213,11 @@ void ChatInfoWindow::generate_info() {
                              }));
           add_element("status", out.as_str(), out.markup());
         }
-        add_element("members", PSTRING() << supergroup->member_count(), {}, GroupMembersWindow::spawn_function(chat_));
+        {
+          Outputter out;
+          out << supergroup->member_count() << " " << Outputter::RightPad{"<view>"};
+          add_element("members", out.as_str(), out.markup(), GroupMembersWindow::spawn_function(chat_));
+        }
       }
       if (supergroup_full_) {
         if (supergroup_full_->description_.size() > 0) {
@@ -269,7 +286,11 @@ void ChatInfoWindow::generate_info() {
                              }));
           add_element("status", out.as_str(), out.markup());
         }
-        add_element("members", PSTRING() << channel->member_count());
+        {
+          Outputter out;
+          out << channel->member_count() << " " << Outputter::RightPad{"<view>"};
+          add_element("members", out.as_str(), out.markup(), GroupMembersWindow::spawn_function(chat_));
+        }
       }
       if (supergroup_full_) {
         if (supergroup_full_->description_.size() > 0) {

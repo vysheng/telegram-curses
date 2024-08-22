@@ -76,6 +76,12 @@ class Outputter {
     }
   };
 
+  struct RightPad {
+    RightPad(td::Slice data) : data(data) {
+    }
+    td::Slice data;
+  };
+
   using Underline = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_UNDER>;
   using Bold = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_BOLD>;
   using Italic = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_ITALIC>;
@@ -125,6 +131,7 @@ class Outputter {
   Outputter &operator<<(Color color) {
     return *this << FgColor{color};
   }
+  Outputter &operator<<(const RightPad &x);
 
   template <td::int32 x>
   Outputter &operator<<(const ChangeBoolImpl<x> &el) {

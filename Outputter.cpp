@@ -1,8 +1,10 @@
 #include "Outputter.hpp"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/port/Clocks.h"
 #include "td/utils/format.h"
 #include "td/utils/format.h"
 #include "ChatWindow.hpp"
+#include "windows/unicode.h"
 
 namespace td {
 namespace format {
@@ -110,6 +112,12 @@ const td::td_api::message *Outputter::get_message(td::int64 chat_id, td::int64 m
     return nullptr;
   }
   return cur_chat_->get_message_as_message(chat_id, message_id);
+}
+Outputter &Outputter::operator<<(const RightPad &x) {
+  td::int32 code = RIGHT_ALIGN_BLOCK_START + (td::int32)x.data.size();
+  char buf[6];
+  utf8_code_to_str(code, buf);
+  return *this << td::CSlice((char *)buf) << x.data;
 }
 
 }  // namespace tdcurses
