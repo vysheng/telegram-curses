@@ -44,7 +44,8 @@ class ConfigWindow
         return;
       }
     } else {
-      if (!strcmp(info->str, "q")) {
+      if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q") || !strcmp(info->str, "Q") ||
+          !strcmp(info->str, "C-Q")) {
         root()->hide_config_window();
         return;
       } else if (!strcmp(info->str, " ")) {

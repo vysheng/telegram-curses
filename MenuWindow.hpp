@@ -71,11 +71,11 @@ class MenuWindow
         return;
       }
     } else {
-      if (!strcmp(info->str, "q")) {
+      if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q")) {
         rollback();
         return;
       }
-      if (!strcmp(info->str, "Q")) {
+      if (!strcmp(info->str, "Q") || !strcmp(info->str, "C-Q")) {
         exit();
         return;
       }

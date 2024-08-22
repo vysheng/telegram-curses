@@ -321,7 +321,8 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "i")) {
       root()->open_compose_window(main_chat_id_, 0);
       return;
-    } else if (!strcmp(info->str, "q")) {
+    } else if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q") || !strcmp(info->str, "Q") ||
+               !strcmp(info->str, "C-Q")) {
       set_search_pattern("");
       return;
     } else if (!strcmp(info->str, "I")) {

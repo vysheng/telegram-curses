@@ -167,7 +167,8 @@ class ReactionSelectionWindow
         toggle();
         return;
       }
-      if (!strcmp(info->str, "q")) {
+      if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q") || !strcmp(info->str, "Q") ||
+          !strcmp(info->str, "C-Q")) {
         callback_->on_exit();
         return;
       }
