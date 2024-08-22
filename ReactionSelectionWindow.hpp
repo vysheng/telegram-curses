@@ -157,8 +157,10 @@ class ReactionSelectionWindow
       if (!strcmp(info->str, "Enter")) {
         toggle();
         return;
-      }
-      if (!strcmp(info->str, "Escape")) {
+      } else if (!strcmp(info->str, "Escape")) {
+        callback_->on_exit();
+        return;
+      } else if (!strcmp(info->str, "C-q") || !strcmp(info->str, "C-Q")) {
         callback_->on_exit();
         return;
       }
@@ -167,8 +169,7 @@ class ReactionSelectionWindow
         toggle();
         return;
       }
-      if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q") || !strcmp(info->str, "Q") ||
-          !strcmp(info->str, "C-Q")) {
+      if (!strcmp(info->str, "q") || !strcmp(info->str, "Q")) {
         callback_->on_exit();
         return;
       }

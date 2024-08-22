@@ -67,6 +67,10 @@ class OneLineInputWindow : public Window {
   OneLineInputWindow(std::string prompt, bool is_password, std::unique_ptr<Callback> callback)
       : prompt_(std::move(prompt)), is_password_(is_password), callback_(std::move(callback)) {
   }
+  OneLineInputWindow(std::string prompt, std::string text, bool is_password, std::unique_ptr<Callback> callback)
+      : prompt_(std::move(prompt)), is_password_(is_password), callback_(std::move(callback)) {
+    edit_.replace_text(std::move(text));
+  }
   std::string export_data() {
     return edit_.export_data();
   }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindow.hpp"
+#include "MenuWindowPad.hpp"
 #include "ChatManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
@@ -9,10 +9,10 @@
 
 namespace tdcurses {
 
-class GroupMembersWindow : public MenuWindow {
+class GroupMembersWindow : public MenuWindowPad {
  public:
   GroupMembersWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Chat> chat)
-      : MenuWindow(root, std::move(root_actor)), chat_(std::move(chat)) {
+      : MenuWindowPad(root, std::move(root_actor)), chat_(std::move(chat)) {
     CHECK(chat_);
     set_pad_to(PadTo::Top);
     scroll_first_line();

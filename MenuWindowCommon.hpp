@@ -1,5 +1,5 @@
 #pragma once
-#include "MenuWindow.hpp"
+#include "MenuWindowPad.hpp"
 #include <memory>
 
 namespace tdcurses {
@@ -43,9 +43,9 @@ class MenuWindowElementRun : public MenuWindowElement {
   std::function<void()> cb_;
 };
 
-class MenuWindowCommon : public MenuWindow {
+class MenuWindowCommon : public MenuWindowPad {
  public:
-  MenuWindowCommon(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : MenuWindow(root, root_actor) {
+  MenuWindowCommon(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : MenuWindowPad(root, root_actor) {
   }
   class Element : public windows::PadWindowElement {
    public:

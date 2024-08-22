@@ -50,6 +50,12 @@ class ComposeWindow
     editor_window_->resize(width(), reply_message_id_ ? height() - 1 : height());
     set_need_refresh();
   }
+  void set_refreshed() override {
+    Window::set_refreshed();
+    if (editor_window_) {
+      editor_window_->set_refreshed();
+    }
+  }
 
  private:
   td::int64 chat_id_;

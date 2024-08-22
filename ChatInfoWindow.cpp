@@ -1,11 +1,14 @@
 #include "ChatInfoWindow.hpp"
 #include "CommonGroupsWindow.hpp"
 #include "GroupMembersWindow.hpp"
+#include "FieldEditWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
+#include "td/utils/Promise.h"
 #include "td/utils/Random.h"
 #include "td/utils/Status.h"
+#include "td/utils/common.h"
 #include "td/utils/overloaded.h"
 #include "TdObjectsOutput.h"
 #include "FileManager.hpp"
@@ -13,6 +16,26 @@
 #include <vector>
 
 namespace tdcurses {
+
+static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, td::int64 chat_id, std::string text) {
+  std::string prompt = "rename chat";
+  // text
+
+  auto cb = [chat_id](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
+    auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
+    w.send_request(std::move(req),
+                   td::PromiseCreator::lambda(
+                       [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                         if (R.is_error()) {
+                           promise.set_error(R.move_as_error());
+                         } else {
+                           promise.set_value(td::Unit());
+                         }
+                       }));
+  };
+
+  return FieldEditWindow::spawn_function(prompt, text, cb);
+}
 
 void ChatInfoWindow::generate_info() {
   clear();
@@ -25,7 +48,11 @@ void ChatInfoWindow::generate_info() {
     add_element("chat", out.as_str(), out.markup(),
                 [root = root(), chat_id = chat_->chat_id()]() { root->open_chat(chat_id); });
   }
-  add_element("title", chat_->title());
+  {
+    Outputter out;
+    out << chat_->title() << Outputter::RightPad{"<rename>"};
+    add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window(this, chat_->chat_id(), chat_->title()));
+  }
   add_element("id", PSTRING() << chat_->chat_id());
   auto chat_type = chat_->chat_type();
   switch (chat_type) {

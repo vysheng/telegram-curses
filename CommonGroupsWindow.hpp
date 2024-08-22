@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindow.hpp"
+#include "MenuWindowPad.hpp"
 #include "ChatManager.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
@@ -8,10 +8,10 @@
 
 namespace tdcurses {
 
-class CommonGroupsWindow : public MenuWindow {
+class CommonGroupsWindow : public MenuWindowPad {
  public:
   CommonGroupsWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<User> user)
-      : MenuWindow(root, std::move(root_actor)), user_(std::move(user)) {
+      : MenuWindowPad(root, std::move(root_actor)), user_(std::move(user)) {
     CHECK(user_);
     set_pad_to(PadTo::Top);
     scroll_first_line();

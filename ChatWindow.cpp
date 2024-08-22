@@ -304,9 +304,11 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     if (!strcmp(info->str, "Escape")) {
       set_search_pattern("");
       return;
-    }
-    if (!strcmp(info->str, "Enter")) {
+    } else if (!strcmp(info->str, "Enter")) {
       show_message_actions();
+      return;
+    } else if (!strcmp(info->str, "C-q") || !strcmp(info->str, "C-Q")) {
+      set_search_pattern("");
       return;
     }
   } else {
@@ -321,8 +323,7 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "i")) {
       root()->open_compose_window(main_chat_id_, 0);
       return;
-    } else if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q") || !strcmp(info->str, "Q") ||
-               !strcmp(info->str, "C-Q")) {
+    } else if (!strcmp(info->str, "q") || !strcmp(info->str, "Q")) {
       set_search_pattern("");
       return;
     } else if (!strcmp(info->str, "I")) {

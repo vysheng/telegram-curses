@@ -33,7 +33,7 @@ void EditorWindow::handle_input(TickitKeyEventInfo *info) {
         callback_->on_answer(this, export_data());
         //callback_ = nullptr;
       }
-    } else if (!strcmp(info->str, "Escape")) {
+    } else if (!strcmp(info->str, "Escape") || !strcmp(info->str, "C-q") || !strcmp(info->str, "C-Q")) {
       if (callback_) {
         callback_->on_abort(this, export_data());
         //callback_ = nullptr;
@@ -107,7 +107,7 @@ void OneLineInputWindow::handle_input(TickitKeyEventInfo *info) {
       if (callback_) {
         return callback_->on_answer(this, export_data());
       }
-    } else if (!strcmp(info->str, "Escape")) {
+    } else if (!strcmp(info->str, "Escape") || !strcmp(info->str, "C-q") || !strcmp(info->str, "C-Q")) {
       if (callback_) {
         return callback_->on_abort(this, export_data());
       }
@@ -155,7 +155,7 @@ void ViewWindow::handle_input(TickitKeyEventInfo *info) {
       if (callback_) {
         return callback_->on_answer(this);
       }
-    } else if (!strcmp(info->str, "Escape")) {
+    } else if (!strcmp(info->str, "Escape") || !strcmp(info->str, "C-q") || !strcmp(info->str, "C-Q")) {
       if (callback_) {
         return callback_->on_abort(this);
       }

@@ -16,16 +16,17 @@ class MenuWindow;
 using MenuWindowSpawnFunction =
     std::function<std::shared_ptr<MenuWindow>(Tdcurses *root, td::ActorId<Tdcurses> root_actor)>;
 
-class MenuWindow
-    : public windows::PadWindow
-    , public TdcursesWindowBase {
+class MenuWindow : public TdcursesWindowBase {
  public:
-  MenuWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor)
-      : windows::PadWindow(), TdcursesWindowBase(root, std::move(root_actor)) {
+  MenuWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : TdcursesWindowBase(root, std::move(root_actor)) {
   }
+  virtual ~MenuWindow() = default;
+
+  virtual std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow>) = 0;
 
   static void create_popup(std::shared_ptr<MenuWindow> window) {
-    auto boxed = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
+    auto ptr = window->get_window(window);
+    auto boxed = std::make_shared<windows::BorderedWindow>(std::move(ptr), windows::BorderedWindow::BorderType::Double);
     window->bordered_ = boxed;
     window->root()->add_popup_window(boxed, 1);
   }
@@ -64,23 +65,28 @@ class MenuWindow
     exit();
   }
 
-  void handle_input(TickitKeyEventInfo *info) override {
+  bool menu_window_handle_input(TickitKeyEventInfo *info) {
     if (info->type == TICKIT_KEYEV_KEY) {
       if (!strcmp(info->str, "Escape")) {
         rollback();
-        return;
+        return true;
+      } else if (!strcmp(info->str, "C-q")) {
+        rollback();
+        return true;
+      } else if (!strcmp(info->str, "C-Q")) {
+        exit();
+        return true;
       }
     } else {
-      if (!strcmp(info->str, "q") || !strcmp(info->str, "C-q")) {
+      if (!strcmp(info->str, "q")) {
         rollback();
-        return;
-      }
-      if (!strcmp(info->str, "Q") || !strcmp(info->str, "C-Q")) {
+        return true;
+      } else if (!strcmp(info->str, "Q")) {
         exit();
-        return;
+        return true;
       }
     }
-    return PadWindow::handle_input(info);
+    return false;
   }
 
  private:
