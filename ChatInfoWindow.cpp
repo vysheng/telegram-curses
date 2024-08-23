@@ -14,6 +14,7 @@
 #include "FileManager.hpp"
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace tdcurses {
@@ -26,7 +27,30 @@ static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, 
   std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> cb;
 
   if (chat->chat_type() == ChatType::User) {
-    cb = [user_id = chat->chat_base_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {};
+    cb = [user_id = chat->chat_base_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
+      auto p = text.find(" ");
+      std::string first_name, last_name;
+      if (p == std::string::npos) {
+        first_name = text;
+        last_name = "";
+      } else {
+        first_name = text.substr(0, p);
+        last_name = text.substr(p + 1);
+      }
+      auto user = chat_manager().get_user(user_id);
+      auto contact =
+          td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name, "", user_id);
+      auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
+      w.send_request(std::move(req),
+                     td::PromiseCreator::lambda(
+                         [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                           if (R.is_error()) {
+                             promise.set_error(R.move_as_error());
+                           } else {
+                             promise.set_value(td::Unit());
+                           }
+                         }));
+    };
   } else {
     cb = [chat_id = chat->chat_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
       auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
