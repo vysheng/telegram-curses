@@ -16,10 +16,11 @@ class TextEdit {
   TextEdit() {
   }
   TextEdit(std::string text) : text_(std::move(text)) {
+    pos_ = text_.size();
   }
   void replace_text(std::string text) {
     text_ = text;
-    pos_ = 0;
+    pos_ = text_.size();
   }
   void clear() {
     replace_text("");

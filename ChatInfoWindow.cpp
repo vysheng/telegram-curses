@@ -12,27 +12,35 @@
 #include "td/utils/overloaded.h"
 #include "TdObjectsOutput.h"
 #include "FileManager.hpp"
+#include <functional>
 #include <memory>
 #include <vector>
 
 namespace tdcurses {
 
-static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, td::int64 chat_id, std::string text) {
+static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
   std::string prompt = "rename chat";
+  std::string text = chat->title();
   // text
 
-  auto cb = [chat_id](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
-    auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
-    w.send_request(std::move(req),
-                   td::PromiseCreator::lambda(
-                       [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                         if (R.is_error()) {
-                           promise.set_error(R.move_as_error());
-                         } else {
-                           promise.set_value(td::Unit());
-                         }
-                       }));
-  };
+  std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> cb;
+
+  if (chat->chat_type() == ChatType::User) {
+    cb = [user_id = chat->chat_base_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {};
+  } else {
+    cb = [chat_id = chat->chat_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
+      auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
+      w.send_request(std::move(req),
+                     td::PromiseCreator::lambda(
+                         [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                           if (R.is_error()) {
+                             promise.set_error(R.move_as_error());
+                           } else {
+                             promise.set_value(td::Unit());
+                           }
+                         }));
+    };
+  }
 
   return FieldEditWindow::spawn_function(prompt, text, cb);
 }
@@ -51,7 +59,7 @@ void ChatInfoWindow::generate_info() {
   {
     Outputter out;
     out << chat_->title() << Outputter::RightPad{"<rename>"};
-    add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window(this, chat_->chat_id(), chat_->title()));
+    add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window(this, chat_));
   }
   add_element("id", PSTRING() << chat_->chat_id());
   auto chat_type = chat_->chat_type();

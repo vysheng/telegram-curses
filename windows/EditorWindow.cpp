@@ -69,6 +69,7 @@ void EditorWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32
   CHECK(h == h2);
   tickit_renderbuffer_restore(rb);
   cursor_y = offset_from_top_;
+  cursor_shape = TickitCursorShape::TICKIT_CURSORSHAPE_BLOCK;
 
   h += (offset_from_top_ - last_cursor_y_);
   if (h < height()) {
@@ -119,24 +120,28 @@ void OneLineInputWindow::handle_input(TickitKeyEventInfo *info) {
 
 void OneLineInputWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                                 TickitCursorShape &cursor_shape, bool force) {
-  auto h = edit_.render(nullptr, cursor_x, cursor_y, cursor_shape, width(), true, is_password_);
+  auto text_width = width() - 1 - (td::int32)prompt_.size();
+  auto h = edit_.render(nullptr, cursor_x, cursor_y, cursor_shape, text_width, true, is_password_);
   (void)h;
 
   auto line = height() / 2;
 
   auto rect = TickitRect{.top = 0, .left = 0, .lines = height(), .cols = width()};
   tickit_renderbuffer_eraserect(rb, &rect);
+  tickit_renderbuffer_textn_at(rb, line, 0, prompt_.data(), prompt_.size());
 
   tickit_renderbuffer_save(rb);
-  tickit_renderbuffer_textn_at(rb, line, 0, prompt_.data(), prompt_.size());
+  auto rect0 = TickitRect{.top = line, .left = 1 + (td::int32)prompt_.size(), .lines = 1, .cols = text_width};
+  tickit_renderbuffer_clip(rb, &rect0);
   tickit_renderbuffer_translate(rb, line - cursor_y, 1 + (td::int32)prompt_.size());
   td::int32 tmp;
-  auto h2 = edit_.render(rb, cursor_x, tmp, cursor_shape, width(), true, is_password_);
+  auto h2 = edit_.render(rb, cursor_x, tmp, cursor_shape, text_width, true, is_password_);
   (void)h2;
   CHECK(h == h2);
   tickit_renderbuffer_restore(rb);
-  cursor_y = 0;
+  cursor_y = line;
   cursor_x += 1 + (td::int32)prompt_.size();
+  cursor_shape = TickitCursorShape::TICKIT_CURSORSHAPE_BLOCK;
 }
 
 void ViewWindow::handle_input(TickitKeyEventInfo *info) {

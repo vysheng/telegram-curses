@@ -56,6 +56,10 @@ class FieldEditWindow
       return std::make_shared<FieldEditWindow>(root, root_id, prompt, text, update);
     };
   }
+
+  td::int32 best_width() override {
+    return 10000;
+  }
 };
 
 }  // namespace tdcurses

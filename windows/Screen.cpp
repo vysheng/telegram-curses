@@ -222,8 +222,8 @@ void Screen::refresh(bool force) {
       TickitCursorShape cursor_shape;
       window->render(rb, cursor_x, cursor_y, cursor_shape, force);
       if (is_first) {
-        cursor_x_ = cursor_x + h_off;
-        cursor_y_ = cursor_y + w_off;
+        cursor_x_ = cursor_x + w_off;
+        cursor_y_ = cursor_y + h_off;
         cursor_shape_ = cursor_shape;
       }
       tickit_renderbuffer_restore(rb);

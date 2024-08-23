@@ -104,6 +104,11 @@ class OneLineInputWindow : public Window {
     return edit_.is_empty();
   }
 
+  void replace_text(std::string text) {
+    edit_.replace_text(std::move(text));
+    set_need_refresh();
+  }
+
  private:
   std::string prompt_;
   TextEdit edit_;
