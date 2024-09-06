@@ -183,10 +183,11 @@ add_executable(telegram-curses
   MenuWindowCommon.cpp
   MenuWindowCommon.hpp
   MenuWindowPad.hpp
-  MessageActionWindow.cpp
-  MessageActionWindow.hpp
+  MessageInfoWindow.cpp
+  MessageInfoWindow.hpp
   Outputter.cpp
   Outputter.hpp
+  ReactionSelectionWindow.cpp
   ReactionSelectionWindow.hpp
   StatusLineWindow.hpp
   StickerManager.cpp

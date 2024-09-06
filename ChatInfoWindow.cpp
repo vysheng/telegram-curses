@@ -77,8 +77,10 @@ void ChatInfoWindow::generate_info() {
   {
     Outputter out;
     out << chat_->title() << Outputter::RightPad{"<open>"};
-    add_element("chat", out.as_str(), out.markup(),
-                [root = root(), chat_id = chat_->chat_id()]() { root->open_chat(chat_id); });
+    add_element("chat", out.as_str(), out.markup(), [root = root(), chat_id = chat_->chat_id()]() {
+      root->open_chat(chat_id);
+      return true;
+    });
   }
   {
     Outputter out;

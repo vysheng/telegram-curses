@@ -407,20 +407,24 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiftCode &
   return out << "[gift code]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayCreated &content) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayCreated &content) {
   return out << "[givaway created]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveaway &content) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveaway &content) {
   return out << "[givaway]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayCompleted &content) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayCompleted &content) {
   return out << "[givaway completed]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayWinners &content) {
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayWinners &content) {
   return out << "[givaway winners]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayPrizeStars &content) {
+  return out << "[givaway prize stars]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {

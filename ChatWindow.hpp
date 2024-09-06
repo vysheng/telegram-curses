@@ -64,8 +64,9 @@ class ChatWindow
   void request_bottom_elements() override {
     request_bottom_elements_ex(0);
   }
-  void received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R);
-  void received_bottom_search_elements(td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R);
+  void received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R, td::int64 pivot_message_id);
+  void received_bottom_search_elements(td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R,
+                                       td::int64 pivot_message_id);
   void request_top_elements_ex(td::int32 message_id);
   void request_top_elements() override {
     request_top_elements_ex(0);

@@ -4,6 +4,7 @@
 #include "ChatWindow.hpp"
 #include "StickerManager.hpp"
 #include "Outputter.hpp"
+#include "MenuWindowCommon.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -19,15 +20,8 @@
 
 namespace tdcurses {
 
-class ReactionSelectionWindow
-    : public windows::PadWindow
-    , public TdcursesWindowBase {
+class ReactionSelectionWindow : public MenuWindowPad {
  public:
-  class Callback {
-   public:
-    virtual ~Callback() = default;
-    virtual void on_exit() = 0;
-  };
   struct PaidReaction {
     bool operator==(const PaidReaction &other) const {
       return true;
@@ -109,8 +103,21 @@ class ReactionSelectionWindow
     bool selected_;
   };
 
-  ReactionSelectionWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, const td::td_api::message &message)
-      : TdcursesWindowBase(root, std::move(root_actor)), message_id_(ChatWindow::build_message_id(message)) {
+  ReactionSelectionWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 message_id)
+      : MenuWindowPad(root, std::move(root_actor)), message_id_(ChatWindow::build_message_id(chat_id, message_id)) {
+    request_message();
+  }
+
+  void request_message();
+
+  void got_message(td::Result<td::tl_object_ptr<td::td_api::message>> R) {
+    if (R.is_error()) {
+      exit();
+      return;
+    }
+    auto message_ptr = R.move_as_ok();
+    auto &message = *message_ptr;
+
     if (message.interaction_info_ && message.interaction_info_->reactions_) {
       for (const auto &reaction : message.interaction_info_->reactions_->reactions_) {
         td::td_api::downcast_call(const_cast<td::td_api::ReactionType &>(*reaction->type_),
@@ -157,24 +164,14 @@ class ReactionSelectionWindow
       if (!strcmp(info->str, "Enter")) {
         toggle();
         return;
-      } else if (!strcmp(info->str, "Escape")) {
-        callback_->on_exit();
-        return;
-      } else if (!strcmp(info->str, "C-q") || !strcmp(info->str, "C-Q")) {
-        callback_->on_exit();
-        return;
       }
     } else {
       if (!strcmp(info->str, " ")) {
         toggle();
         return;
       }
-      if (!strcmp(info->str, "q") || !strcmp(info->str, "Q")) {
-        callback_->on_exit();
-        return;
-      }
     }
-    PadWindow::handle_input(info);
+    MenuWindowPad::handle_input(info);
   }
 
   void toggle() {
@@ -201,14 +198,15 @@ class ReactionSelectionWindow
     }
   }
 
-  void set_callback(std::unique_ptr<Callback> callback) {
-    callback_ = std::move(callback);
+  static MenuWindowSpawnFunction spawn_function(td::int64 chat_id, td::int64 message_id) {
+    return [chat_id, message_id](Tdcurses *root, td::ActorId<Tdcurses> root_actor) -> std::shared_ptr<MenuWindow> {
+      return std::make_shared<ReactionSelectionWindow>(root, root_actor, chat_id, message_id);
+    };
   }
 
  private:
   ChatWindow::MessageId message_id_;
   std::vector<std::shared_ptr<Element>> reactions_;
-  std::unique_ptr<Callback> callback_;
 };
 
 }  // namespace tdcurses

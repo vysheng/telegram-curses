@@ -81,10 +81,11 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentSuccessful
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentRefunded &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedPremium &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiftCode &content);
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayCreated &content);
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveaway &content);
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayCompleted &content);
-Outputter &operator<<(Outputter &out, const td::td_api::messagePremiumGiveawayWinners &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayCreated &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveaway &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayCompleted &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayWinners &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayPrizeStars &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUsersShared &content);

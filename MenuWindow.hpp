@@ -28,7 +28,7 @@ class MenuWindow : public TdcursesWindowBase {
     auto ptr = window->get_window(window);
     auto boxed = std::make_shared<windows::BorderedWindow>(std::move(ptr), windows::BorderedWindow::BorderType::Double);
     window->bordered_ = boxed;
-    window->root()->add_popup_window(boxed, 1);
+    window->root()->add_popup_window(boxed, 3);
   }
 
   void rollback() {

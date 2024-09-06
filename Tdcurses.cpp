@@ -1831,6 +1831,13 @@ class TdcursesImpl : public Tdcurses {
     UNREACHABLE();
   }
 
+  //@description Paid media were purchased by a user; for bots only
+  //@user_id User identifier
+  //@payload Bot-specified payload for the paid media
+  //updatePaidMediaPurchased user_id:int53 payload:string = Update;
+  void process_update(const td::td_api::updatePaidMediaPurchased &update) {
+  }
+
   //@description Reactions added to a message with anonymous reactions have changed; for bots only
   //@chat_id Chat identifier
   //@message_id Message identifier

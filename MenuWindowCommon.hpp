@@ -34,13 +34,13 @@ class MenuWindowElementSpawn : public MenuWindowElement {
 class MenuWindowElementRun : public MenuWindowElement {
  public:
   MenuWindowElementRun(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
-                       std::function<void()> cb)
+                       std::function<bool()> cb)
       : MenuWindowElement(std::move(name), std::move(data), std::move(markup)), cb_(std::move(cb)) {
   }
   void handle_input(MenuWindowCommon &root, TickitKeyEventInfo *info) override;
 
  private:
-  std::function<void()> cb_;
+  std::function<bool()> cb_;
 };
 
 class MenuWindowCommon : public MenuWindowPad {
@@ -104,7 +104,7 @@ class MenuWindowCommon : public MenuWindowPad {
                                                                 std::move(spawn)));
   }
   std::shared_ptr<Element> add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
-                                       std::function<void()> cb) {
+                                       std::function<bool()> cb) {
     return add_element(
         std::make_shared<MenuWindowElementRun>(std::move(name), std::move(data), std::move(markup), std::move(cb)));
   }

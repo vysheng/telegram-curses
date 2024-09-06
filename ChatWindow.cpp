@@ -8,7 +8,7 @@
 #include "td/utils/overloaded.h"
 #include "TdObjectsOutput.h"
 #include "FileManager.hpp"
-#include "MessageActionWindow.hpp"
+#include "MessageInfoWindow.hpp"
 #include "CommandLineWindow.hpp"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"
@@ -73,229 +73,8 @@ void ChatWindow::show_message_actions() {
     return;
   }
   auto el = static_cast<Element *>(cur_element.get());
-  MessageActionWindowBuilder builder(root(), root_actor_id(), this);
-
-  builder.add_action_forward(el->message->chat_id_, el->message->id_);
-  builder.add_action_reply(el->message->chat_id_, el->message->id_);
-  builder.add_action_reactions(el->message->chat_id_, el->message->id_);
-  builder.add_action_message_goto("current", el->message->chat_id_, el->message->id_, el->message.get());
-  builder.add_action_message_debug_info("current", el->message->chat_id_, el->message->id_, el->message.get());
-
-  if (el->message->is_outgoing_) {
-    builder.add_action_chat_info("destination", el->message->chat_id_);
-    builder.add_action_chat_open("destination", el->message->chat_id_);
-  } else {
-    if (el->message->sender_id_) {
-      td::td_api::downcast_call(*el->message->sender_id_, td::overloaded(
-                                                              [&](td::td_api::messageSenderUser &sender) {
-                                                                builder.add_action_user_info("source", sender.user_id_);
-                                                                builder.add_action_user_chat_open("source",
-                                                                                                  sender.user_id_);
-                                                              },
-                                                              [&](td::td_api::messageSenderChat &sender) {
-                                                                builder.add_action_chat_info("source", sender.chat_id_);
-                                                                builder.add_action_chat_open("source", sender.chat_id_);
-                                                              }));
-    }
-  }
-
-  if (el->message->reply_to_) {
-    td::td_api::downcast_call(*el->message->reply_to_,
-                              td::overloaded(
-                                  [&](td::td_api::messageReplyToMessage &info) {
-                                    auto msg = get_message_as_message(info.chat_id_, info.message_id_);
-                                    builder.add_action_message_goto("replied", info.chat_id_, info.message_id_, msg);
-                                  },
-                                  [&](td::td_api::messageReplyToStory &info) {}));
-  }
-
-  if (el->message->forward_info_ && el->message->forward_info_->origin_) {
-    td::td_api::downcast_call(*el->message->forward_info_->origin_,
-                              td::overloaded(
-                                  [&](td::td_api::messageOriginUser &sender) {
-                                    builder.add_action_user_info("forward source", sender.sender_user_id_);
-                                    builder.add_action_user_chat_open("forward_source", sender.sender_user_id_);
-                                  },
-                                  [&](td::td_api::messageOriginChat &sender) {
-                                    builder.add_action_chat_info("forward source", sender.sender_chat_id_);
-                                    builder.add_action_chat_open("forward source", sender.sender_chat_id_);
-                                  },
-                                  [&](td::td_api::messageOriginChannel &sender) {
-                                    builder.add_action_chat_info("forward source", sender.chat_id_);
-                                    builder.add_action_chat_open("forward source", sender.chat_id_);
-                                  },
-                                  [&](td::td_api::messageOriginHiddenUser &sender) {}));
-  }
-
-  if (el->message->via_bot_user_id_) {
-    builder.add_action_user_info("forward source", el->message->via_bot_user_id_);
-    builder.add_action_user_chat_open("forward_source", el->message->via_bot_user_id_);
-  }
-
-  auto process_formatted_text = [&](const td::td_api::formattedText &content) {
-    auto &text = content.text_;
-
-    if (text.size() > 0) {
-      builder.add_action_copy_primary(text);
-      builder.add_action_copy(text);
-    }
-
-    for (auto &ent : content.entities_) {
-      td::td_api::downcast_call(
-          const_cast<td::td_api::TextEntityType &>(*ent->type_),
-          td::overloaded(
-              [&](const td::td_api::textEntityTypeMention &e) {
-                auto us = get_utf8_string_substring_utf16_codepoints(text, ent->offset_, ent->offset_ + ent->length_);
-                builder.add_action_chat_by_username("mentionen chat", us.str());
-                builder.add_action_chat_open_by_username("mentionen chat", us.str());
-              },
-              [&](const td::td_api::textEntityTypeHashtag &e) {
-                auto us = get_utf8_string_substring_utf16_codepoints(text, ent->offset_, ent->offset_ + ent->length_);
-                builder.add_action_search_pattern(us.str());
-              },
-              [&](const td::td_api::textEntityTypeCashtag &) {
-                auto us = get_utf8_string_substring_utf16_codepoints(text, ent->offset_, ent->offset_ + ent->length_);
-                builder.add_action_search_pattern(us.str());
-              },
-              [&](const td::td_api::textEntityTypeBotCommand &) {},
-              [&](const td::td_api::textEntityTypeUrl &) {
-                auto us = get_utf8_string_substring_utf16_codepoints(text, ent->offset_, ent->offset_ + ent->length_);
-                builder.add_action_link(us.str());
-              },
-              [&](const td::td_api::textEntityTypeEmailAddress &) {},
-              [&](const td::td_api::textEntityTypePhoneNumber &) {},
-              [&](const td::td_api::textEntityTypeBankCardNumber &) {}, [&](const td::td_api::textEntityTypeBold &) {},
-              [&](const td::td_api::textEntityTypeItalic &) {},
-              [&](const td::td_api::textEntityTypeUnderline &) {
-                auto us = get_utf8_string_substring_utf16_codepoints(text, ent->offset_, ent->offset_ + ent->length_);
-                builder.add_action_search_pattern(us.str());
-              },
-              [&](const td::td_api::textEntityTypeStrikethrough &) {},
-              [&](const td::td_api::textEntityTypeSpoiler &) {}, [&](const td::td_api::textEntityTypeCode &) {},
-              [&](const td::td_api::textEntityTypePre &) {}, [&](const td::td_api::textEntityTypePreCode &) {},
-              [&](const td::td_api::textEntityTypeBlockQuote &e) {},
-              [&](const td::td_api::textEntityTypeExpandableBlockQuote &) {},
-              [&](const td::td_api::textEntityTypeTextUrl &e) { builder.add_action_link(e.url_); },
-              [&](const td::td_api::textEntityTypeMentionName &e) {
-                auto us = get_utf8_string_substring_utf16_codepoints(text, ent->offset_, ent->offset_ + ent->length_);
-                builder.add_action_user_info("mentioned chat", e.user_id_, us.str());
-                builder.add_action_user_chat_open("mentioned chat", e.user_id_, us.str());
-              },
-              [&](const td::td_api::textEntityTypeCustomEmoji &) {},
-              [&](const td::td_api::textEntityTypeMediaTimestamp &) {}));
-    }
-  };
-
-  if (el->message->content_) {
-    td::td_api::downcast_call(
-        *el->message->content_,
-        td::overloaded(
-            [&](const td::td_api::messageText &content) { process_formatted_text(*content.text_); },
-            [&](const td::td_api::messageAnimation &content) {
-              process_formatted_text(*content.caption_);
-              builder.add_action_open_file(*content.animation_->animation_);
-            },
-            [&](const td::td_api::messageAudio &content) {
-              process_formatted_text(*content.caption_);
-              builder.add_action_open_file(*content.audio_->audio_);
-            },
-            [&](const td::td_api::messageDocument &content) {
-              process_formatted_text(*content.caption_);
-              builder.add_action_open_file(*content.document_->document_);
-            },
-            [&](const td::td_api::messagePaidMedia &content) { process_formatted_text(*content.caption_); },
-            [&](const td::td_api::messagePhoto &content) {
-              process_formatted_text(*content.caption_);
-              builder.add_action_open_file(*content.photo_->sizes_.back()->photo_);
-            },
-            [&](const td::td_api::messageSticker &content) {},
-            [&](const td::td_api::messageVideo &content) {
-              process_formatted_text(*content.caption_);
-              builder.add_action_open_file(*content.video_->video_);
-            },
-            [&](const td::td_api::messageVideoNote &content) {
-              builder.add_action_open_file(*content.video_note_->video_);
-            },
-            [&](const td::td_api::messageVoiceNote &content) {
-              builder.add_action_open_file(*content.voice_note_->voice_);
-            },
-            [&](const td::td_api::messageExpiredPhoto &content) {},
-            [&](const td::td_api::messageExpiredVideo &content) {},
-            [&](const td::td_api::messageExpiredVideoNote &content) {},
-            [&](const td::td_api::messageExpiredVoiceNote &content) {},
-            [&](const td::td_api::messageLocation &content) {}, [&](const td::td_api::messageVenue &content) {},
-            [&](const td::td_api::messageContact &content) {}, [&](const td::td_api::messageAnimatedEmoji &content) {},
-            [&](const td::td_api::messageDice &content) {}, [&](const td::td_api::messageGame &content) {},
-            [&](const td::td_api::messagePoll &content) {
-              td::int32 idx = 0;
-              for (const auto &opt : content.poll_->options_) {
-                builder.add_action_poll(el->message->chat_id_, el->message->id_, *opt->text_,
-                                        opt->is_chosen_ || opt->is_being_chosen_, idx++);
-              }
-            },
-            [&](const td::td_api::messageStory &content) {}, [&](const td::td_api::messageInvoice &content) {},
-            [&](const td::td_api::messageCall &content) {},
-            [&](const td::td_api::messageVideoChatScheduled &content) {},
-            [&](const td::td_api::messageVideoChatStarted &content) {},
-            [&](const td::td_api::messageVideoChatEnded &content) {},
-            [&](const td::td_api::messageInviteVideoChatParticipants &content) {},
-            [&](const td::td_api::messageBasicGroupChatCreate &content) {},
-            [&](const td::td_api::messageSupergroupChatCreate &content) {},
-            [&](const td::td_api::messageChatChangeTitle &content) {},
-            [&](const td::td_api::messageChatChangePhoto &content) {},
-            [&](const td::td_api::messageChatDeletePhoto &content) {},
-            [&](const td::td_api::messageChatAddMembers &content) {
-              for (auto x : content.member_user_ids_) {
-                builder.add_action_user_info("added user", x);
-                builder.add_action_user_chat_open("added user", x);
-              }
-            },
-            [&](const td::td_api::messageChatJoinByLink &content) {},
-            [&](const td::td_api::messageChatJoinByRequest &content) {},
-            [&](const td::td_api::messageChatDeleteMember &content) {
-              builder.add_action_user_info("removed user", content.user_id_);
-              builder.add_action_user_chat_open("removed user", content.user_id_);
-            },
-            [&](const td::td_api::messageChatUpgradeTo &content) {},
-            [&](const td::td_api::messageChatUpgradeFrom &content) {},
-            [&](const td::td_api::messagePinMessage &content) {
-              auto msg = get_message_as_message(main_chat_id(), content.message_id_);
-              builder.add_action_message_goto("replied", main_chat_id(), content.message_id_, msg);
-            },
-            [&](const td::td_api::messageScreenshotTaken &content) {},
-            [&](const td::td_api::messageChatSetBackground &content) {},
-            [&](const td::td_api::messageChatSetTheme &content) {},
-            [&](const td::td_api::messageChatSetMessageAutoDeleteTime &content) {},
-            [&](const td::td_api::messageChatBoost &content) {},
-            [&](const td::td_api::messageForumTopicCreated &content) {},
-            [&](const td::td_api::messageForumTopicEdited &content) {},
-            [&](const td::td_api::messageForumTopicIsClosedToggled &content) {},
-            [&](const td::td_api::messageForumTopicIsHiddenToggled &content) {},
-            [&](const td::td_api::messageSuggestProfilePhoto &content) {},
-            [&](const td::td_api::messageCustomServiceAction &content) {},
-            [&](const td::td_api::messageGameScore &content) {},
-            [&](const td::td_api::messagePaymentSuccessful &content) {},
-            [&](const td::td_api::messagePaymentSuccessfulBot &content) {},
-            [&](const td::td_api::messagePaymentRefunded &content) {},
-            [&](const td::td_api::messageGiftedPremium &content) {},
-            [&](const td::td_api::messagePremiumGiftCode &content) {},
-            [&](const td::td_api::messagePremiumGiveawayCreated &content) {},
-            [&](const td::td_api::messagePremiumGiveaway &content) {},
-            [&](const td::td_api::messagePremiumGiveawayCompleted &content) {},
-            [&](const td::td_api::messagePremiumGiveawayWinners &content) {},
-            [&](const td::td_api::messageGiftedStars &content) {},
-            [&](const td::td_api::messageContactRegistered &content) {},
-            [&](const td::td_api::messageUsersShared &content) {}, [&](const td::td_api::messageChatShared &content) {},
-            [&](const td::td_api::messageBotWriteAccessAllowed &content) {},
-            [&](const td::td_api::messageWebAppDataSent &content) {},
-            [&](const td::td_api::messageWebAppDataReceived &content) {},
-            [&](const td::td_api::messagePassportDataSent &content) {},
-            [&](const td::td_api::messagePassportDataReceived &content) {},
-            [&](const td::td_api::messageProximityAlertTriggered &content) {},
-            [&](const td::td_api::messageUnsupported &content) {}));
-  }
-
-  root()->add_popup_window(builder.build(), 2);
+  create_menu_window(root(), root_actor_id(),
+                     MessageInfoWindow::spawn_function(el->message->chat_id_, el->message->id_));
 }
 
 void ChatWindow::handle_input(TickitKeyEventInfo *info) {
@@ -341,6 +120,29 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
       return;
+    } else if (!strcmp(info->str, "f")) {
+      auto el = get_active_element();
+      if (!el) {
+        return;
+      }
+      auto &e = static_cast<Element &>(*el);
+
+      root()->spawn_chat_selection_window(true, [message_id = e.message_id(),
+                                                 self = this](td::Result<std::shared_ptr<Chat>> R) {
+        if (R.is_error()) {
+          return;
+        }
+        auto dst = R.move_as_ok();
+
+        //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
+        //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
+        auto req = td::make_tl_object<td::td_api::sendMessage>(
+            dst->chat_id(), 0, nullptr /*replay_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
+            td::make_tl_object<td::td_api::inputMessageForwarded>(message_id.chat_id, message_id.message_id, false,
+                                                                  nullptr));
+        self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
+      });
+      return;
     }
   }
   windows::PadWindow::handle_input(info);
@@ -377,8 +179,9 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
   if (search_pattern_.size() == 0) {
     auto req = td::make_tl_object<td::td_api::getChatHistory>(max_message_id.chat_id, max_message_id.message_id, -10,
                                                               10, false);
-    send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
-      received_bottom_elements(std::move(R));
+    send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
+                                     td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+      self->received_bottom_elements(std::move(R), pivot_message_id);
     });
   } else {
     //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
@@ -386,13 +189,15 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
         max_message_id.chat_id, search_pattern_, /* sender_id */ nullptr,
         /* from_message_id */ max_message_id.message_id, /* offset */ -10, /* limit */ 11,
         /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
-    send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
-      received_bottom_search_elements(std::move(R));
+    send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
+                                     td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+      self->received_bottom_search_elements(std::move(R), pivot_message_id);
     });
   }
 }
 
-void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R,
+                                          td::int64 pivot_message_id) {
   if (R.is_error() && R.error().code() == ErrorCodeWindowDeleted) {
     return;
   }
@@ -400,13 +205,20 @@ void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_ap
   running_req_bottom_ = false;
   R.ensure();
   auto res = R.move_as_ok();
-  if (res->messages_.size() == 0) {
+  bool found_new = false;
+  for (auto &m : res->messages_) {
+    if (m->id_ > pivot_message_id) {
+      found_new = true;
+    }
+  }
+  if (!found_new) {
     is_completed_bottom_ = true;
   }
   add_messages(std::move(res->messages_));
 }
 
-void ChatWindow::received_bottom_search_elements(td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+void ChatWindow::received_bottom_search_elements(td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R,
+                                                 td::int64 pivot_message_id) {
   if (R.is_error() && R.error().code() == ErrorCodeWindowDeleted) {
     return;
   }
@@ -414,7 +226,13 @@ void ChatWindow::received_bottom_search_elements(td::Result<td::tl_object_ptr<td
   running_req_bottom_ = false;
   R.ensure();
   auto res = R.move_as_ok();
-  if (res->messages_.size() == 0) {
+  bool found_new = false;
+  for (auto &m : res->messages_) {
+    if (m->id_ > pivot_message_id) {
+      found_new = true;
+    }
+  }
+  if (!found_new) {
     is_completed_bottom_ = true;
   }
   add_messages(std::move(res->messages_));
@@ -523,6 +341,7 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
     add_file_message_pair(id, get_file_id(*el->message));
     add_element(std::move(el));
   }
+  set_need_refresh();
 }
 
 void ChatWindow::process_update_sent_message(td::tl_object_ptr<td::td_api::message> message) {
