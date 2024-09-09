@@ -122,7 +122,6 @@ class Tdcurses : public TdcursesInterface {
   std::shared_ptr<DialogListWindow> dialog_list_window_;
   std::shared_ptr<ChatWindow> chat_window_;
   std::shared_ptr<ComposeWindow> compose_window_;
-  std::shared_ptr<windows::Window> config_window_;
   std::shared_ptr<StatusLineWindow> status_line_window_;
   std::shared_ptr<CommandLineWindow> command_line_window_;
   std::map<td::int64, TdcursesWindowBase *> all_active_windows_;
@@ -170,7 +169,6 @@ class Tdcurses : public TdcursesInterface {
   void open_compose_window(td::int64 chat_id, td::int64 message_id);
   void close_compose_window();
 
-  void hide_config_window();
   void show_config_window();
 
   void show_chat_info_window(td::int64 chat_id);

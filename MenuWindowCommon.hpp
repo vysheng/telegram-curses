@@ -35,12 +35,20 @@ class MenuWindowElementRun : public MenuWindowElement {
  public:
   MenuWindowElementRun(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
                        std::function<bool()> cb)
+      : MenuWindowElement(std::move(name), std::move(data), std::move(markup))
+      , cb_([cb = std::move(cb)](MenuWindowElementRun &) { return cb(); }) {
+  }
+  MenuWindowElementRun(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
+                       std::function<bool(MenuWindowElementRun &)> cb)
       : MenuWindowElement(std::move(name), std::move(data), std::move(markup)), cb_(std::move(cb)) {
   }
   void handle_input(MenuWindowCommon &root, TickitKeyEventInfo *info) override;
 
+  void replace_text(std::string data, std::vector<windows::MarkupElement> markup = {}) {
+  }
+
  private:
-  std::function<bool()> cb_;
+  std::function<bool(MenuWindowElementRun &)> cb_;
 };
 
 class MenuWindowCommon : public MenuWindowPad {
@@ -105,6 +113,11 @@ class MenuWindowCommon : public MenuWindowPad {
   }
   std::shared_ptr<Element> add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
                                        std::function<bool()> cb) {
+    return add_element(
+        std::make_shared<MenuWindowElementRun>(std::move(name), std::move(data), std::move(markup), std::move(cb)));
+  }
+  std::shared_ptr<Element> add_element(std::string name, std::string data, std::vector<windows::MarkupElement> markup,
+                                       std::function<bool(MenuWindowElementRun &)> cb) {
     return add_element(
         std::make_shared<MenuWindowElementRun>(std::move(name), std::move(data), std::move(markup), std::move(cb)));
   }

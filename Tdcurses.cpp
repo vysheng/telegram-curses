@@ -1946,9 +1946,6 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
 
   initialize_options(params);
 
-  auto config = std::make_shared<ConfigWindow>(this, actor_id(this), options_);
-  config_window_ = std::make_shared<windows::BorderedWindow>(config, windows::Window::BorderType::Double);
-
   LOG(INFO) << "starting";
 }
 
@@ -1993,16 +1990,8 @@ void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 reply_message_id
   layout_->activate_window(compose_window_);
 }
 
-void Tdcurses::hide_config_window() {
-  if (screen_->has_popup_window(config_window_.get())) {
-    screen_->del_popup_window(config_window_.get());
-  }
-}
-
 void Tdcurses::show_config_window() {
-  if (!screen_->has_popup_window(config_window_.get())) {
-    screen_->add_popup_window(config_window_, 3);
-  }
+  create_menu_window(this, actor_id(this), ConfigWindow::spawn_function(options_));
 }
 
 void Tdcurses::show_chat_info_window(td::int64 chat_id) {
