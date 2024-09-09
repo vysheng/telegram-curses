@@ -19,7 +19,6 @@
 #include <tuple>
 #include <memory>
 #include <vector>
-#include <unistd.h>
 #include "td/utils/utf8.h"
 
 namespace tdcurses {
@@ -108,40 +107,8 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "I")) {
       show_message_actions();
       return;
-    } else if (!strcmp(info->str, "r")) {
-      auto el = get_active_element();
-      if (!el) {
-        return;
-      }
-      auto &e = static_cast<Element &>(*el);
-
-      root()->open_compose_window(main_chat_id_, e.message_id().message_id);
-      return;
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
-      return;
-    } else if (!strcmp(info->str, "f")) {
-      auto el = get_active_element();
-      if (!el) {
-        return;
-      }
-      auto &e = static_cast<Element &>(*el);
-
-      root()->spawn_chat_selection_window(true, [message_id = e.message_id(),
-                                                 self = this](td::Result<std::shared_ptr<Chat>> R) {
-        if (R.is_error()) {
-          return;
-        }
-        auto dst = R.move_as_ok();
-
-        //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
-        //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
-        auto req = td::make_tl_object<td::td_api::sendMessage>(
-            dst->chat_id(), 0, nullptr /*replay_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
-            td::make_tl_object<td::td_api::inputMessageForwarded>(message_id.chat_id, message_id.message_id, false,
-                                                                  nullptr));
-        self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
-      });
       return;
     }
   }
@@ -625,6 +592,33 @@ void ChatWindow::Element::run(ChatWindow *window) {
                            window->update_file(id, *R.move_as_ok());
                          });
     //downloadFile file_id:int32 priority:int32 offset:int53 limit:int53 synchronous:Bool = File;
+  }
+}
+
+void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info) {
+  auto &chat_window = static_cast<ChatWindow &>(root);
+  if (info->type == TICKIT_KEYEV_KEY) {
+  } else {
+    if (!strcmp(info->str, "r")) {
+      chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);
+    } else if (!strcmp(info->str, "f")) {
+      chat_window.root()->spawn_chat_selection_window(true, [message_id = message_id(),
+                                                             self = &chat_window](td::Result<std::shared_ptr<Chat>> R) {
+        if (R.is_error()) {
+          return;
+        }
+        auto dst = R.move_as_ok();
+
+        //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
+        //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
+        auto req = td::make_tl_object<td::td_api::sendMessage>(
+            dst->chat_id(), 0, nullptr /*replay_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
+            td::make_tl_object<td::td_api::inputMessageForwarded>(message_id.chat_id, message_id.message_id, false,
+                                                                  nullptr));
+        self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
+      });
+      return;
+    }
   }
 }
 

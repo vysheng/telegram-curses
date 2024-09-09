@@ -8,7 +8,6 @@
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "windows/unicode.h"
-#include <unistd.h>
 
 namespace tdcurses {
 
@@ -337,13 +336,8 @@ void MessageInfoWindow::add_action_chat_open_by_username(std::string username) {
 void MessageInfoWindow::add_action_link(std::string link) {
   Outputter out;
   out << "'" << Outputter::Underline(true) << link << Outputter::Underline(false) << "'";
-  add_element("open", out.as_str(), out.markup(), [self = this, link]() {
-    std::string cmd = global_parameters().link_open_command();
-
-    auto p = vfork();
-    if (!p) {
-      execlp(cmd.c_str(), cmd.c_str(), link.c_str(), (char *)NULL);
-    }
+  add_element("open", out.as_str(), out.markup(), [link]() {
+    global_parameters().open_link(link);
     return true;
   });
 }
@@ -425,43 +419,27 @@ void MessageInfoWindow::add_action_forward(td::int64 chat_id, td::int64 message_
 
 void MessageInfoWindow::add_action_copy(std::string text) {
   add_element("copy", "to clipboard", {}, [text = std::move(text)]() {
-    std::string cmd = global_parameters().copy_command();
-
-    auto p = vfork();
-    if (!p) {
-      execlp(cmd.c_str(), cmd.c_str(), "--", text.c_str(), NULL);
-    }
+    global_parameters().copy_to_clipboard(text);
     return false;
   });
 }
 
 void MessageInfoWindow::add_action_copy_primary(std::string text) {
-  add_element("copy", "to clipboard", {}, [text = std::move(text)]() {
-    std::string cmd = global_parameters().copy_command();
-
-    auto p = vfork();
-    if (!p) {
-      execlp(cmd.c_str(), cmd.c_str(), "--primary", "--", text.c_str(), NULL);
-    }
+  add_element("copy", "to primary buffer", {}, [text = std::move(text)]() {
+    global_parameters().copy_to_primary_buffer(text);
     return false;
   });
 }
 
 void MessageInfoWindow::add_action_open_file(std::string file_path) {
-  add_element("open", "document", {}, [self = this, file_path = std::move(file_path)]() {
-    std::string cmd = global_parameters().file_open_command();
-
-    auto p = vfork();
-    if (!p) {
-      execlp(cmd.c_str(), cmd.c_str(), "--", file_path.c_str(), NULL);
-    }
+  add_element("open", "document", {}, [file_path = std::move(file_path)]() {
+    global_parameters().open_document(file_path);
     return true;
   });
 }
 
 void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 message_id) {
   Outputter out;
-  out << "reactions: ";
   if (message_->interaction_info_ && message_->interaction_info_->reactions_) {
     for (const auto &r : message_->interaction_info_->reactions_->reactions_) {
       if (r->is_chosen_) {
@@ -473,7 +451,7 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
       }
     }
   }
-  add_element("update", out.as_str(), out.markup(),
+  add_element("reactions", out.as_str(), out.markup(),
               ReactionSelectionWindow::spawn_function(message_->chat_id_, message_->id_));
 }
 

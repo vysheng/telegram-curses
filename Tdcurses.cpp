@@ -59,7 +59,6 @@
 #include <utility>
 #include <iostream>
 #include <vector>
-#include <unistd.h>
 #include <libconfig.h++>
 #include <signal.h>
 #include <openssl/opensslv.h>

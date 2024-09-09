@@ -44,6 +44,8 @@ class ChatWindow
       return (generation < el.generation) || (generation == el.generation && message->id_ < el.message->id_);
     }
 
+    void handle_input(PadWindow &root, TickitKeyEventInfo *info) override;
+
     void run(ChatWindow *window);
 
     td::tl_object_ptr<td::td_api::message> message;

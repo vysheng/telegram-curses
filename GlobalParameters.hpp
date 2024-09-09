@@ -3,8 +3,10 @@
 #include "auto/td/telegram/td_api.h"
 #include "auto/td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/common.h"
 #include "td/utils/overloaded.h"
+#include "td/utils/port/Stat.h"
 #include <map>
 #include <array>
 #include <vector>
@@ -170,6 +172,11 @@ class GlobalParameters {
   td::int64 my_user_id() const {
     return my_user_id_;
   }
+
+  void copy_to_primary_buffer(td::CSlice text);
+  void copy_to_clipboard(td::CSlice text);
+  void open_document(td::CSlice file_path);
+  void open_link(td::CSlice url);
 
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
