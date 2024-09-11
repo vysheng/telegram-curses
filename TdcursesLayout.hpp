@@ -1,6 +1,7 @@
 #include "windows/WindowLayout.hpp"
 #include "windows/Window.hpp"
 #include "TdcursesWindowBase.hpp"
+#include "ConfigWindow.hpp"
 #include <memory>
 #include <tickit.h>
 

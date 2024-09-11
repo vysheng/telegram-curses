@@ -6,6 +6,7 @@
 #include "TdObjectsOutput.h"
 #include "td/utils/Random.h"
 #include "td/utils/Status.h"
+#include "ChatInfoWindow.hpp"
 #include <memory>
 #include <vector>
 
@@ -207,7 +208,7 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
       auto a = get_active_element();
       if (a) {
         auto el = std::static_pointer_cast<Element>(std::move(a));
-        root()->show_chat_info_window(el->chat_id());
+        create_menu_window(root(), root_actor_id(), ChatInfoWindow::spawn_function(el));
       }
       return;
     } else if (!strcmp(info->str, "s") || !strcmp(info->str, "S")) {

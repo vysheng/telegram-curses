@@ -4,6 +4,7 @@
 #include "Window.hpp"
 #include "TextEdit.hpp"
 #include "td/utils/logging.h"
+#include <memory>
 #include <vector>
 #include <functional>
 #include <map>
@@ -111,6 +112,8 @@ class PadWindow : public Window {
   std::shared_ptr<PadWindowElement> get_active_element() {
     return cur_element_ ? cur_element_->element : nullptr;
   }
+
+  std::vector<std::shared_ptr<PadWindowElement>> get_visible_elements();
 
   void set_pad_to(PadTo pad_to) {
     pad_to_ = pad_to;

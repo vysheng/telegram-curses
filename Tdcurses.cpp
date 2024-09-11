@@ -1994,22 +1994,6 @@ void Tdcurses::show_config_window() {
   create_menu_window(this, actor_id(this), ConfigWindow::spawn_function(options_));
 }
 
-void Tdcurses::show_chat_info_window(td::int64 chat_id) {
-  auto chat = chat_manager().get_chat(chat_id);
-  if (!chat) {
-    return;
-  }
-  create_menu_window(this, actor_id(this), ChatInfoWindow::spawn_function(chat));
-}
-
-void Tdcurses::show_user_info_window(td::int64 user_id) {
-  auto user = chat_manager().get_chat(user_id);
-  if (!user) {
-    return;
-  }
-  create_menu_window(this, actor_id(this), ChatInfoWindow::spawn_function(user));
-}
-
 void Tdcurses::close_compose_window() {
   if (compose_window_) {
     layout_->replace_compose_window(nullptr);

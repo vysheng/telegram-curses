@@ -488,6 +488,41 @@ void PadWindow::scroll_to_element(PadWindowElement *elptr, bool top) {
   }
 }
 
+std::vector<std::shared_ptr<PadWindowElement>> PadWindow::get_visible_elements() {
+  if (!cur_element_) {
+    return {};
+  }
+
+  std::vector<std::shared_ptr<PadWindowElement>> res;
+
+  auto l = lines_before_cur_element_;
+  auto it = elements_.find(cur_element_->element.get());
+  CHECK(it != elements_.end());
+  auto itf = it;
+  while (it != elements_.begin() && l > 0) {
+    it--;
+    l -= it->second->height;
+  }
+
+  while (it != itf) {
+    res.push_back(it->second->element);
+    it++;
+  }
+
+  res.push_back(it->second->element);
+  it++;
+
+  l = lines_after_cur_element_;
+
+  while (it != elements_.end() && l > 0) {
+    res.push_back(it->second->element);
+    l -= it->second->height;
+    it++;
+  }
+
+  return res;
+}
+
 void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                        TickitCursorShape &cursor_shape, bool force) {
   {

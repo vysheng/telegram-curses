@@ -307,10 +307,12 @@ void MessageInfoWindow::add_action_chat_info_by_username(std::string username) {
     self->send_request(std::move(req), [self](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
       DROP_IF_DELETED(R);
       if (R.is_ok()) {
-        auto chat = R.move_as_ok();
-        self->root()->show_chat_info_window(chat->id_);
+        auto chat_tl = R.move_as_ok();
+        auto chat = chat_manager().get_chat(chat_tl->id_);
+        self->spawn_submenu(ChatInfoWindow::spawn_function(chat));
+      } else {
+        self->exit();
       }
-      self->exit();
     });
     return false;
   });

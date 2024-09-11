@@ -194,6 +194,7 @@ add_executable(telegram-curses
   StickerManager.hpp
   Tdcurses.cpp
   Tdcurses.hpp
+  TdcursesLayout.cpp
   TdcursesLayout.hpp
   TdcursesWindowBase.cpp
   TdcursesWindowBase.hpp
