@@ -1900,22 +1900,34 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
         curses_->spawn_popup_view_window("TEST POPUP\n1\n2\n3\n4\n5\n6", 2);
         return;
       }
-      if (command == ":test_chat_search") {
-        curses_->spawn_chat_selection_window(true, [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
-          if (R.is_ok()) {
-            auto chat = R.move_as_ok();
-            curses->open_chat(chat->chat_id());
-          }
-        });
+      if (command == ":test_local_chat_search") {
+        curses_->spawn_chat_selection_window(ChatSelectionMode::Local,
+                                             [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
+                                               if (R.is_ok()) {
+                                                 auto chat = R.move_as_ok();
+                                                 curses->open_chat(chat->chat_id());
+                                               }
+                                             });
         return;
       }
       if (command == ":test_public_chat_search") {
-        curses_->spawn_chat_selection_window(false, [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
-          if (R.is_ok()) {
-            auto chat = R.move_as_ok();
-            curses->open_chat(chat->chat_id());
-          }
-        });
+        curses_->spawn_chat_selection_window(ChatSelectionMode::Global,
+                                             [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
+                                               if (R.is_ok()) {
+                                                 auto chat = R.move_as_ok();
+                                                 curses->open_chat(chat->chat_id());
+                                               }
+                                             });
+        return;
+      }
+      if (command == ":test_chat_search") {
+        curses_->spawn_chat_selection_window(ChatSelectionMode::Both,
+                                             [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
+                                               if (R.is_ok()) {
+                                                 auto chat = R.move_as_ok();
+                                                 curses->open_chat(chat->chat_id());
+                                               }
+                                             });
         return;
       }
       if (command[0] == '/') {
@@ -2077,8 +2089,18 @@ void TdcursesImpl::update_status_line() {
   }
 }
 
-void Tdcurses::spawn_chat_selection_window(bool local, td::Promise<std::shared_ptr<Chat>> promise) {
-  auto window = std::make_shared<ChatSearchWindow>(this, actor_id(this), local);
+void Tdcurses::spawn_chat_selection_window(ChatSelectionMode mode, td::Promise<std::shared_ptr<Chat>> promise) {
+  auto new_mode = [&](ChatSelectionMode mode) -> ChatSearchWindow::Mode {
+    switch (mode) {
+      case ChatSelectionMode::Local:
+        return ChatSearchWindow::Mode::Local;
+      case ChatSelectionMode::Global:
+        return ChatSearchWindow::Mode::Global;
+      case ChatSelectionMode::Both:
+        return ChatSearchWindow::Mode::Both;
+    }
+  }(mode);
+  auto window = std::make_shared<ChatSearchWindow>(this, actor_id(this), new_mode);
   auto boxed_window = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
   class Callback : public ChatSearchWindow::Callback {
    public:

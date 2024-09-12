@@ -617,8 +617,11 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
     if (!strcmp(info->str, "r")) {
       chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);
     } else if (!strcmp(info->str, "f")) {
-      chat_window.root()->spawn_chat_selection_window(true, [message_id = message_id(),
-                                                             self = &chat_window](td::Result<std::shared_ptr<Chat>> R) {
+      chat_window.root()->spawn_chat_selection_window(Tdcurses::ChatSelectionMode::Local, [message_id = message_id(),
+                                                                                           self = &chat_window](
+                                                                                              td::Result<
+                                                                                                  std::shared_ptr<Chat>>
+                                                                                                  R) {
         if (R.is_error()) {
           return;
         }

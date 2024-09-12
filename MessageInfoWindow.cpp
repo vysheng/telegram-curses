@@ -399,7 +399,9 @@ void MessageInfoWindow::add_action_poll(td::int64 chat_id, td::int64 message_id,
 
 void MessageInfoWindow::add_action_forward(td::int64 chat_id, td::int64 message_id) {
   add_element("forward", "this message", {}, [chat_id, message_id, self = this]() {
-    self->root()->spawn_chat_selection_window(true, [chat_id, message_id, self](td::Result<std::shared_ptr<Chat>> R) {
+    self->root()->spawn_chat_selection_window(Tdcurses::ChatSelectionMode::Local, [chat_id, message_id, self](
+                                                                                      td::Result<std::shared_ptr<Chat>>
+                                                                                          R) {
       if (R.is_error()) {
         return;
       }

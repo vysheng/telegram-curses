@@ -25,21 +25,17 @@ void ChatSearchWindow::handle_input(TickitKeyEventInfo *info) {
         cur_selected_--;
       }
     } else if (!strcmp(info->str, "Down")) {
-      if (cur_selected_ < found_chats_.size()) {
+      if (cur_selected_ < found_chats()) {
         cur_selected_++;
       }
-    } else if (!strcmp(info->str, "Enter")) {
+    } else if (!strcmp(info->str, "Enter") || !strcmp(info->str, "M-Enter")) {
       if (cur_selected_ != 0) {
-        callback_->on_answer(found_chats_[cur_selected_ - 1]);
+        callback_->on_answer(get_found_chat(cur_selected_ - 1));
       }
     } else if (!strcmp(info->str, "Tab")) {
       cur_selected_++;
-      if (cur_selected_ > found_chats_.size()) {
+      if (cur_selected_ > found_chats()) {
         cur_selected_ = 0;
-      }
-    } else if (!strcmp(info->str, "M-Enter")) {
-      if (cur_selected_ != 0) {
-        callback_->on_answer(found_chats_[cur_selected_ - 1]);
       }
     } else if (!strcmp(info->str, "Escape")) {
       callback_->on_abort();
@@ -66,56 +62,72 @@ void ChatSearchWindow::try_run_request() {
   if (text == last_request_text_) {
     return;
   }
-  running_request_ = true;
   last_request_text_ = std::move(text);
 
-  auto P = td::PromiseCreator::lambda([self = this](td::Result<td::tl_object_ptr<td::td_api::chats>> R) {
-    if (R.is_ok() || R.error().code() != ErrorCodeWindowDeleted) {
-      if (self->local_) {
-        R.ensure();
+  auto request_chats = [&](bool is_local) {
+    running_request_++;
+    auto P = td::PromiseCreator::lambda([self = this, is_local](td::Result<td::tl_object_ptr<td::td_api::chats>> R) {
+      if (R.is_ok() || R.error().code() != ErrorCodeWindowDeleted) {
+        if (is_local) {
+          R.ensure();
+        }
+        if (R.is_ok()) {
+          self->got_chats(R.move_as_ok(), is_local);
+        } else {
+          self->failed_to_get_chats(R.move_as_error(), is_local);
+        }
       }
-      if (R.is_ok()) {
-        self->got_chats(R.move_as_ok());
-      } else {
-        self->failed_to_get_chats(R.move_as_error());
-      }
+    });
+    if (is_local) {
+      auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, height() - 1);
+      send_request(std::move(req), std::move(P));
+    } else {
+      auto req = td::make_tl_object<td::td_api::searchPublicChats>(last_request_text_);
+      send_request(std::move(req), std::move(P));
     }
-  });
+  };
 
-  if (local_) {
-    auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, height() - 1);
-    send_request(std::move(req), std::move(P));
-  } else {
-    auto req = td::make_tl_object<td::td_api::searchPublicChats>(last_request_text_);
-    send_request(std::move(req), std::move(P));
+  switch (mode_) {
+    case Mode::Local:
+      request_chats(true);
+      break;
+    case Mode::Global:
+      request_chats(false);
+      break;
+    case Mode::Both:
+      request_chats(true);
+      request_chats(false);
+      break;
   }
 }
 
-void ChatSearchWindow::got_chats(td::tl_object_ptr<td::td_api::chats> res) {
+void ChatSearchWindow::got_chats(td::tl_object_ptr<td::td_api::chats> res, bool is_local) {
   CHECK(running_request_);
-  running_request_ = false;
+  running_request_--;
 
-  found_chats_.clear();
+  auto &chats = (is_local ? found_chats_local_ : found_chats_global_);
+  chats.clear();
   for (auto c : res->chat_ids_) {
     auto chat = chat_manager().get_chat(c);
     if (chat) {
-      found_chats_.push_back(chat);
+      chats.push_back(chat);
     }
   }
-  if (cur_selected_ > found_chats_.size()) {
-    cur_selected_ = found_chats_.size();
+  if (cur_selected_ > found_chats()) {
+    cur_selected_ = found_chats();
   }
   set_need_refresh();
   try_run_request();
 }
 
-void ChatSearchWindow::failed_to_get_chats(td::Status error) {
+void ChatSearchWindow::failed_to_get_chats(td::Status error, bool is_local) {
   CHECK(running_request_);
   running_request_ = false;
 
-  found_chats_.clear();
-  if (cur_selected_ > found_chats_.size()) {
-    cur_selected_ = found_chats_.size();
+  auto &chats = (is_local ? found_chats_local_ : found_chats_global_);
+  chats.clear();
+  if (cur_selected_ > found_chats()) {
+    cur_selected_ = found_chats();
   }
   set_need_refresh();
   try_run_request();
@@ -135,13 +147,13 @@ void ChatSearchWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::i
   }
 
   td::uint32 i = 0;
-  for (i = 0; i < (td::uint32)height() - 1 && i < found_chats_.size(); i++) {
+  for (i = 0; i < (td::uint32)height() - 1 && i < found_chats(); i++) {
     bool is_selected = i + 1 == cur_selected_;
     auto rect = TickitRect{.top = (int)i + 1, .left = 0, .lines = 1, .cols = width()};
     tickit_renderbuffer_save(rb);
     tickit_renderbuffer_clip(rb, &rect);
     tickit_renderbuffer_translate(rb, i + 1, 0);
-    windows::TextEdit::render(rb, t_x, t_y, t_cur, width(), found_chats_[i]->title(), 0,
+    windows::TextEdit::render(rb, t_x, t_y, t_cur, width(), get_found_chat(i)->title(), 0,
                               std::vector<windows::MarkupElement>(), is_selected, false);
     tickit_renderbuffer_restore(rb);
   }
