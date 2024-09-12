@@ -26,6 +26,9 @@ class ReactionSelectionWindow : public MenuWindowPad {
     bool operator==(const PaidReaction &other) const {
       return true;
     }
+    bool operator<(const PaidReaction &other) const {
+      return false;
+    }
   };
   class Element : public windows::PadWindowElement {
    public:
@@ -69,19 +72,7 @@ class ReactionSelectionWindow : public MenuWindowPad {
       if (count_ != other.count_) {
         return count_ > other.count_;
       }
-      if (emoji_.get_offset() == emoji_.offset<std::string>()) {
-        if (other.emoji_.get_offset() == emoji_.offset<std::string>()) {
-          return emoji_.get<std::string>() < other.emoji_.get<std::string>();
-        } else {
-          return false;
-        }
-      } else {
-        if (other.emoji_.get_offset() == emoji_.offset<std::string>()) {
-          return true;
-        } else {
-          return emoji_.get<td::int64>() < other.emoji_.get<td::int64>();
-        }
-      }
+      return emoji_ < other.emoji_;
     }
 
     bool selected() const {

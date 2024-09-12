@@ -20,7 +20,10 @@ void Screen::init() {
   tickit_root_ = tickit_new_stdtty();
   CHECK(tickit_root_);
   tickit_term_ = tickit_get_term(tickit_root_);
-  CHECK(tickit_root_);
+  CHECK(tickit_term_);
+  td::int32 value;
+  CHECK(tickit_term_getctl_int(tickit_term_, TickitTermCtl::TICKIT_TERMCTL_MOUSE, &value));
+  CHECK(value == TickitTermMouseMode::TICKIT_TERM_MOUSEMODE_OFF);
 
   int lines, cols;
   tickit_term_get_size(tickit_term_, &lines, &cols);

@@ -447,7 +447,7 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
       if (r->is_chosen_) {
         out << Outputter::Reverse{true};
       }
-      out << "[" << *r->type_ << " " << r->total_count_ << "] ";
+      out << "[" << *r->type_ << r->total_count_ << "]";
       if (r->is_chosen_) {
         out << Outputter::Reverse{false};
       }
