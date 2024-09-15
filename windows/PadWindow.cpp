@@ -532,6 +532,65 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     rect.top = height() - 1;
     tickit_renderbuffer_eraserect(rb, &rect);
   }
+
+  {
+    td::int32 lines_over_window =
+        (cur_element_ ? lines_before_cur_element_ + offset_in_cur_element_ - offset_from_window_top_ : 0);
+    td::int32 lines_under_window =
+        (cur_element_ ? lines_after_cur_element_ + (cur_element_->height - offset_in_cur_element_) -
+                            (effective_height() - offset_from_window_top_)
+                      : 0);
+
+    if (lines_over_window < 0) {
+      lines_over_window = 0;
+    }
+
+    if (lines_under_window < 0) {
+      lines_under_window = 0;
+    }
+
+    td::int32 t_x, t_y;
+    TickitCursorShape t_cursor;
+    TickitRect rect;
+    td::CSlice text;
+
+    td::StringBuilder sb;
+    sb << "↑";
+    if (glued_to_ == GluedTo::Top) {
+      sb << "glued";
+    } else {
+      sb << lines_over_window;
+    }
+    sb << " ";
+    sb << title() << "\n";
+    rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
+    tickit_renderbuffer_save(rb);
+    tickit_renderbuffer_clip(rb, &rect);
+    text = sb.as_cslice();
+    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
+                     is_active(), false);
+    tickit_renderbuffer_restore(rb);
+
+    sb.clear();
+
+    sb << "↓";
+    if (glued_to_ == GluedTo::Bottom) {
+      sb << "glued";
+    } else {
+      sb << lines_under_window;
+    }
+    sb << " ";
+    sb << title() << "\n";
+    rect = TickitRect{.top = height() - 1, .left = 0, .lines = 1, .cols = width()};
+    tickit_renderbuffer_save(rb);
+    tickit_renderbuffer_clip(rb, &rect);
+    tickit_renderbuffer_translate(rb, height() - 1, 0);
+    text = sb.as_cslice();
+    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
+                     is_active(), false);
+    tickit_renderbuffer_restore(rb);
+  }
+
   auto pad_rect = TickitRect{.top = 1, .left = 0, .lines = effective_height(), .cols = width()};
   tickit_renderbuffer_save(rb);
   tickit_renderbuffer_clip(rb, &pad_rect);
@@ -608,61 +667,6 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
 
   tickit_renderbuffer_restore(rb);
   cursor_x++;
-
-  td::int32 lines_over_window = lines_before_cur_element_ + offset_in_cur_element_ - offset_from_window_top_;
-  td::int32 lines_under_window = lines_after_cur_element_ + (cur_element_->height - offset_in_cur_element_) -
-                                 (effective_height() - offset_from_window_top_);
-
-  if (lines_over_window < 0) {
-    lines_over_window = 0;
-  }
-
-  if (lines_under_window < 0) {
-    lines_under_window = 0;
-  }
-
-  {
-    td::int32 t_x, t_y;
-    TickitCursorShape t_cursor;
-    TickitRect rect;
-    td::CSlice text;
-
-    td::StringBuilder sb;
-    sb << "↑";
-    if (glued_to_ == GluedTo::Top) {
-      sb << "glued";
-    } else {
-      sb << lines_over_window;
-    }
-    sb << " ";
-    sb << title() << "\n";
-    rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
-    text = sb.as_cslice();
-    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
-                     is_active(), false);
-    tickit_renderbuffer_restore(rb);
-
-    sb.clear();
-
-    sb << "↓";
-    if (glued_to_ == GluedTo::Bottom) {
-      sb << "glued";
-    } else {
-      sb << lines_under_window;
-    }
-    sb << " ";
-    sb << title() << "\n";
-    rect = TickitRect{.top = height() - 1, .left = 0, .lines = 1, .cols = width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
-    tickit_renderbuffer_translate(rb, height() - 1, 0);
-    text = sb.as_cslice();
-    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
-                     is_active(), false);
-    tickit_renderbuffer_restore(rb);
-  }
 }
 
 td::int32 PadWindowElement::render_plain_text(TickitRenderBuffer *rb, td::Slice text, td::int32 width,

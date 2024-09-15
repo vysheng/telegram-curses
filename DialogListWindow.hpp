@@ -1,3 +1,5 @@
+#pragma once
+
 #include "td/actor/impl/ActorId-decl.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
@@ -18,12 +20,26 @@ class DialogListWindow
     : public windows::PadWindow
     , public TdcursesWindowBase {
  public:
-  struct SublistGlobal {};
-  struct SublistArchive {};
+  struct SublistGlobal {
+    bool operator==(const SublistGlobal &) const {
+      return true;
+    }
+  };
+  struct SublistArchive {
+    bool operator==(const SublistArchive &) const {
+      return true;
+    }
+  };
   struct SublistSublist {
+    bool operator==(const SublistSublist &other) const {
+      return sublist_id_ == other.sublist_id_;
+    }
     td::int32 sublist_id_;
   };
   struct SublistSearch {
+    bool operator==(const SublistSearch &other) const {
+      return search_pattern_ == other.search_pattern_;
+    }
     std::string search_pattern_;
   };
 
@@ -94,6 +110,7 @@ class DialogListWindow
 
   void set_search_pattern(std::string pattern);
   void update_sublist(Sublist new_sublist);
+  void set_sublist(Sublist new_sublist);
 
   const auto &cur_sublist() const {
     return cur_sublist_;

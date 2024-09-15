@@ -174,6 +174,7 @@ add_executable(telegram-curses
   FieldEditWindow.hpp
   FileManager.cpp
   FileManager.hpp
+  FolderSelectionWindow.hpp
   GlobalParameters.cpp
   GlobalParameters.hpp
   GroupMembersWindow.cpp

@@ -1,12 +1,14 @@
 #include "DialogListWindow.hpp"
 #include "StickerManager.hpp"
 #include "td/telegram/td_api.h"
+#include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/overloaded.h"
 #include "TdObjectsOutput.h"
 #include "td/utils/Random.h"
 #include "td/utils/Status.h"
 #include "ChatInfoWindow.hpp"
+#include "FolderSelectionWindow.hpp"
 #include <memory>
 #include <vector>
 
@@ -27,6 +29,9 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRend
     out << Color::Red << "\xe2\x80\xa2" << Color::Revert << " ";
   } else {
     out << "  ";
+  }
+  if (is_pinned(dialog_list_window.cur_sublist())) {
+    out << "🔒";
   }
   out << title();
   if (chat_type() == ChatType::User) {
@@ -55,9 +60,6 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRend
             window->set_need_refresh();
           }
         });
-  }
-  if (is_pinned(dialog_list_window.cur_sublist())) {
-    out << "🔒";
   }
   return render_plain_text(rb, out.as_cslice(), out.markup(), width(), 1, is_selected);
 }
@@ -221,6 +223,8 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
                                           });
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
+    } else if (!strcmp(info->str, "f")) {
+      create_menu_window(root(), root_actor_id(), FolderSelectionWindow::spawn_function());
     }
   }
   return PadWindow::handle_input(info);
@@ -262,7 +266,28 @@ void DialogListWindow::update_sublist(Sublist new_sublist) {
       el->update_order(cur_sublist_);
     });
   });
+
+  auto el = get_active_element();
+  if (!el || !el->is_visible()) {
+    scroll_first_line();
+  }
+
   set_need_refresh();
+}
+
+void DialogListWindow::set_sublist(Sublist sublist) {
+  if (cur_sublist_ == sublist) {
+    return;
+  }
+  change_unique_id();
+  update_sublist(sublist);
+  running_req_ = false;
+  is_completed_ = false;
+  set_need_refresh();
+
+  request_bottom_elements();
+
+  root()->update_status_line();
 }
 
 }  // namespace tdcurses

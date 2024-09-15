@@ -2098,6 +2098,8 @@ void Tdcurses::spawn_chat_selection_window(ChatSelectionMode mode, td::Promise<s
         return ChatSearchWindow::Mode::Global;
       case ChatSelectionMode::Both:
         return ChatSearchWindow::Mode::Both;
+      default:
+        UNREACHABLE();
     }
   }(mode);
   auto window = std::make_shared<ChatSearchWindow>(this, actor_id(this), new_mode);
