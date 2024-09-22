@@ -110,6 +110,23 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
       return;
+    } else if (!strcmp(info->str, "F")) {
+      root()->spawn_file_selection_window([self = this](td::Result<std::string> R) {
+        if (R.is_error()) {
+          return;
+        }
+        auto fname = R.move_as_ok();
+
+        //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
+        //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
+        auto req = td::make_tl_object<td::td_api::sendMessage>(
+            self->main_chat_id(), 0, nullptr /*reply_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
+            td::make_tl_object<td::td_api::inputMessageDocument>(
+                td::make_tl_object<td::td_api::inputFileLocal>(fname), nullptr /* thumbnail */,
+                false /* disable type detection */, nullptr /* caption */));
+        self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
+      });
+      return;
     }
   }
   windows::PadWindow::handle_input(info);
@@ -630,7 +647,7 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
         //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
         //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
         auto req = td::make_tl_object<td::td_api::sendMessage>(
-            dst->chat_id(), 0, nullptr /*replay_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
+            dst->chat_id(), 0, nullptr /*reply_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
             td::make_tl_object<td::td_api::inputMessageForwarded>(message_id.chat_id, message_id.message_id, false,
                                                                   nullptr));
         self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});

@@ -23,9 +23,14 @@ class FolderSelectionWindow : public MenuWindowPad {
       return idx_ < static_cast<const Element &>(other).idx_;
     }
     void handle_input(PadWindow &root, TickitKeyEventInfo *info) override {
-      auto &w = static_cast<FolderSelectionWindow &>(root);
-      w.root()->dialog_list_window()->set_sublist(std::move(chat_list_));
-      w.exit();
+      if (info->type == TICKIT_KEYEV_KEY) {
+        if (!strcmp(info->str, "Enter")) {
+          auto &w = static_cast<FolderSelectionWindow &>(root);
+          w.root()->dialog_list_window()->set_sublist(std::move(chat_list_));
+          w.exit();
+          return;
+        }
+      }
     }
 
     td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {

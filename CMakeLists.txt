@@ -202,6 +202,8 @@ add_executable(telegram-curses
   TdObjectsOutput.cpp
   TdObjectsOutput.h
 
+  port/dirlist.cpp
+  port/dirlist.h
 
   third-party/qrcodegen/qrcodegen.cpp 
 )

@@ -158,6 +158,7 @@ class Tdcurses : public TdcursesInterface {
 
   enum class ChatSelectionMode { Local, Global, Both };
   void spawn_chat_selection_window(ChatSelectionMode mode, td::Promise<std::shared_ptr<Chat>> promise);
+  void spawn_file_selection_window(td::Promise<std::string> promise);
 
   void add_popup_window(std::shared_ptr<windows::Window> window, td::int32 prio) {
     screen_->add_popup_window(std::move(window), prio);

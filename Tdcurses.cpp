@@ -13,6 +13,7 @@
 #include "td/tdutils/td/utils/type_traits.h"
 #include "td/tdutils/td/utils/buffer.h"
 #include "td/tdutils/td/utils/Variant.h"
+#include "td/utils/Promise.h"
 #include "td/utils/Status.h"
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
@@ -47,6 +48,7 @@
 #include "TdcursesLayout.hpp"
 #include "windows/LogWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "FileSelectionWindow.hpp"
 
 #include "qrcodegen/qrcodegen.hpp"
 
@@ -1890,7 +1892,7 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   status_line_window_ = std::make_shared<StatusLineWindow>();
   class CommandLineCallback : public CommandLineWindow::Callback {
    public:
-    CommandLineCallback(Tdcurses *ptr) : curses_(ptr) {
+    CommandLineCallback(Tdcurses *ptr, td::ActorId<Tdcurses> id) : curses_(ptr), curses_id_(id) {
     }
     void on_command(std::string command) override {
       if (command.size() == 0) {
@@ -1930,6 +1932,10 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
                                              });
         return;
       }
+      if (command == ":test_file_selection") {
+        curses_->spawn_file_selection_window({});
+        return;
+      }
       if (command[0] == '/') {
         auto c = curses_->chat_window();
         if (c && c->is_active()) {
@@ -1944,8 +1950,10 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
 
    private:
     Tdcurses *curses_;
+    td::ActorId<Tdcurses> curses_id_;
   };
-  command_line_window_ = std::make_shared<CommandLineWindow>(std::make_unique<CommandLineCallback>(this));
+  command_line_window_ =
+      std::make_shared<CommandLineWindow>(std::make_unique<CommandLineCallback>(this, actor_id(this)));
   status_line_window_->replace_text("", {windows::MarkupElement::bg_color(0, 1000, (td::int32)Color::Grey)});
   //td::log_interface = log_interface_.get();
   screen_->change_layout(layout_);
@@ -2120,6 +2128,32 @@ void Tdcurses::spawn_chat_selection_window(ChatSelectionMode mode, td::Promise<s
 
    private:
     td::Promise<std::shared_ptr<Chat>> promise_;
+    std::shared_ptr<windows::Window> window_;
+    Tdcurses *curses_;
+  };
+  window->install_callback(std::make_unique<Callback>(std::move(promise), boxed_window, this));
+  add_popup_window(boxed_window, 1);
+}
+
+void Tdcurses::spawn_file_selection_window(td::Promise<std::string> promise) {
+  auto window = std::make_shared<FileSelectionWindow>(this, actor_id(this), nullptr);
+  auto boxed_window = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
+  class Callback : public FileSelectionWindow::Callback {
+   public:
+    Callback(td::Promise<std::string> promise, std::shared_ptr<windows::Window> window, Tdcurses *curses)
+        : promise_(std::move(promise)), window_(std::move(window)), curses_(curses) {
+    }
+    void on_answer(std::string text) override {
+      promise_.set_value(std::move(text));
+      curses_->del_popup_window(window_.get());
+    }
+    void on_abort() override {
+      promise_.set_error(td::Status::Error("Cancelled"));
+      curses_->del_popup_window(window_.get());
+    }
+
+   private:
+    td::Promise<std::string> promise_;
     std::shared_ptr<windows::Window> window_;
     Tdcurses *curses_;
   };
