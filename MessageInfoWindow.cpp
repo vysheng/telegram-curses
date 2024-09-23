@@ -346,7 +346,7 @@ void MessageInfoWindow::add_action_link(std::string link) {
 
 void MessageInfoWindow::add_action_search_pattern(std::string pattern) {
   Outputter out;
-  out << "'" << Color::Navy << pattern << Color::Revert << "'";
+  out << Outputter::NoLb{true} << "'" << Color::Navy << pattern << Color::Revert << "'" << Outputter::NoLb{false};
   add_element("search", out.as_str(), out.markup(), [pattern, self = this]() {
     auto chat_window = self->root()->chat_window();
     if (chat_window) {
