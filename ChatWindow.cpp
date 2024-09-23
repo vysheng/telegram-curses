@@ -9,7 +9,9 @@
 #include "TdObjectsOutput.h"
 #include "FileManager.hpp"
 #include "MessageInfoWindow.hpp"
+#include "MessageProcess.hpp"
 #include "CommandLineWindow.hpp"
+#include "GlobalParameters.hpp"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"
 #include "windows/TextEdit.hpp"
@@ -633,6 +635,11 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
   } else {
     if (!strcmp(info->str, "r")) {
       chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);
+    } else if (!strcmp(info->str, "y")) {
+      auto text = message_get_formatted_text(*message);
+      if (text) {
+        global_parameters().copy_to_primary_buffer(text->text_);
+      }
     } else if (!strcmp(info->str, "f")) {
       chat_window.root()->spawn_chat_selection_window(Tdcurses::ChatSelectionMode::Local, [message_id = message_id(),
                                                                                            self = &chat_window](
