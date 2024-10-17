@@ -2,6 +2,7 @@
 #include "CommonGroupsWindow.hpp"
 #include "GroupMembersWindow.hpp"
 #include "FieldEditWindow.hpp"
+#include "GlobalParameters.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -38,18 +39,32 @@ static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, 
         last_name = text.substr(p + 1);
       }
       auto user = chat_manager().get_user(user_id);
-      auto contact =
-          td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name, "", user_id);
-      auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
-      w.send_request(std::move(req),
-                     td::PromiseCreator::lambda(
-                         [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                           if (R.is_error()) {
-                             promise.set_error(R.move_as_error());
-                           } else {
-                             promise.set_value(td::Unit());
-                           }
-                         }));
+      bool is_self = user && (user->user_id() == global_parameters().my_user_id());
+      if (!is_self) {
+        auto contact = td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name,
+                                                               "", user_id);
+        auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
+        w.send_request(std::move(req),
+                       td::PromiseCreator::lambda(
+                           [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                             if (R.is_error()) {
+                               promise.set_error(R.move_as_error());
+                             } else {
+                               promise.set_value(td::Unit());
+                             }
+                           }));
+      } else {
+        auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
+        w.send_request(std::move(req),
+                       td::PromiseCreator::lambda(
+                           [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                             if (R.is_error()) {
+                               promise.set_error(R.move_as_error());
+                             } else {
+                               promise.set_value(td::Unit());
+                             }
+                           }));
+      }
     };
   } else {
     cb = [chat_id = chat->chat_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
@@ -92,9 +107,14 @@ void ChatInfoWindow::generate_info() {
   switch (chat_type) {
     case ChatType::User: {
       auto user = chat_ ? chat_manager().get_user(chat_->chat_base_id()) : user_;
+      bool is_self = user && (user->user_id() == global_parameters().my_user_id());
       {
         Outputter out;
-        out << "user [";
+        if (!is_self) {
+          out << "user [";
+        } else {
+          out << "self [";
+        }
         if (user) {
           if (user->is_verified()) {
             out << " verified";
@@ -167,7 +187,26 @@ void ChatInfoWindow::generate_info() {
           Outputter out;
           out << user_full_->photo_;
           add_element("photo", out.as_str(), out.markup());
-        };
+        }
+        if (user_full_->personal_chat_id_) {
+          auto C = chat_manager().get_chat(user_full_->personal_chat_id_);
+          if (C) {
+            Outputter out;
+            out << C->title() << Outputter::RightPad{"<open>"};
+            add_element("personalchat", out.as_str(), out.markup(), [root = root(), chat_id = C->chat_id()]() {
+              root->open_chat(chat_id);
+              return true;
+            });
+          }
+        }
+        if (user_full_->birthdate_) {
+          auto &b = *user_full_->birthdate_;
+          if (b.year_ || b.month_) {
+            Outputter out;
+            out << b;
+            add_element("birthday", out.as_str(), out.markup());
+          }
+        }
       }
     } break;
     case ChatType::Basicgroup: {

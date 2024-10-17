@@ -92,15 +92,7 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
       return;
     }
   } else {
-    if (!strcmp(info->str, " ")) {
-      auto el = get_active_element();
-      if (!el) {
-        return;
-      }
-      auto &e = static_cast<Element &>(*el);
-      e.run(this);
-      return;
-    } else if (!strcmp(info->str, "i")) {
+    if (!strcmp(info->str, "i")) {
       root()->open_compose_window(main_chat_id_, 0);
       return;
     } else if (!strcmp(info->str, "q") || !strcmp(info->str, "Q")) {
@@ -633,7 +625,14 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
   auto &chat_window = static_cast<ChatWindow &>(root);
   if (info->type == TICKIT_KEYEV_KEY) {
   } else {
-    if (!strcmp(info->str, "r")) {
+    if (!strcmp(info->str, " ")) {
+      run(&chat_window);
+    } else if (!strcmp(info->str, "v")) {
+      auto file = message_get_file(*message);
+      if (file && file->local_ && file->size_ == file->local_->downloaded_size_) {
+        global_parameters().open_document(file->local_->path_);
+      }
+    } else if (!strcmp(info->str, "r")) {
       chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);
     } else if (!strcmp(info->str, "y")) {
       auto text = message_get_formatted_text(*message);

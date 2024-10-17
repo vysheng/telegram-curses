@@ -192,6 +192,8 @@ add_executable(telegram-curses
   Outputter.hpp
   ReactionSelectionWindow.cpp
   ReactionSelectionWindow.hpp
+  SettingsWindow.cpp
+  SettingsWindow.hpp
   StatusLineWindow.hpp
   StickerManager.cpp
   StickerManager.hpp

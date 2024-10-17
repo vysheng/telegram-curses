@@ -86,6 +86,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageGiveaway &content
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayCompleted &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayWinners &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayPrizeStars &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGift &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUsersShared &content);
@@ -127,4 +128,7 @@ Outputter &operator<<(Outputter &, const td::td_api::reactionTypeCustomEmoji &fi
 Outputter &operator<<(Outputter &, const td::td_api::reactionTypePaid &file);
 
 Outputter &operator<<(Outputter &, const td::td_api::chatPhoto &file);
+
+Outputter &operator<<(Outputter &, const td::td_api::birthdate &birthdate);
+Outputter &operator<<(Outputter &, const td::td_api::profilePhoto &content);
 }  // namespace tdcurses

@@ -72,7 +72,9 @@ class MenuWindowCommon : public MenuWindowPad {
       while (text.size() < static_cast<MenuWindowCommon &>(root).pad_size()) {
         text += " ";
       }
-      text += ": ";
+      if (element_->data.size() != 0) {
+        text += ": ";
+      }
       auto size = text.size();
       text += element_->data;
       for (auto &e : markup) {

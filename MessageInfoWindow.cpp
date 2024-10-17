@@ -202,7 +202,7 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageGiveawayCompleted &content) {},
             [&](const td::td_api::messageGiveawayWinners &content) {},
             [&](const td::td_api::messageGiveawayPrizeStars &content) {},
-            [&](const td::td_api::messageGiftedStars &content) {},
+            [&](const td::td_api::messageGift &content) {}, [&](const td::td_api::messageGiftedStars &content) {},
             [&](const td::td_api::messageContactRegistered &content) {},
             [&](const td::td_api::messageUsersShared &content) {}, [&](const td::td_api::messageChatShared &content) {},
             [&](const td::td_api::messageBotWriteAccessAllowed &content) {},

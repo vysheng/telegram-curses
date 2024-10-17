@@ -2,6 +2,9 @@
 #include "windows/Window.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "ConfigWindow.hpp"
+#include "SettingsWindow.hpp"
+#include "ChatInfoWindow.hpp"
+#include "GlobalParameters.hpp"
 #include <memory>
 #include <tickit.h>
 
@@ -122,6 +125,19 @@ class TdcursesLayout
     if (info->type == TICKIT_KEYEV_KEY) {
       if (!strcmp(info->str, "F9")) {
         root()->show_config_window();
+        return;
+      }
+      if (!strcmp(info->str, "F8")) {
+        auto user = chat_manager().get_user(global_parameters().my_user_id());
+        if (user) {
+          auto f = ChatInfoWindow::spawn_function(user);
+          create_menu_window(root(), root_actor_id(), f);
+        }
+        return;
+      }
+      if (!strcmp(info->str, "F7")) {
+        auto f = MainSettingsWindow::spawn_function();
+        create_menu_window(root(), root_actor_id(), f);
         return;
       }
     }

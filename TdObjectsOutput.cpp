@@ -21,6 +21,10 @@
 
 namespace tdcurses {
 
+static const std::vector<std::string> month_names{"???",     "January",  "February", "March",  "April",
+                                                  "May",     "June",     "July",     "August", "September",
+                                                  "October", "November", "December"};
+
 Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
   auto start_pos = out.as_cslice().size();
   auto C = chat_manager().get_chat(message.chat_id_);
@@ -282,15 +286,16 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageInviteVideoChatPa
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageBasicGroupChatCreate &content) {
-  return out << "[created]";
+  return out << "[group '" << Color::Red << content.title_ << Color::Revert << "' created with "
+             << content.member_user_ids_.size() << " members]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageSupergroupChatCreate &content) {
-  return out << "[created]";
+  return out << "[group '" << Color::Red << content.title_ << Color::Revert << "created]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatChangeTitle &content) {
-  return out << "[renamed]";
+  return out << "[renamed to '" << Color::Red << content.title_ << Color::Revert << "']";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatChangePhoto &content) {
@@ -427,8 +432,12 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayPrizeStar
   return out << "[givaway prize stars]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageGift &content) {
+  return out << "[gift]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {
-  return out << "[gifted " << content.amount_ << " stars ]";
+  return out << "[gifted " << content.amount_ << " stars]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content) {
@@ -697,6 +706,23 @@ Outputter &operator<<(Outputter &out, const td::td_api::reactionTypePaid &e) {
 
 Outputter &operator<<(Outputter &out, const td::td_api::chatPhoto &file) {
   return out << "chat photo";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::birthdate &b) {
+  if (b.day_ && b.month_) {
+    out << b.day_ << " ";
+  }
+  if (b.month_) {
+    out << month_names[b.month_] << " ";
+  }
+  if (b.year_) {
+    out << b.year_;
+  }
+  return out;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::profilePhoto &content) {
+  return out << "[photo " << *content.big_ << "]";
 }
 
 }  // namespace tdcurses
