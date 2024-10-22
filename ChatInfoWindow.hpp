@@ -79,17 +79,6 @@ class ChatInfoWindow : public MenuWindowCommon {
     return chat_type_ == ChatType::Unknown && chat_inner_id_ == 0;
   }
 
-  static MenuWindowSpawnFunction spawn_function(std::shared_ptr<Chat> chat) {
-    return [chat](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<ChatInfoWindow>(root, root_id, chat);
-    };
-  }
-  static MenuWindowSpawnFunction spawn_function(std::shared_ptr<User> user) {
-    return [user](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<ChatInfoWindow>(root, root_id, user);
-    };
-  }
-
  private:
   std::shared_ptr<Chat> chat_{nullptr};
   std::shared_ptr<User> user_{nullptr};

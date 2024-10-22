@@ -3,6 +3,8 @@
 #include "td/actor/impl/ActorId-decl.h"
 #include "td/actor/impl/Scheduler-decl.h"
 #include "Tdcurses.hpp"
+#include "td/utils/Promise.h"
+#include "td/utils/Status.h"
 
 namespace tdcurses {
 
@@ -28,6 +30,18 @@ class TdcursesWindowBase {
   }
   td::ActorId<Tdcurses> root_actor_id() {
     return root_actor_;
+  }
+
+  template <class T>
+  td::Promise<T> safe_promise(td::Promise<T> promise) {
+    return td::PromiseCreator::lambda(
+        [promise = std::move(promise), id = unique_id_, self_ptr = root_](td::Result<T> R) mutable {
+          if (!self_ptr->window_exists(id)) {
+            promise.set_error(td::Status::Error(ErrorCodeWindowDeleted, "window already deleted"));
+            return;
+          }
+          promise.set_result(std::move(R));
+        });
   }
 
   template <class T>

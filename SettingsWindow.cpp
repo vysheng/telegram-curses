@@ -1,23 +1,28 @@
 #include "SettingsWindow.hpp"
 #include "ChatManager.hpp"
 #include "GlobalParameters.hpp"
+#include "FileSelectionWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "TdObjectsOutput.h"
 #include "FieldEditWindow.hpp"
 #include "FileSelectionWindow.hpp"
 #include "td/utils/Status.h"
+#include <memory>
 
 namespace tdcurses {
 
-static MenuWindowSpawnFunction spawn_rename_chat_window(AccountSettingsWindow *window) {
+static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window) {
+  AccountSettingsWindow &window = static_cast<AccountSettingsWindow &>(_window);
   auto user = chat_manager().get_user(global_parameters().my_user_id());
   std::string prompt = "change name";
   std::string text = user->first_name() + " " + user->last_name();
 
-  std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> cb;
-
-  cb = [](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
+  auto cb = [self = &window](FieldEditWindow &w, td::Result<std::string> R) {
+    if (R.is_error()) {
+      return;
+    }
+    auto text = R.move_as_ok();
     auto p = text.find(" ");
     std::string first_name, last_name;
     if (p == std::string::npos) {
@@ -27,7 +32,34 @@ static MenuWindowSpawnFunction spawn_rename_chat_window(AccountSettingsWindow *w
       first_name = text.substr(0, p);
       last_name = text.substr(p + 1);
     }
-    auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
+    self->run_change_name(first_name, last_name);
+    /*auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
+    w.send_request(std::move(req),
+                   td::PromiseCreator::lambda(
+                       [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                         if (R.is_error()) {
+                           promise.set_error(R.move_as_error());
+                         } else {
+                           promise.set_value(td::Unit());
+                         }
+                       }));*/
+  };
+
+  return window.spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
+}
+
+void AccountSettingsWindow::run_change_name(std::string first_name, std::string last_name) {
+}
+
+/*static MenuWindowSpawnFunction spawn_change_chat_photo_window(AccountSettingsWindow *window) {
+  std::string prompt = "change name";
+
+  std::function<void(FileSelectionWindow &, std::string, td::Promise<td::Unit>)> cb;
+
+  cb = [](FileSelectionWindow &w, std::string text, td::Promise<td::Unit> promise) {
+    auto req = td::make_tl_object<td::td_api::setProfilePhoto>(
+        td::make_tl_object<td::td_api::inputChatPhotoStatic>(td::make_tl_object<td::td_api::inputFileLocal>(text)),
+        true);
     w.send_request(std::move(req),
                    td::PromiseCreator::lambda(
                        [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
@@ -39,8 +71,8 @@ static MenuWindowSpawnFunction spawn_rename_chat_window(AccountSettingsWindow *w
                        }));
   };
 
-  return FieldEditWindow::spawn_function(prompt, text, cb);
-}
+  return FileSelectionWindow::spawn_function(prompt, cb);
+}*/
 
 void AccountSettingsWindow::got_full_user(td::tl_object_ptr<td::td_api::userFullInfo> user_full) {
   auto user = chat_manager().get_user(global_parameters().my_user_id());
@@ -48,7 +80,7 @@ void AccountSettingsWindow::got_full_user(td::tl_object_ptr<td::td_api::userFull
   {
     Outputter out;
     out << user->first_name() << " " << user->last_name() << Outputter::RightPad{"<change>"};
-    add_element("name", out.as_str(), out.markup(), spawn_rename_chat_window(this));
+    add_element("name", out.as_str(), out.markup(), spawn_rename_chat_window);
   }
   {
     Outputter out;
@@ -103,6 +135,7 @@ void AccountSettingsWindow::build_menu() {
 }
 
 void MainSettingsWindow::build_menu() {
-  add_element("account settings", "", {}, AccountSettingsWindow::spawn_function());
+  add_element("account settings", "", {}, create_menu_window_spawn_function<AccountSettingsWindow>());
 }
+
 }  // namespace tdcurses

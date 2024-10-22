@@ -94,7 +94,8 @@ class PadWindow : public Window {
 
   void adjust_cur_element(td::int32 lines);
 
-  void scroll_to_element(PadWindowElement *el, bool top);
+  enum class ScrollMode { FirstLine, LastLine, Minimal };
+  void scroll_to_element(PadWindowElement *el, ScrollMode scroll_mode);
 
   td::int32 min_width() override {
     return 5;

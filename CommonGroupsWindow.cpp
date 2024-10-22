@@ -26,7 +26,7 @@ class Element : public windows::PadWindowElement {
   void handle_input(windows::PadWindow &root, TickitKeyEventInfo *info) override {
     if (info->type == TICKIT_KEYEV_KEY) {
       if (!strcmp(info->str, "Enter")) {
-        static_cast<CommonGroupsWindow &>(root).spawn_submenu(ChatInfoWindow::spawn_function(chat_));
+        static_cast<CommonGroupsWindow &>(root).spawn_submenu<ChatInfoWindow>(chat_);
       }
     }
   }

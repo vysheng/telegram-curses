@@ -7,6 +7,7 @@
 #include "windows/EditorWindow.hpp"
 #include <functional>
 #include <memory>
+#include <utility>
 
 namespace tdcurses {
 
@@ -14,26 +15,40 @@ class FieldEditWindow
     : public MenuWindow
     , public windows::OneLineInputWindow {
  public:
-  FieldEditWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::string prompt, std::string text,
-                  std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> update)
-      : MenuWindow(root, root_actor), windows::OneLineInputWindow(prompt, text, false, nullptr) {
-    class Callback : public windows::OneLineInputWindow::Callback {
-     public:
-      Callback(std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> update) : update_(update) {
-      }
-      void on_answer(windows::OneLineInputWindow *_self, std::string text) override {
-        auto self = static_cast<FieldEditWindow *>(_self);
-        update_(*self, std::move(text),
-                td::PromiseCreator::lambda([self](td::Result<td::Unit> R) { self->rollback(); }));
-      }
-      void on_abort(windows::OneLineInputWindow *self, std::string text) override {
-        static_cast<FieldEditWindow *>(self)->rollback();
-      }
+  class Callback : public windows::OneLineInputWindow::Callback {
+   public:
+    virtual void run(FieldEditWindow &self, td::Result<std::string> text) = 0;
+    void on_answer(windows::OneLineInputWindow *_self, std::string text) override {
+      auto self = static_cast<FieldEditWindow *>(_self);
+      run(*self, std::move(text));
+    }
+    void on_abort(windows::OneLineInputWindow *_self, std::string text) override {
+      auto self = static_cast<FieldEditWindow *>(_self);
+      run(*self, td::Status::Error("aborted"));
+    }
+  };
+  template <typename T>
+  class FnCallback : public Callback {
+   public:
+    FnCallback(T x) : x_(std::move(x)) {
+    }
+    void run(FieldEditWindow &self, td::Result<std::string> text) override {
+      x_(self, std::move(text));
+    }
 
-     private:
-      std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> update_;
-    };
-    set_callback(std::make_unique<Callback>(update));
+   private:
+    T x_;
+  };
+
+  template <typename T>
+  static std::unique_ptr<FnCallback<T>> make_callback(T &&x) {
+    return std::make_unique<FnCallback<T>>(std::forward<T>(x));
+  }
+
+  FieldEditWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::string prompt, std::string text,
+                  std::unique_ptr<Callback> callback)
+      : MenuWindow(root, root_actor), windows::OneLineInputWindow(prompt, text, false, nullptr) {
+    set_callback(std::move(callback));
   }
 
   void handle_input(TickitKeyEventInfo *info) override {
@@ -47,14 +62,6 @@ class FieldEditWindow
 
   std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow> value) override {
     return std::static_pointer_cast<FieldEditWindow>(std::move(value));
-  }
-
-  static MenuWindowSpawnFunction spawn_function(
-      std::string prompt, std::string text,
-      std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> update) {
-    return [prompt, text, update](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<FieldEditWindow>(root, root_id, prompt, text, update);
-    };
   }
 
   td::int32 best_width() override {

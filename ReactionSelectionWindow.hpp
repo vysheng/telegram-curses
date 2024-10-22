@@ -189,12 +189,6 @@ class ReactionSelectionWindow : public MenuWindowPad {
     }
   }
 
-  static MenuWindowSpawnFunction spawn_function(td::int64 chat_id, td::int64 message_id) {
-    return [chat_id, message_id](Tdcurses *root, td::ActorId<Tdcurses> root_actor) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<ReactionSelectionWindow>(root, root_actor, chat_id, message_id);
-    };
-  }
-
  private:
   ChatWindow::MessageId message_id_;
   std::vector<std::shared_ptr<Element>> reactions_;

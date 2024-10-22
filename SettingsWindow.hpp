@@ -17,11 +17,7 @@ class AccountSettingsWindow : public MenuWindowCommon {
   void build_menu();
   void got_full_user(td::tl_object_ptr<td::td_api::userFullInfo> user_full);
 
-  static MenuWindowSpawnFunction spawn_function() {
-    return [](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<AccountSettingsWindow>(root, root_id);
-    };
-  }
+  void run_change_name(std::string first_name, std::string last_name);
 
  private:
 };
@@ -33,12 +29,6 @@ class MainSettingsWindow : public MenuWindowCommon {
   }
 
   void build_menu();
-
-  static MenuWindowSpawnFunction spawn_function() {
-    return [](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<MainSettingsWindow>(root, root_id);
-    };
-  }
 
  private:
 };

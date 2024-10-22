@@ -29,12 +29,6 @@ class ConfigWindow : public MenuWindowCommon {
     return (td::int32)options_.size() + 2;
   }
 
-  static MenuWindowSpawnFunction spawn_function(std::vector<Tdcurses::Option> &options) {
-    return [&options](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<ConfigWindow>(root, root_id, options);
-    };
-  }
-
  private:
   std::vector<Tdcurses::Option> &options_;
 };

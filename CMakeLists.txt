@@ -26,22 +26,22 @@ include(CheckCXXCompilerFlag)
 
 if (GCC OR CLANG OR INTEL)
   if (WIN32 AND INTEL)
-    set(STD14_FLAG /Qstd=c++14)
+    set(STD17_FLAG /Qstd=c++17)
   else()
-    set(STD14_FLAG -std=c++14)
+    set(STD17_FLAG -std=c++17)
   endif()
-  check_cxx_compiler_flag(${STD14_FLAG} HAVE_STD14)
-  if (NOT HAVE_STD14)
-    string(REPLACE "c++14" "c++1y" STD14_FLAG "${STD14_FLAG}")
-    check_cxx_compiler_flag(${STD14_FLAG} HAVE_STD1Y)
-    set(HAVE_STD14 ${HAVE_STD1Y})
+  check_cxx_compiler_flag(${STD17_FLAG} HAVE_STD17)
+  if (NOT HAVE_STD17)
+    string(REPLACE "c++17" "c++1y" STD17_FLAG "${STD17_FLAG}")
+    check_cxx_compiler_flag(${STD17_FLAG} HAVE_STD1Y)
+    set(HAVE_STD17 ${HAVE_STD1Y})
   endif()
 elseif (MSVC)
-  set(HAVE_STD14 MSVC_VERSION>=1900)
+  set(HAVE_STD17 MSVC_VERSION>=1900)
 endif()
 
-if (NOT HAVE_STD14)
-  message(FATAL_ERROR "No C++14 support in the compiler. Please upgrade the compiler.")
+if (NOT HAVE_STD17)
+  message(FATAL_ERROR "No C++17 support in the compiler. Please upgrade the compiler.")
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD ON)
@@ -60,7 +60,7 @@ if (MSVC)
   add_definitions(-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR- /W4 /wd4100 /wd4127 /wd4324 /wd4505 /wd4702")
 elseif (CLANG OR GCC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STD14_FLAG} -fno-omit-frame-pointer")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STD17_FLAG} -fno-omit-frame-pointer")
   if (APPLE)
     #use "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/export_list" for exported symbols
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fvisibility=hidden -Wl,-dead_strip,-x,-S")
@@ -69,7 +69,7 @@ elseif (CLANG OR GCC)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--exclude-libs,ALL")
   endif()
 elseif (INTEL)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STD14_FLAG}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STD17_FLAG}")
 endif()
 
 if (WIN32)
@@ -167,6 +167,8 @@ add_executable(telegram-curses
   ComposeWindow.hpp
   ConfigWindow.cpp
   ConfigWindow.hpp
+  Debug.cpp
+  Debug.hpp
   DebugInfoWindow.cpp
   DebugInfoWindow.hpp
   DialogListWindow.cpp

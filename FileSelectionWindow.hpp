@@ -2,8 +2,10 @@
 
 #include "MenuWindowPad.hpp"
 #include "GlobalParameters.hpp"
+#include "td/telegram/PromoDataManager.h"
 #include "td/utils/Promise.h"
 #include "td/utils/Slice-decl.h"
+#include "td/utils/Status.h"
 #include "td/utils/format.h"
 #include "td/utils/port/path.h"
 #include "port/dirlist.h"
@@ -11,20 +13,18 @@
 
 namespace tdcurses {
 
-class FileSelectionWindow
-    : public windows::PadWindow
-    , public TdcursesWindowBase {
+class FileSelectionWindow : public MenuWindowPad {
  public:
   enum SortMode : td::uint32 { Name, Mtime, Count };
   class Callback {
    public:
     virtual ~Callback() = default;
-    virtual void on_abort() = 0;
-    virtual void on_answer(std::string answer) = 0;
+    virtual void on_abort(FileSelectionWindow &) = 0;
+    virtual void on_answer(FileSelectionWindow &, std::string answer) = 0;
   };
 
-  FileSelectionWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::unique_ptr<Callback> callback = nullptr)
-      : TdcursesWindowBase(root, root_actor), callback_(std::move(callback)) {
+  FileSelectionWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Callback> callback = nullptr)
+      : MenuWindowPad(root, root_actor), callback_(std::move(callback)) {
     change_folder("/");
   }
   class Element : public windows::PadWindowElement {
@@ -66,7 +66,7 @@ class FileSelectionWindow
             w.on_result(name_);
           }
         } else if (!strcmp(info->str, "Escape")) {
-          w.callback_->on_abort();
+          w.callback_->on_abort(w);
         }
       } else {
         if (!strcmp(info->str, "s")) {
@@ -104,7 +104,7 @@ class FileSelectionWindow
   }
 
   void on_result(std::string name) {
-    callback_->on_answer(std::move(name));
+    callback_->on_answer(*this, std::move(name));
   }
   void change_folder(std::string name) {
     cur_folder_ = name;
@@ -117,7 +117,7 @@ class FileSelectionWindow
     set_need_refresh();
   }
 
-  void install_callback(std::unique_ptr<Callback> callback) {
+  void install_callback(std::shared_ptr<Callback> callback) {
     callback_ = std::move(callback);
   }
 
@@ -130,8 +130,30 @@ class FileSelectionWindow
     change_folder(cur_folder_);
   }
 
+  /*static MenuWindowSpawnFunction spawn_function(std::string text, td::Promise<std::string> promise) {
+    class Cb : public Callback {
+     public:
+      Cb(td::Promise<std::string> promise) : promise_(std::move(promise)) {
+      }
+
+      void on_abort(FileSelectionWindow &) override {
+        promise_.set_error(td::Status::Error("aborted"));
+      }
+      void on_answer(FileSelectionWindow &, std::string answer) override {
+        promise_.set_value(std::move(answer));
+      }
+
+     private:
+      td::Promise<std::string> promise_;
+    };
+    return [callback = std::make_shared<Cb>(std::move(promise))](
+               Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
+      return std::make_shared<FileSelectionWindow>(root, root_id, callback);
+    };
+  }*/
+
  private:
-  std::unique_ptr<Callback> callback_;
+  std::shared_ptr<Callback> callback_;
   SortMode sort_mode_{SortMode::Name};
   std::string cur_folder_;
 };

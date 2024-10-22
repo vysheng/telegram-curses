@@ -23,12 +23,6 @@ class CommonGroupsWindow : public MenuWindowPad {
   void request_bottom_elements() override;
   void got_chats(td::Result<td::tl_object_ptr<td::td_api::chats>> R);
 
-  static MenuWindowSpawnFunction spawn_function(std::shared_ptr<User> user) {
-    return [user](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<CommonGroupsWindow>(root, root_id, user);
-    };
-  }
-
  private:
   std::shared_ptr<User> user_;
   td::int64 last_chat_id_{0};

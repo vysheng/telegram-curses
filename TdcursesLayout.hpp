@@ -2,6 +2,7 @@
 #include "windows/Window.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "ConfigWindow.hpp"
+#include "Debug.hpp"
 #include "SettingsWindow.hpp"
 #include "ChatInfoWindow.hpp"
 #include "GlobalParameters.hpp"
@@ -130,14 +131,17 @@ class TdcursesLayout
       if (!strcmp(info->str, "F8")) {
         auto user = chat_manager().get_user(global_parameters().my_user_id());
         if (user) {
-          auto f = ChatInfoWindow::spawn_function(user);
-          create_menu_window(root(), root_actor_id(), f);
+          create_menu_window<ChatInfoWindow>(root(), root_actor_id(), user);
         }
         return;
       }
       if (!strcmp(info->str, "F7")) {
-        auto f = MainSettingsWindow::spawn_function();
-        create_menu_window(root(), root_actor_id(), f);
+        create_menu_window<MainSettingsWindow>(root(), root_actor_id());
+        return;
+      }
+      if (!strcmp(info->str, "F1")) {
+        auto s = debug_counters().to_str();
+        root()->spawn_popup_view_window(s, 1);
         return;
       }
     }

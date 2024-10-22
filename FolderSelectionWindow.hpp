@@ -57,12 +57,6 @@ class FolderSelectionWindow : public MenuWindowPad {
     set_need_refresh();
   }
 
-  static MenuWindowSpawnFunction spawn_function() {
-    return [](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<FolderSelectionWindow>(root, root_id);
-    };
-  }
-
  private:
   size_t last_id_{0};
 };

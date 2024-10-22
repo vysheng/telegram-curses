@@ -34,12 +34,6 @@ class MessageInfoWindow : public MenuWindowCommon {
 
   void process_message();
 
-  static MenuWindowSpawnFunction spawn_function(td::int64 chat_id, td::int64 message_id) {
-    return [chat_id, message_id](Tdcurses *root, td::ActorId<Tdcurses> root_actor) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<MessageInfoWindow>(root, root_actor, chat_id, message_id);
-    };
-  }
-
  private:
   void add_action_user_chat_info(td::int64 user_id, td::Slice custom_user_name = td::Slice());
   void add_action_user_chat_open(td::int64 user_id, td::Slice custom_user_name = td::Slice());

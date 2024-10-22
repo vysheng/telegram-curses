@@ -74,8 +74,7 @@ void ChatWindow::show_message_actions() {
     return;
   }
   auto el = static_cast<Element *>(cur_element.get());
-  create_menu_window(root(), root_actor_id(),
-                     MessageInfoWindow::spawn_function(el->message->chat_id_, el->message->id_));
+  create_menu_window<MessageInfoWindow>(root(), root_actor_id(), el->message->chat_id_, el->message->id_);
 }
 
 void ChatWindow::handle_input(TickitKeyEventInfo *info) {
@@ -714,7 +713,7 @@ void ChatWindow::seek(td::int64 chat_id, td::int64 message_id) {
 void ChatWindow::seek(MessageId message_id) {
   auto it = messages_.find(message_id);
   if (it != messages_.end()) {
-    scroll_to_element(it->second.get(), true);
+    scroll_to_element(it->second.get(), ScrollMode::Minimal);
     set_search_pattern("");
   }
 }

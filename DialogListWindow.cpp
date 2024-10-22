@@ -209,7 +209,7 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
       auto a = get_active_element();
       if (a) {
         auto el = std::static_pointer_cast<Element>(std::move(a));
-        create_menu_window(root(), root_actor_id(), ChatInfoWindow::spawn_function(el));
+        create_menu_window<ChatInfoWindow>(root(), root_actor_id(), el);
       }
       return;
     } else if (!strcmp(info->str, "s") || !strcmp(info->str, "S")) {
@@ -223,7 +223,7 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
     } else if (!strcmp(info->str, "f")) {
-      create_menu_window(root(), root_actor_id(), FolderSelectionWindow::spawn_function());
+      create_menu_window<FolderSelectionWindow>(root(), root_actor_id());
     }
   }
   return PadWindow::handle_input(info);
@@ -287,6 +287,15 @@ void DialogListWindow::set_sublist(Sublist sublist) {
   request_bottom_elements();
 
   root()->update_status_line();
+}
+
+void DialogListWindow::scroll_to_chat(td::int64 chat_id) {
+  auto chat = chat_manager().get_chat(chat_id);
+  if (!chat) {
+    return;
+  }
+  auto el = std::static_pointer_cast<Element>(std::move(chat));
+  scroll_to_element(el.get(), ScrollMode::Minimal);
 }
 
 }  // namespace tdcurses

@@ -231,7 +231,7 @@ void MessageInfoWindow::add_action_user_chat_info(td::int64 user_id, td::Slice c
     out << user;
   }
   out << Color::Revert;
-  add_element("info", out.as_str(), out.markup(), ChatInfoWindow::spawn_function(user));
+  add_element("info", out.as_str(), out.markup(), create_menu_window_spawn_function<ChatInfoWindow>(user));
 }
 
 void MessageInfoWindow::add_action_user_chat_open(td::int64 user_id, td::Slice custom_user_name) {
@@ -276,7 +276,7 @@ void MessageInfoWindow::add_action_chat_info(td::int64 chat_id, td::Slice custom
     out << chat;
   }
   out << Color::Revert;
-  add_element("info", out.as_str(), out.markup(), ChatInfoWindow::spawn_function(chat));
+  add_element("info", out.as_str(), out.markup(), create_menu_window_spawn_function<ChatInfoWindow>(chat));
 }
 
 void MessageInfoWindow::add_action_chat_open(td::int64 chat_id, td::Slice custom_chat_name) {
@@ -309,7 +309,7 @@ void MessageInfoWindow::add_action_chat_info_by_username(std::string username) {
       if (R.is_ok()) {
         auto chat_tl = R.move_as_ok();
         auto chat = chat_manager().get_chat(chat_tl->id_);
-        self->spawn_submenu(ChatInfoWindow::spawn_function(chat));
+        self->spawn_submenu<ChatInfoWindow>(chat);
       } else {
         self->exit();
       }
@@ -456,7 +456,7 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
     }
   }
   add_element("reactions", out.as_str(), out.markup(),
-              ReactionSelectionWindow::spawn_function(message_->chat_id_, message_->id_));
+              create_menu_window_spawn_function<ReactionSelectionWindow>(message_->chat_id_, message_->id_));
 }
 
 void MessageInfoWindow::add_action_reply(td::int64 chat_id, td::int64 message_id) {

@@ -43,9 +43,9 @@ class Element : public windows::PadWindowElement {
     if (info->type == TICKIT_KEYEV_KEY) {
       if (!strcmp(info->str, "Enter")) {
         if (chat_) {
-          static_cast<GroupMembersWindow &>(root).spawn_submenu(ChatInfoWindow::spawn_function(chat_));
+          static_cast<GroupMembersWindow &>(root).spawn_submenu<ChatInfoWindow>(chat_);
         } else {
-          static_cast<GroupMembersWindow &>(root).spawn_submenu(ChatInfoWindow::spawn_function(user_));
+          static_cast<GroupMembersWindow &>(root).spawn_submenu<ChatInfoWindow>(user_);
         }
       }
     }

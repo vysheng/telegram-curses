@@ -5,12 +5,12 @@ namespace tdcurses {
 void MenuWindowElementSpawn::handle_input(MenuWindowCommon &window, TickitKeyEventInfo *info) {
   if (info->type == TICKIT_KEYEV_KEY) {
     if (!strcmp(info->str, "Enter")) {
-      window.spawn_submenu(cb_);
+      cb_(window);
       return;
     }
   } else {
     if (!strcmp(info->str, " ")) {
-      window.spawn_submenu(cb_);
+      cb_(window);
       return;
     }
   }

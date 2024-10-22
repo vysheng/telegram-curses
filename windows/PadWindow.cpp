@@ -457,7 +457,7 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   }
 }
 
-void PadWindow::scroll_to_element(PadWindowElement *elptr, bool top) {
+void PadWindow::scroll_to_element(PadWindowElement *elptr, ScrollMode scroll_mode) {
   auto it = elements_.find(elptr);
   if (it == elements_.end()) {
     return;

@@ -116,6 +116,8 @@ class DialogListWindow
     return cur_sublist_;
   }
 
+  void scroll_to_chat(td::int64 chat_id);
+
  private:
   bool running_req_{false};
   bool is_completed_{false};

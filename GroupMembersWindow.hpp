@@ -25,12 +25,6 @@ class GroupMembersWindow : public MenuWindowPad {
   void got_members(td::Result<td::tl_object_ptr<td::td_api::basicGroupFullInfo>> R);
   void got_members(td::Result<td::tl_object_ptr<td::td_api::chatMembers>> R);
 
-  static MenuWindowSpawnFunction spawn_function(std::shared_ptr<Chat> chat) {
-    return [chat](Tdcurses *root, td::ActorId<Tdcurses> root_id) -> std::shared_ptr<MenuWindow> {
-      return std::make_shared<GroupMembersWindow>(root, root_id, chat);
-    };
-  }
-
  private:
   std::shared_ptr<Chat> chat_;
   td::int64 last_chat_id_{0};

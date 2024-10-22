@@ -1,10 +1,22 @@
 #pragma once
 #include "MenuWindowPad.hpp"
+#include <functional>
 #include <memory>
+#include <utility>
 
 namespace tdcurses {
 
 class MenuWindowCommon;
+
+using MenuWindowSpawnFunction = std::function<std::shared_ptr<MenuWindow>(MenuWindow &parent)>;
+
+template <typename T, typename... ArgsT>
+MenuWindowSpawnFunction create_menu_window_spawn_function(ArgsT &&...args) {
+  return [args = std::make_tuple(std::forward<ArgsT>(args)...)](MenuWindow &parent) mutable {
+    return std::apply([&](auto &&...args) { return parent.spawn_submenu<T>(std::forward<ArgsT>(args)...); },
+                      std::move(args));
+  };
+}
 
 class MenuWindowElement {
  public:

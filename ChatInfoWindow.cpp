@@ -3,6 +3,7 @@
 #include "GroupMembersWindow.hpp"
 #include "FieldEditWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "LoadingWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -20,15 +21,23 @@
 
 namespace tdcurses {
 
-static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
+static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
+  auto promise = window->safe_promise<td::Unit>([self = window](td::Result<td::Unit> R) {
+    DROP_IF_DELETED(R);
+    self->set_need_refresh();
+  });
+
   std::string prompt = "rename chat";
   std::string text = chat->title();
   // text
 
-  std::function<void(FieldEditWindow &, std::string, td::Promise<td::Unit>)> cb;
-
   if (chat->chat_type() == ChatType::User) {
-    cb = [user_id = chat->chat_base_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
+    auto cb = [user_id = chat->chat_base_id()](FieldEditWindow &w, td::Result<std::string> R) {
+      if (R.is_error()) {
+        return;
+      }
+      auto promise = td::PromiseCreator::lambda([](td::Result<td::Unit>) {});
+      auto text = R.move_as_ok();
       auto p = text.find(" ");
       std::string first_name, last_name;
       if (p == std::string::npos) {
@@ -66,22 +75,37 @@ static MenuWindowSpawnFunction spawn_rename_chat_window(ChatInfoWindow *window, 
                            }));
       }
     };
+    return window->spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
   } else {
-    cb = [chat_id = chat->chat_id()](FieldEditWindow &w, std::string text, td::Promise<td::Unit> promise) {
-      auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
-      w.send_request(std::move(req),
-                     td::PromiseCreator::lambda(
-                         [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                           if (R.is_error()) {
-                             promise.set_error(R.move_as_error());
-                           } else {
-                             promise.set_value(td::Unit());
-                           }
-                         }));
-    };
-  }
+    auto cb = [chat_id = chat->chat_id(), promise = std::move(promise)](FieldEditWindow &w,
+                                                                        td::Result<std::string> R) mutable {
+      if (R.is_error()) {
+        promise.set_error(R.move_as_error());
+        return;
+      }
 
-  return FieldEditWindow::spawn_function(prompt, text, cb);
+      auto x = w.rollback();
+      auto loading = x->spawn_submenu<LoadingWindow>();
+      auto text = R.move_as_ok();
+
+      auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
+      static_cast<LoadingWindow &>(*loading).loading_window_send_request(
+          std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+            if (R.is_error()) {
+              promise.set_error(R.move_as_error());
+            } else {
+              promise.set_value(td::Unit());
+            }
+          });
+    };
+    return window->spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
+  }
+}
+
+static MenuWindowSpawnFunction spawn_rename_chat_window_func(std::shared_ptr<Chat> chat) {
+  return [chat](MenuWindow &parent) -> std::shared_ptr<MenuWindow> {
+    return spawn_rename_chat_window(static_cast<ChatInfoWindow *>(&parent), chat);
+  };
 }
 
 void ChatInfoWindow::generate_info() {
@@ -100,7 +124,7 @@ void ChatInfoWindow::generate_info() {
   {
     Outputter out;
     out << chat_->title() << Outputter::RightPad{"<rename>"};
-    add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window(this, chat_));
+    add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window_func(chat_));
   }
   add_element("id", PSTRING() << chat_->chat_id());
   auto chat_type = chat_->chat_type();
@@ -181,7 +205,8 @@ void ChatInfoWindow::generate_info() {
         {
           Outputter out;
           out << user_full_->group_in_common_count_ << " " << Outputter::RightPad{"<view>"};
-          add_element("commongroups", out.as_str(), out.markup(), CommonGroupsWindow::spawn_function(user));
+          add_element("commongroups", out.as_str(), out.markup(),
+                      create_menu_window_spawn_function<CommonGroupsWindow>(user));
         }
         if (user_full_->photo_) {
           Outputter out;
@@ -246,7 +271,8 @@ void ChatInfoWindow::generate_info() {
         {
           Outputter out;
           out << group->member_count() << " " << Outputter::RightPad{"<view>"};
-          add_element("members", out.as_str(), out.markup(), GroupMembersWindow::spawn_function(chat_));
+          add_element("members", out.as_str(), out.markup(),
+                      create_menu_window_spawn_function<GroupMembersWindow>(chat_));
         }
       }
       if (basic_group_full_) {
@@ -316,7 +342,8 @@ void ChatInfoWindow::generate_info() {
         {
           Outputter out;
           out << supergroup->member_count() << " " << Outputter::RightPad{"<view>"};
-          add_element("members", out.as_str(), out.markup(), GroupMembersWindow::spawn_function(chat_));
+          add_element("members", out.as_str(), out.markup(),
+                      create_menu_window_spawn_function<GroupMembersWindow>(chat_));
         }
       }
       if (supergroup_full_) {
@@ -389,7 +416,8 @@ void ChatInfoWindow::generate_info() {
         {
           Outputter out;
           out << channel->member_count() << " " << Outputter::RightPad{"<view>"};
-          add_element("members", out.as_str(), out.markup(), GroupMembersWindow::spawn_function(chat_));
+          add_element("members", out.as_str(), out.markup(),
+                      create_menu_window_spawn_function<GroupMembersWindow>(chat_));
         }
       }
       if (supergroup_full_) {

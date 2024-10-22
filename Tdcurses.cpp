@@ -441,7 +441,7 @@ class TdcursesImpl : public Tdcurses {
     class QrWindow : public windows::ViewWindow {
      public:
       QrWindow(std::string text, std::vector<windows::MarkupElement> markup, td::int32 size)
-          : windows::ViewWindow(std::move(text), std::move(markup), nullptr), size_(size){};
+          : windows::ViewWindow(std::move(text), std::move(markup), nullptr), size_(size) {};
 
       td::int32 min_width() override {
         return 2 * size_ + 4;
@@ -1980,6 +1980,8 @@ void Tdcurses::open_chat(td::int64 chat_id) {
   layout_->activate_window(chat_window_);
   layout_->replace_compose_window(nullptr);
   update_status_line();
+
+  dialog_list_window_->scroll_to_chat(chat_id);
 }
 
 void Tdcurses::seek_chat(td::int64 chat_id, td::int64 message_id) {
@@ -2011,7 +2013,7 @@ void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 reply_message_id
 }
 
 void Tdcurses::show_config_window() {
-  create_menu_window(this, actor_id(this), ConfigWindow::spawn_function(options_));
+  create_menu_window<ConfigWindow>(this, actor_id(this), options_);
 }
 
 void Tdcurses::close_compose_window() {
@@ -2136,29 +2138,24 @@ void Tdcurses::spawn_chat_selection_window(ChatSelectionMode mode, td::Promise<s
 }
 
 void Tdcurses::spawn_file_selection_window(td::Promise<std::string> promise) {
-  auto window = std::make_shared<FileSelectionWindow>(this, actor_id(this), nullptr);
-  auto boxed_window = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
   class Callback : public FileSelectionWindow::Callback {
    public:
-    Callback(td::Promise<std::string> promise, std::shared_ptr<windows::Window> window, Tdcurses *curses)
-        : promise_(std::move(promise)), window_(std::move(window)), curses_(curses) {
+    Callback(td::Promise<std::string> promise) : promise_(std::move(promise)) {
     }
-    void on_answer(std::string text) override {
+    void on_answer(FileSelectionWindow &window, std::string text) override {
       promise_.set_value(std::move(text));
-      curses_->del_popup_window(window_.get());
+      window.exit();
     }
-    void on_abort() override {
+    void on_abort(FileSelectionWindow &window) override {
       promise_.set_error(td::Status::Error("Cancelled"));
-      curses_->del_popup_window(window_.get());
+      window.exit();
     }
 
    private:
     td::Promise<std::string> promise_;
-    std::shared_ptr<windows::Window> window_;
-    Tdcurses *curses_;
   };
-  window->install_callback(std::make_unique<Callback>(std::move(promise), boxed_window, this));
-  add_popup_window(boxed_window, 1);
+
+  create_menu_window<FileSelectionWindow>(this, actor_id(this), std::make_shared<Callback>(std::move(promise)));
 }
 
 void Tdcurses::register_alive_window(TdcursesWindowBase *window) {
