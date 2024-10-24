@@ -58,7 +58,7 @@ class PadWindow : public Window {
 
     void update();
   };
-  enum class GluedTo { Top, Bottom, None };
+  enum class GluedTo { Top, RelTop, RelBottom, Bottom, None };
   enum class PadTo { Top, Bottom };
   void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override;
 

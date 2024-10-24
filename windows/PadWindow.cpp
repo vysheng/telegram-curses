@@ -1,5 +1,4 @@
 #include "PadWindow.hpp"
-#include "stdio.h"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/StringBuilder.h"
 #include <memory>
@@ -7,8 +6,36 @@
 
 namespace windows {
 
+static PadWindow::GluedTo adjust_glued_to_up(PadWindow::GluedTo from) {
+  switch (from) {
+    case PadWindow::GluedTo::Top:
+      return from;
+    case PadWindow::GluedTo::Bottom:
+      return PadWindow::GluedTo::RelBottom;
+    case PadWindow::GluedTo::RelTop:
+    case PadWindow::GluedTo::RelBottom:
+    case PadWindow::GluedTo::None:
+    default:
+      return from;
+  }
+}
+
+static PadWindow::GluedTo adjust_glued_to_down(PadWindow::GluedTo from) {
+  switch (from) {
+    case PadWindow::GluedTo::Top:
+      return PadWindow::GluedTo::RelTop;
+    case PadWindow::GluedTo::Bottom:
+      return from;
+    case PadWindow::GluedTo::RelTop:
+    case PadWindow::GluedTo::RelBottom:
+    case PadWindow::GluedTo::None:
+    default:
+      return from;
+  }
+}
+
 void PadWindow::scroll_up(td::int32 lines) {
-  glued_to_ = GluedTo::None;
+  glued_to_ = adjust_glued_to_up(glued_to_);
   adjust_cur_element(-lines);
 }
 
@@ -16,7 +43,7 @@ void PadWindow::scroll_prev_element() {
   if (!cur_element_) {
     return;
   }
-  glued_to_ = GluedTo::None;
+  glued_to_ = adjust_glued_to_up(glued_to_);
   if (offset_in_cur_element_ > 0) {
     adjust_cur_element(-offset_in_cur_element_);
   } else {
@@ -34,12 +61,12 @@ void PadWindow::scroll_next_element() {
   if (!cur_element_) {
     return;
   }
-  glued_to_ = GluedTo::None;
+  glued_to_ = adjust_glued_to_down(glued_to_);
   adjust_cur_element(cur_element_->height - offset_in_cur_element_);
 }
 
 void PadWindow::scroll_down(td::int32 lines) {
-  glued_to_ = GluedTo::None;
+  glued_to_ = adjust_glued_to_down(glued_to_);
   adjust_cur_element(lines);
 }
 
@@ -433,6 +460,23 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   if (offset_from_window_top_ >= effective_height()) {
     offset_from_window_top_ = effective_height() - 1;
   }
+
+  if (glued_to_ == GluedTo::RelTop) {
+    if (lines_before_cur_element_ + cur_element_->height > effective_height()) {
+      glued_to_ = GluedTo::None;
+    } else {
+      offset_from_window_top_ = lines_before_cur_element_ + offset_in_cur_element_;
+    }
+  }
+  if (glued_to_ == GluedTo::RelBottom) {
+    if (lines_after_cur_element_ + cur_element_->height > effective_height()) {
+      glued_to_ = GluedTo::None;
+    } else {
+      offset_from_window_top_ =
+          effective_height() - lines_after_cur_element_ - (cur_element_->height - offset_in_cur_element_);
+    }
+  }
+
   if (pad_to_ == PadTo::Top) {
     auto off = offset_in_cur_element_ + lines_before_cur_element_;
     CHECK(offset_in_cur_element_ >= 0);
@@ -476,7 +520,14 @@ void PadWindow::scroll_to_element(PadWindowElement *elptr, ScrollMode scroll_mod
     }
   }
 
-  glued_to_ = GluedTo::None;
+  if (lines_before_cur_element_ + cur_element_->height <= effective_height()) {
+    glued_to_ = GluedTo::RelTop;
+  } else if (lines_after_cur_element_ + cur_element_->height <= effective_height()) {
+    glued_to_ = GluedTo::RelBottom;
+  } else {
+    glued_to_ = GluedTo::None;
+  }
+
   adjust_cur_element(0);
   set_need_refresh();
 
