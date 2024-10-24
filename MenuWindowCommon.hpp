@@ -103,6 +103,10 @@ class MenuWindowCommon : public MenuWindowPad {
       element_ = std::move(element);
     }
 
+    auto &menu_element() {
+      return element_;
+    }
+
    private:
     size_t idx_;
     std::shared_ptr<MenuWindowElement> element_;

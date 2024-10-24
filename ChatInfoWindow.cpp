@@ -22,21 +22,16 @@
 namespace tdcurses {
 
 static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
-  auto promise = window->safe_promise<td::Unit>([self = window](td::Result<td::Unit> R) {
-    DROP_IF_DELETED(R);
-    self->set_need_refresh();
-  });
-
   std::string prompt = "rename chat";
   std::string text = chat->title();
   // text
 
   if (chat->chat_type() == ChatType::User) {
-    auto cb = [user_id = chat->chat_base_id()](FieldEditWindow &w, td::Result<std::string> R) {
+    auto cb = [user_id = chat->chat_base_id(), root = window->root(), self = window,
+               self_id = window->window_unique_id()](FieldEditWindow &w, td::Result<std::string> R) {
       if (R.is_error()) {
         return;
       }
-      auto promise = td::PromiseCreator::lambda([](td::Result<td::Unit>) {});
       auto text = R.move_as_ok();
       auto p = text.find(" ");
       std::string first_name, last_name;
@@ -47,48 +42,67 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *wind
         first_name = text.substr(0, p);
         last_name = text.substr(p + 1);
       }
+      auto promise = td::PromiseCreator::lambda([root, self, self_id, first_name, last_name](td::Result<td::Unit> R) {
+        if (R.is_error()) {
+          return;
+        }
+        if (!root->window_exists(self_id)) {
+          return;
+        }
+        self->updated_user_name(first_name, last_name);
+      });
+      auto x = w.rollback();
       auto user = chat_manager().get_user(user_id);
       bool is_self = user && (user->user_id() == global_parameters().my_user_id());
       if (!is_self) {
         auto contact = td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name,
                                                                "", user_id);
         auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
-        w.send_request(std::move(req),
-                       td::PromiseCreator::lambda(
-                           [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                             if (R.is_error()) {
-                               promise.set_error(R.move_as_error());
-                             } else {
-                               promise.set_value(td::Unit());
-                             }
-                           }));
+        auto loading = x->spawn_submenu<LoadingWindow>();
+        static_cast<LoadingWindow &>(*loading).loading_window_send_request(
+            std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+              if (R.is_error()) {
+                promise.set_error(R.move_as_error());
+              } else {
+                promise.set_value(td::Unit());
+              }
+            });
       } else {
         auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
-        w.send_request(std::move(req),
-                       td::PromiseCreator::lambda(
-                           [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                             if (R.is_error()) {
-                               promise.set_error(R.move_as_error());
-                             } else {
-                               promise.set_value(td::Unit());
-                             }
-                           }));
+        auto loading = x->spawn_submenu<LoadingWindow>();
+        static_cast<LoadingWindow &>(*loading).loading_window_send_request(
+            std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+              if (R.is_error()) {
+                promise.set_error(R.move_as_error());
+              } else {
+                promise.set_value(td::Unit());
+              }
+            });
       }
     };
     return window->spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
   } else {
-    auto cb = [chat_id = chat->chat_id(), promise = std::move(promise)](FieldEditWindow &w,
-                                                                        td::Result<std::string> R) mutable {
+    auto cb = [chat_id = chat->chat_id(), root = window->root(), self = window, self_id = window->window_unique_id()](
+                  FieldEditWindow &w, td::Result<std::string> R) mutable {
       if (R.is_error()) {
-        promise.set_error(R.move_as_error());
         return;
       }
 
       auto x = w.rollback();
-      auto loading = x->spawn_submenu<LoadingWindow>();
       auto text = R.move_as_ok();
 
+      auto promise = td::PromiseCreator::lambda([root, self, self_id, text](td::Result<td::Unit> R) {
+        if (R.is_error()) {
+          return;
+        }
+        if (!root->window_exists(self_id)) {
+          return;
+        }
+        self->updated_chat_title(text);
+      });
+
       auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
+      auto loading = x->spawn_submenu<LoadingWindow>();
       static_cast<LoadingWindow &>(*loading).loading_window_send_request(
           std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
             if (R.is_error()) {
@@ -116,7 +130,7 @@ void ChatInfoWindow::generate_info() {
   {
     Outputter out;
     out << chat_->title() << Outputter::RightPad{"<open>"};
-    add_element("chat", out.as_str(), out.markup(), [root = root(), chat_id = chat_->chat_id()]() {
+    title_el1_ = add_element("chat", out.as_str(), out.markup(), [root = root(), chat_id = chat_->chat_id()]() {
       root->open_chat(chat_id);
       return true;
     });
@@ -124,7 +138,7 @@ void ChatInfoWindow::generate_info() {
   {
     Outputter out;
     out << chat_->title() << Outputter::RightPad{"<rename>"};
-    add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window_func(chat_));
+    title_el2_ = add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window_func(chat_));
   }
   add_element("id", PSTRING() << chat_->chat_id());
   auto chat_type = chat_->chat_type();
@@ -167,8 +181,8 @@ void ChatInfoWindow::generate_info() {
         add_element("type", out.as_str(), out.markup());
       }
       if (user) {
-        add_element("first name", user->first_name());
-        add_element("last name", user->last_name());
+        first_name_el_ = add_element("first name", user->first_name());
+        last_name_el_ = add_element("last name", user->last_name());
         if (user->username().size()) {
           add_element("username", "@" + user->username());
         }
@@ -602,6 +616,32 @@ void ChatInfoWindow::got_chat_info(td::int64 chat_id, td::tl_object_ptr<td::td_a
   }
   chat_->full_update(std::move(chat));
   set_chat(chat_);
+}
+
+void ChatInfoWindow::updated_chat_title(std::string new_title) {
+  if (title_el1_) {
+    change_element(title_el1_, [&]() { title_el1_->menu_element()->data = new_title; });
+  }
+  if (title_el2_) {
+    change_element(title_el2_, [&]() { title_el2_->menu_element()->data = new_title; });
+  }
+  set_need_refresh();
+}
+
+void ChatInfoWindow::updated_user_name(std::string first_name, std::string last_name) {
+  if (first_name_el_) {
+    change_element(first_name_el_, [&]() { first_name_el_->menu_element()->data = first_name; });
+  }
+  if (last_name_el_) {
+    change_element(last_name_el_, [&]() { last_name_el_->menu_element()->data = last_name; });
+  }
+  if (title_el1_) {
+    change_element(title_el1_, [&]() { title_el1_->menu_element()->data = first_name + " " + last_name; });
+  }
+  if (title_el2_) {
+    change_element(title_el2_, [&]() { title_el2_->menu_element()->data = first_name + " " + last_name; });
+  }
+  set_need_refresh();
 }
 
 }  // namespace tdcurses

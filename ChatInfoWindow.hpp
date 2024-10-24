@@ -13,6 +13,8 @@
 
 namespace tdcurses {
 
+using ElInfo = MenuWindowCommon::Element;
+
 class ChatInfoWindow : public MenuWindowCommon {
  public:
   class Element : public windows::PadWindowElement {
@@ -79,6 +81,9 @@ class ChatInfoWindow : public MenuWindowCommon {
     return chat_type_ == ChatType::Unknown && chat_inner_id_ == 0;
   }
 
+  void updated_chat_title(std::string new_title);
+  void updated_user_name(std::string first_name, std::string last_name);
+
  private:
   std::shared_ptr<Chat> chat_{nullptr};
   std::shared_ptr<User> user_{nullptr};
@@ -87,6 +92,11 @@ class ChatInfoWindow : public MenuWindowCommon {
   td::tl_object_ptr<td::td_api::supergroupFullInfo> supergroup_full_;
   ChatType chat_type_{ChatType::Unknown};
   td::int64 chat_inner_id_{0};
+
+  std::shared_ptr<ElInfo> first_name_el_;
+  std::shared_ptr<ElInfo> last_name_el_;
+  std::shared_ptr<ElInfo> title_el1_;
+  std::shared_ptr<ElInfo> title_el2_;
 };
 
 }  // namespace tdcurses
