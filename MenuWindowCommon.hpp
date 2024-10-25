@@ -149,4 +149,6 @@ class MenuWindowCommon : public MenuWindowPad {
   size_t max_size_ = 0;
 };
 
+using ElInfo = MenuWindowCommon::Element;
+
 }  // namespace tdcurses

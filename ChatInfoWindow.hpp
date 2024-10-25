@@ -13,8 +13,6 @@
 
 namespace tdcurses {
 
-using ElInfo = MenuWindowCommon::Element;
-
 class ChatInfoWindow : public MenuWindowCommon {
  public:
   class Element : public windows::PadWindowElement {

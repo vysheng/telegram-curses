@@ -8,6 +8,7 @@
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "windows/unicode.h"
+#include <vector>
 
 namespace tdcurses {
 
@@ -213,6 +214,8 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageProximityAlertTriggered &content) {},
             [&](const td::td_api::messageUnsupported &content) {}));
   }
+
+  add_action_delete_message(message_->chat_id_, message_->id_);
 
   set_need_refresh();
 }
@@ -462,6 +465,30 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
 void MessageInfoWindow::add_action_reply(td::int64 chat_id, td::int64 message_id) {
   add_element("reply", "create", {}, [chat_id, message_id, self = this]() {
     self->root()->open_compose_window(chat_id, message_id);
+    return true;
+  });
+}
+
+void MessageInfoWindow::add_action_delete_message(td::int64 chat_id, td::int64 message_id) {
+  auto C = chat_manager().get_chat(chat_id);
+  if (C->chat_type() == ChatType::Basicgroup || C->chat_type() == ChatType::User) {
+    add_element("delete", "delete for self", {}, [chat_id, message_id, self = this]() {
+      //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
+      auto req = td::make_tl_object<td::td_api::deleteMessages>(chat_id, std::vector<td::int64>{message_id}, false);
+      self->send_request(std::move(req), [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+        DROP_IF_DELETED(R);
+        self->exit();
+      });
+      return true;
+    });
+  }
+  add_element("delete", "delete for all", {}, [chat_id, message_id, self = this]() {
+    //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
+    auto req = td::make_tl_object<td::td_api::deleteMessages>(chat_id, std::vector<td::int64>{message_id}, true);
+    self->send_request(std::move(req), [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+      DROP_IF_DELETED(R);
+      self->exit();
+    });
     return true;
   });
 }

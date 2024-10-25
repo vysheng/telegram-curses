@@ -2,6 +2,7 @@
 #include "ChatManager.hpp"
 #include "GlobalParameters.hpp"
 #include "FileSelectionWindow.hpp"
+#include "LoadingWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "TdObjectsOutput.h"
@@ -13,12 +14,11 @@
 namespace tdcurses {
 
 static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window) {
-  AccountSettingsWindow &window = static_cast<AccountSettingsWindow &>(_window);
-  auto user = chat_manager().get_user(global_parameters().my_user_id());
-  std::string prompt = "change name";
-  std::string text = user->first_name() + " " + user->last_name();
-
-  auto cb = [self = &window](FieldEditWindow &w, td::Result<std::string> R) {
+  AccountSettingsWindow *window = static_cast<AccountSettingsWindow *>(&_window);
+  auto u = chat_manager().get_user(global_parameters().my_user_id());
+  CHECK(u);
+  auto cb = [root = window->root(), self = window, self_id = window->window_unique_id()](FieldEditWindow &w,
+                                                                                         td::Result<std::string> R) {
     if (R.is_error()) {
       return;
     }
@@ -32,23 +32,41 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window)
       first_name = text.substr(0, p);
       last_name = text.substr(p + 1);
     }
-    self->run_change_name(first_name, last_name);
-    /*auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
-    w.send_request(std::move(req),
-                   td::PromiseCreator::lambda(
-                       [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                         if (R.is_error()) {
-                           promise.set_error(R.move_as_error());
-                         } else {
-                           promise.set_value(td::Unit());
-                         }
-                       }));*/
+    auto promise = td::PromiseCreator::lambda([root, self, self_id, first_name, last_name](td::Result<td::Unit> R) {
+      if (R.is_error()) {
+        return;
+      }
+      if (!root->window_exists(self_id)) {
+        return;
+      }
+      self->updated_user_name(first_name, last_name);
+    });
+    auto x = w.rollback();
+    auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
+    auto loading = x->spawn_submenu<LoadingWindow>();
+    static_cast<LoadingWindow &>(*loading).loading_window_send_request(
+        std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+          if (R.is_error()) {
+            promise.set_error(R.move_as_error());
+          } else {
+            promise.set_value(td::Unit());
+          }
+        });
   };
-
-  return window.spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
+  return window->spawn_submenu<FieldEditWindow>("change name", u->first_name() + " " + u->last_name(),
+                                                FieldEditWindow::make_callback(std::move(cb)));
 }
 
-void AccountSettingsWindow::run_change_name(std::string first_name, std::string last_name) {
+void AccountSettingsWindow::updated_user_name(std::string first_name, std::string last_name) {
+  if (name_el_) {
+    Outputter out;
+    out << first_name << " " << last_name << Outputter::RightPad{"<change>"};
+    change_element(name_el_, [&]() {
+      name_el_->menu_element()->data = out.as_str();
+      name_el_->menu_element()->markup = out.markup();
+    });
+  }
+  set_need_refresh();
 }
 
 /*static MenuWindowSpawnFunction spawn_change_chat_photo_window(AccountSettingsWindow *window) {
@@ -80,7 +98,7 @@ void AccountSettingsWindow::got_full_user(td::tl_object_ptr<td::td_api::userFull
   {
     Outputter out;
     out << user->first_name() << " " << user->last_name() << Outputter::RightPad{"<change>"};
-    add_element("name", out.as_str(), out.markup(), spawn_rename_chat_window);
+    name_el_ = add_element("name", out.as_str(), out.markup(), spawn_rename_chat_window);
   }
   {
     Outputter out;
