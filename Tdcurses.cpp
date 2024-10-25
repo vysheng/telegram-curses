@@ -1501,12 +1501,6 @@ class TdcursesImpl : public Tdcurses {
     spawn_popup_view_window(out.as_str(), out.markup(), 3);
   }
 
-  //@description The list of users nearby has changed. The update is guaranteed to be sent only 60 seconds after a successful searchChatsNearby request
-  //@users_nearby The new list of users nearby
-  //updateUsersNearby users_nearby:vector<chatNearby> = Update;
-  void process_update(td::td_api::updateUsersNearby &update) {
-  }
-
   //@description The first unconfirmed session has changed
   //@session The unconfirmed session; may be null if none
   //updateUnconfirmedSession session:unconfirmedSession = Update;
