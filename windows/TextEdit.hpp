@@ -43,9 +43,11 @@ class TextEdit {
 
   static td::int32 render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                           TickitCursorShape &cursor_shape, td::int32 width, td::Slice text, size_t pos,
-                          const std::vector<MarkupElement> &markup, bool is_selected, bool is_password);
+                          const std::vector<MarkupElement> &markup, bool is_selected, bool is_password,
+                          td::int32 pad_width = 0, std::string pad_char = " ");
   td::int32 render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-                   td::int32 width, bool is_selected, bool is_password);
+                   td::int32 width, bool is_selected, bool is_password, td::int32 pad_width = 0,
+                   std::string pad_char = " ");
 
   bool is_empty() const {
     return text_.size() == 0;

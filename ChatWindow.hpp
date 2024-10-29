@@ -160,6 +160,14 @@ class ChatWindow
   MessageId get_oldest_message_id();
   MessageId get_newest_message_id();
 
+  auto multi_message_selection_mode() const {
+    return multi_message_selection_mode_;
+  }
+
+  bool multi_message_selection_mode_is_selected(MessageId id) const {
+    return multi_message_selection_mode_ && selected_messages_.count(id) > 0;
+  }
+
  private:
   const td::int64 main_chat_id_;
   std::map<MessageId, std::shared_ptr<Element>> messages_;
@@ -175,6 +183,9 @@ class ChatWindow
   bool running_req_bottom_{false};
   bool is_completed_top_{false};
   bool is_completed_bottom_{false};
+
+  bool multi_message_selection_mode_{false};
+  std::set<MessageId> selected_messages_;
 };
 
 }  // namespace tdcurses

@@ -215,9 +215,10 @@ std::string TextEdit::export_data() {
 }
 
 td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                           TickitCursorShape &cursor_shape, td::int32 width, bool is_selected, bool is_password) {
+                           TickitCursorShape &cursor_shape, td::int32 width, bool is_selected, bool is_password,
+                           td::int32 pad_width, std::string pad_char) {
   return render(rb, cursor_x, cursor_y, cursor_shape, width, text_, pos_, std::vector<MarkupElement>(), is_selected,
-                is_password);
+                is_password, pad_width, pad_char);
 }
 
 namespace {
@@ -238,6 +239,12 @@ class Builder {
   void start_new_line() {
     if (rb_) {
       tickit_renderbuffer_erase_at(rb_, cur_line_, cur_line_pos_, width_ - cur_line_pos_);
+    }
+    if (rb_) {
+      tickit_renderbuffer_setpen(rb_, pen_);
+      for (int i = 0; i < pad_width_; i++) {
+        tickit_renderbuffer_textn_at(rb_, cur_line_, width_ + i, pad_char_.c_str(), pad_char_.size());
+      }
     }
     cur_line_++;
     cur_line_pos_ = 0;
@@ -381,10 +388,17 @@ class Builder {
     return cursor_y_;
   }
 
+  void set_pad(td::int32 pad_width, std::string pad_char) {
+    pad_width_ = pad_width;
+    pad_char_ = pad_char;
+  }
+
  private:
   TickitRenderBuffer *rb_;
   TickitPen *pen_{nullptr};
   td::int32 width_;
+  td::int32 pad_width_{0};
+  std::string pad_char_;
   td::int32 cur_line_{0};
   td::int32 cur_line_pos_{0};
   td::int32 cursor_x_{-1};
@@ -397,7 +411,8 @@ class Builder {
 
 td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
                            TickitCursorShape &cursor_shape, td::int32 width, td::Slice text, size_t pos,
-                           const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password) {
+                           const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password,
+                           td::int32 pad_width, std::string pad_char) {
   struct Action {
     Action(size_t pos, bool enable, const MarkupElement *el) : pos(pos), enable(enable), el(el) {
     }
@@ -423,6 +438,7 @@ td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int3
   size_t actions_pos = 0;
 
   Builder builder(rb, width, is_password);
+  builder.set_pad(pad_width, pad_char);
 
   size_t cur_pos = 0;
   while (cur_pos <= text.size()) {

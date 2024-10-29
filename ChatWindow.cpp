@@ -81,6 +81,11 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
   set_need_refresh();
   if (info->type == TICKIT_KEYEV_KEY) {
     if (!strcmp(info->str, "Escape")) {
+      if (multi_message_selection_mode_) {
+        multi_message_selection_mode_ = false;
+        selected_messages_.clear();
+        return;
+      }
       set_search_pattern("");
       return;
     } else if (!strcmp(info->str, "Enter")) {
@@ -96,9 +101,6 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
       return;
     } else if (!strcmp(info->str, "q") || !strcmp(info->str, "Q")) {
       set_search_pattern("");
-      return;
-    } else if (!strcmp(info->str, "I")) {
-      show_message_actions();
       return;
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
@@ -150,13 +152,23 @@ void ChatWindow::handle_input(TickitKeyEventInfo *info) {
 }
 
 td::int32 ChatWindow::Element::render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) {
+  auto &chat_window = static_cast<ChatWindow &>(root);
+  auto d = chat_window.multi_message_selection_mode() ? 1 : 0;
   td::int32 cursor_x, cursor_y;
   TickitCursorShape cursor_shape;
   Outputter out;
   out.set_chat(static_cast<ChatWindow *>(&root));
   out << message;
-  return windows::TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width(), out.as_str(), 0, out.markup(),
-                                   is_selected, false);
+  if (rb) {
+    tickit_renderbuffer_save(rb);
+  }
+  bool s = chat_window.multi_message_selection_mode_is_selected(ChatWindow::build_message_id(*message));
+  auto r = windows::TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width() - d, out.as_str(), 0, out.markup(),
+                                     is_selected, false, d, s ? "*" : " ");
+  if (rb) {
+    tickit_renderbuffer_restore(rb);
+  }
+  return r;
 }
 
 void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
@@ -623,9 +635,28 @@ void ChatWindow::Element::run(ChatWindow *window) {
 void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info) {
   auto &chat_window = static_cast<ChatWindow &>(root);
   if (info->type == TICKIT_KEYEV_KEY) {
+    if (!strcmp(info->str, "Enter")) {
+      run(&chat_window);
+      return;
+    }
   } else {
     if (!strcmp(info->str, " ")) {
-      run(&chat_window);
+      if (!chat_window.multi_message_selection_mode_) {
+        chat_window.multi_message_selection_mode_ = true;
+        chat_window.on_resize(chat_window.width(), chat_window.height(), chat_window.width(), chat_window.height());
+        chat_window.selected_messages_.clear();
+      }
+      auto msg_id = message_id();
+      if (chat_window.selected_messages_.count(msg_id)) {
+        chat_window.selected_messages_.erase(msg_id);
+        if (chat_window.selected_messages_.size() == 0) {
+          chat_window.multi_message_selection_mode_ = false;
+          chat_window.on_resize(chat_window.width(), chat_window.height(), chat_window.width(), chat_window.height());
+        }
+      } else {
+        chat_window.selected_messages_.insert(msg_id);
+      }
+      return;
     } else if (!strcmp(info->str, "v")) {
       auto file = message_get_file(*message);
       if (file && file->local_ && file->size_ == file->local_->downloaded_size_) {
@@ -633,30 +664,41 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
       }
     } else if (!strcmp(info->str, "r")) {
       chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);
+    } else if (!strcmp(info->str, "I")) {
+      create_menu_window<MessageInfoWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
+                                            message->id_);
     } else if (!strcmp(info->str, "y")) {
       auto text = message_get_formatted_text(*message);
       if (text) {
         global_parameters().copy_to_primary_buffer(text->text_);
       }
     } else if (!strcmp(info->str, "f")) {
-      chat_window.root()->spawn_chat_selection_window(Tdcurses::ChatSelectionMode::Local, [message_id = message_id(),
-                                                                                           self = &chat_window](
-                                                                                              td::Result<
-                                                                                                  std::shared_ptr<Chat>>
-                                                                                                  R) {
-        if (R.is_error()) {
-          return;
+      std::vector<MessageId> msg_ids;
+      if (chat_window.multi_message_selection_mode()) {
+        for (auto &m : chat_window.selected_messages_) {
+          msg_ids.push_back(m);
         }
-        auto dst = R.move_as_ok();
+      } else {
+        msg_ids.push_back(message_id());
+      }
+      chat_window.root()->spawn_chat_selection_window(
+          Tdcurses::ChatSelectionMode::Local,
+          [msg_ids = msg_ids, self = &chat_window](td::Result<std::shared_ptr<Chat>> R) {
+            if (R.is_error()) {
+              return;
+            }
 
-        //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
-        //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
-        auto req = td::make_tl_object<td::td_api::sendMessage>(
-            dst->chat_id(), 0, nullptr /*reply_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
-            td::make_tl_object<td::td_api::inputMessageForwarded>(message_id.chat_id, message_id.message_id, false,
-                                                                  nullptr));
-        self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
-      });
+            auto dst = R.move_as_ok();
+            //forwardMessages chat_id:int53 message_thread_id:int53 from_chat_id:int53 message_ids:vector<int53> options:messageSendOptions send_copy:Bool remove_caption:Bool = Messages;
+
+            std::vector<td::int64> mids;
+            for (auto &m : msg_ids) {
+              mids.emplace_back(m.message_id);
+            }
+            auto req = td::make_tl_object<td::td_api::forwardMessages>(dst->chat_id(), 0, msg_ids[0].chat_id,
+                                                                       std::move(mids), nullptr, false, false);
+            self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {});
+          });
       return;
     }
   }
