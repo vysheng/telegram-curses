@@ -261,7 +261,7 @@ void MessageInfoWindow::add_action_user_chat_open(td::int64 user_id, td::Slice c
       }
       self->exit();
     });
-    return false;
+    return true;
   });
 }
 
@@ -396,7 +396,7 @@ void MessageInfoWindow::add_action_poll(td::int64 chat_id, td::int64 message_id,
                   DROP_IF_DELETED(R);
                   self->exit();
                 });
-                return false;
+                return true;
               });
 }
 
@@ -420,7 +420,7 @@ void MessageInfoWindow::add_action_forward(td::int64 chat_id, td::int64 message_
         self->exit();
       });
     });
-    return false;
+    return true;
   });
 }
 

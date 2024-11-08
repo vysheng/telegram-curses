@@ -66,7 +66,10 @@ class FileSelectionWindow : public MenuWindowPad {
             w.on_result(name_);
           }
         } else if (!strcmp(info->str, "Escape")) {
-          w.callback_->on_abort(w);
+          if (!w.sent_answer_) {
+            w.callback_->on_abort(w);
+          }
+          w.sent_answer_ = true;
         }
       } else {
         if (!strcmp(info->str, "s")) {
@@ -104,7 +107,10 @@ class FileSelectionWindow : public MenuWindowPad {
   }
 
   void on_result(std::string name) {
-    callback_->on_answer(*this, std::move(name));
+    if (!sent_answer_) {
+      callback_->on_answer(*this, std::move(name));
+    }
+    sent_answer_ = true;
   }
   void change_folder(std::string name) {
     cur_folder_ = name;
@@ -152,8 +158,16 @@ class FileSelectionWindow : public MenuWindowPad {
     };
   }*/
 
+  ~FileSelectionWindow() {
+    if (!sent_answer_) {
+      callback_->on_abort(*this);
+    }
+    sent_answer_ = true;
+  }
+
  private:
   std::shared_ptr<Callback> callback_;
+  bool sent_answer_{false};
   SortMode sort_mode_{SortMode::Name};
   std::string cur_folder_;
 };

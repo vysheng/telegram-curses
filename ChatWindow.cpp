@@ -12,6 +12,7 @@
 #include "MessageProcess.hpp"
 #include "CommandLineWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "YesNoWindow.hpp"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"
 #include "windows/TextEdit.hpp"
@@ -697,6 +698,24 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
             }
             auto req = td::make_tl_object<td::td_api::forwardMessages>(dst->chat_id(), 0, msg_ids[0].chat_id,
                                                                        std::move(mids), nullptr, false, false);
+
+            class Callback : public YesNoWindow::Callback {
+             public:
+              Callback(ChatWindow *self, td::tl_object_ptr<td::td_api::Function> func)
+                  : self_(self), func_(std::move(func)) {
+              }
+              void on_abort(YesNoWindow &w) override {
+                w.rollback();
+              }
+              void on_answer(YesNoWindow &w, bool answer) override {
+                w.rollback();
+              }
+
+             private:
+              ChatWindow *self_;
+              td::tl_object_ptr<td::td_api::Function> func_;
+            };
+
             self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {});
           });
       return;

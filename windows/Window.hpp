@@ -19,6 +19,7 @@ class Window {
   }
   void resize(td::int32 new_width, td::int32 new_height);
   virtual void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) {
+    set_need_refresh();
   }
   virtual void handle_input(TickitKeyEventInfo *info) {
   }

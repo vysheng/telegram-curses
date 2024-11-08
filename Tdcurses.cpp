@@ -49,6 +49,7 @@
 #include "windows/LogWindow.hpp"
 #include "GlobalParameters.hpp"
 #include "FileSelectionWindow.hpp"
+#include "YesNoWindow.hpp"
 
 #include "qrcodegen/qrcodegen.hpp"
 
@@ -741,6 +742,13 @@ class TdcursesImpl : public Tdcurses {
     if (c && c->main_chat_id() == update.chat_id_) {
       c->process_update(update);
     }
+  }
+
+  //@description An automatically scheduled message with video has been successfully sent after conversion
+  //@chat_id Identifier of the chat with the message
+  //@message_id Identifier of the sent message
+  //updateVideoPublished chat_id:int53 message_id:int53 = Update;
+  void process_update(td::td_api::updateVideoPublished &update) {
   }
 
   //@description A new chat has been loaded/created. This update is guaranteed to come before the chat identifier is returned to the application. The chat field changes will be reported through separate updates
@@ -1924,6 +1932,21 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
                                                  curses->open_chat(chat->chat_id());
                                                }
                                              });
+        return;
+      }
+      if (command == ":test_yes_no") {
+        class Callback : public YesNoWindow::Callback {
+         public:
+          void on_abort(YesNoWindow &w) override {
+            //w.exit();
+          }
+          void on_answer(YesNoWindow &w, bool answer) override {
+            w.root()->spawn_popup_view_window(answer ? "YES" : "NO", 1);
+            w.exit();
+          }
+        };
+        create_menu_window<YesNoWindow>(curses_, curses_id_, "YES OR NO?", std::vector<windows::MarkupElement>{},
+                                        std::make_unique<Callback>(), true);
         return;
       }
       if (command == ":test_file_selection") {

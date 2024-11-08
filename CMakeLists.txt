@@ -207,6 +207,7 @@ add_executable(telegram-curses
   TdcursesWindowBase.hpp
   TdObjectsOutput.cpp
   TdObjectsOutput.h
+  YesNoWindow.hpp
 
   port/dirlist.cpp
   port/dirlist.h

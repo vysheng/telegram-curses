@@ -168,6 +168,10 @@ void ViewWindow::handle_input(TickitKeyEventInfo *info) {
   } else {
     if (!strcmp(info->str, " ")) {
       offset_from_top_ += height();
+    } else if (!strcmp(info->str, "q") || !strcmp(info->str, "Q")) {
+      if (callback_) {
+        return callback_->on_abort(this);
+      }
     }
   }
 }
