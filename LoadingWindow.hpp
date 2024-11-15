@@ -4,6 +4,7 @@
 #include "td/utils/Promise.h"
 #include "td/utils/Status.h"
 #include "windows/EditorWindow.hpp"
+#include <memory>
 
 namespace tdcurses {
 
@@ -11,8 +12,9 @@ class LoadingWindow
     : public MenuWindow
     , public windows::ViewWindow {
  public:
-  LoadingWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor)
-      : MenuWindow(root, root_actor), windows::ViewWindow("Running request...", nullptr) {
+  LoadingWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::string text = "Running request...",
+                std::vector<windows::MarkupElement> markup = {})
+      : MenuWindow(root, root_actor), windows::ViewWindow(std::move(text), std::move(markup), nullptr) {
   }
   void handle_input(TickitKeyEventInfo *info) override {
     if (menu_window_handle_input(info)) {
@@ -36,5 +38,15 @@ class LoadingWindow
     send_request(std::move(func), std::move(promise));
   }
 };
+
+template <typename T, typename T1>
+std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWindow>> loading_window_send_request(
+    T &cur_window, std::string text, std::vector<windows::MarkupElement> markup, td::tl_object_ptr<T1> func,
+    td::Promise<typename T1::ReturnType> P) {
+  std::shared_ptr<LoadingWindow> r =
+      cur_window.template spawn_submenu<LoadingWindow>(std::move(text), std::move(markup));
+  r->loading_window_send_request(std::move(func), std::move(P));
+  return r;
+}
 
 }  // namespace tdcurses

@@ -58,9 +58,9 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *wind
         auto contact = td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name,
                                                                "", user_id);
         auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
-        auto loading = x->spawn_submenu<LoadingWindow>();
-        static_cast<LoadingWindow &>(*loading).loading_window_send_request(
-            std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+        loading_window_send_request(
+            *x, "renaming user", {}, std::move(req),
+            [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
               if (R.is_error()) {
                 promise.set_error(R.move_as_error());
               } else {
@@ -69,9 +69,9 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *wind
             });
       } else {
         auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
-        auto loading = x->spawn_submenu<LoadingWindow>();
-        static_cast<LoadingWindow &>(*loading).loading_window_send_request(
-            std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+        loading_window_send_request(
+            *x, "renaming user", {}, std::move(req),
+            [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
               if (R.is_error()) {
                 promise.set_error(R.move_as_error());
               } else {
@@ -102,9 +102,9 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *wind
       });
 
       auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
-      auto loading = x->spawn_submenu<LoadingWindow>();
-      static_cast<LoadingWindow &>(*loading).loading_window_send_request(
-          std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+      loading_window_send_request(
+          *x, "renaming chat", {}, std::move(req),
+          [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
             if (R.is_error()) {
               promise.set_error(R.move_as_error());
             } else {

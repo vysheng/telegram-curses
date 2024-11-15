@@ -50,6 +50,10 @@ class MenuWindow : public TdcursesWindowBase {
   }
 
   void exit() {
+    std::shared_ptr<MenuWindow> self;
+    if (history_.size() > 0) {
+      self = history_.back();
+    }
     root()->del_popup_window(bordered_.get());
     for (auto &w : history_) {
       w->bordered_ = nullptr;
@@ -100,9 +104,10 @@ class MenuWindow : public TdcursesWindowBase {
   }
 
   template <typename T, typename... ArgsT>
-  std::shared_ptr<MenuWindow> spawn_submenu(ArgsT &&...args) {
+  std::shared_ptr<T> spawn_submenu(ArgsT &&...args) {
     auto res = std::make_shared<T>(root(), root_actor_id(), std::forward<ArgsT>(args)...);
-    return spawn_submenu(std::move(res));
+    spawn_submenu(res);
+    return res;
   }
 
  private:

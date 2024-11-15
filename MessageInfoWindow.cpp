@@ -7,7 +7,10 @@
 #include "TdObjectsOutput.h"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
+#include "td/utils/Status.h"
 #include "windows/unicode.h"
+#include "YesNoWindow.hpp"
+#include "LoadingWindow.hpp"
 #include <vector>
 
 namespace tdcurses {
@@ -473,23 +476,35 @@ void MessageInfoWindow::add_action_delete_message(td::int64 chat_id, td::int64 m
   auto C = chat_manager().get_chat(chat_id);
   if (C->chat_type() == ChatType::Basicgroup || C->chat_type() == ChatType::User) {
     add_element("delete", "delete for self", {}, [chat_id, message_id, self = this]() {
-      //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
-      auto req = td::make_tl_object<td::td_api::deleteMessages>(chat_id, std::vector<td::int64>{message_id}, false);
-      self->send_request(std::move(req), [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
-        DROP_IF_DELETED(R);
-        self->exit();
+      spawn_yes_no_window(*self, "delete one message for self", {}, [chat_id, message_id, self](td::Result<bool> R) {
+        if (R.is_error() || !R.move_as_ok()) {
+          return;
+        }
+        //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
+        auto req = td::make_tl_object<td::td_api::deleteMessages>(chat_id, std::vector<td::int64>{message_id}, false);
+        loading_window_send_request(*self, "deleting...", {}, std::move(req),
+                                    [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                                      DROP_IF_DELETED(R);
+                                      self->exit();
+                                    });
       });
-      return true;
+      return false;
     });
   }
   add_element("delete", "delete for all", {}, [chat_id, message_id, self = this]() {
-    //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
-    auto req = td::make_tl_object<td::td_api::deleteMessages>(chat_id, std::vector<td::int64>{message_id}, true);
-    self->send_request(std::move(req), [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
-      DROP_IF_DELETED(R);
-      self->exit();
+    spawn_yes_no_window(*self, "delete one message for all", {}, [chat_id, message_id, self](td::Result<bool> R) {
+      if (R.is_error() || !R.move_as_ok()) {
+        return;
+      }
+      //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
+      auto req = td::make_tl_object<td::td_api::deleteMessages>(chat_id, std::vector<td::int64>{message_id}, true);
+      loading_window_send_request(*self, "deleting...", {}, std::move(req),
+                                  [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                                    DROP_IF_DELETED(R);
+                                    self->exit();
+                                  });
     });
-    return true;
+    return false;
   });
 }
 
