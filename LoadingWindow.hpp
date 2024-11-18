@@ -3,6 +3,7 @@
 #include "MenuWindow.hpp"
 #include "td/utils/Promise.h"
 #include "td/utils/Status.h"
+#include "td/utils/common.h"
 #include "windows/EditorWindow.hpp"
 #include <memory>
 
@@ -36,6 +37,16 @@ class LoadingWindow
           P.set_result(std::move(R));
         });
     send_request(std::move(func), std::move(promise));
+  }
+
+  template <class Func>
+  void run_lambda(Func &&f, td::Promise<td::Unit> P) {
+    auto promise = td::PromiseCreator::lambda([self = this, P = std::move(P)](td::Result<td::Unit> R) mutable {
+      DROP_IF_DELETED(R);
+      self->rollback();
+      P.set_result(std::move(R));
+    });
+    f(*this, std::move(promise));
   }
 };
 
