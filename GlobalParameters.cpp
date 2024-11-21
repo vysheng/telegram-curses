@@ -26,18 +26,44 @@ GlobalParameters &global_parameters() {
 }
 
 void GlobalParameters::copy_to_primary_buffer(td::CSlice text) {
+  int pipe_fds[2];
+  auto r = pipe(pipe_fds);
+  if (r < 0) {
+    LOG(ERROR) << "failed to create pipe: " << strerror(errno);
+    return;
+  }
   auto p = vfork();
   if (!p) {
     close_fds();
+    close(pipe_fds[0]);
+    dup2(pipe_fds[1], 0);
+    close(pipe_fds[1]);
     execlp(copy_command_.c_str(), copy_command_.c_str(), "--primary", "--", text.c_str(), NULL);
+  } else {
+    close(pipe_fds[1]);
+    write(pipe_fds[0], text.data(), text.size());
+    close(pipe_fds[0]);
   }
 }
 
 void GlobalParameters::copy_to_clipboard(td::CSlice text) {
+  int pipe_fds[2];
+  auto r = pipe(pipe_fds);
+  if (r < 0) {
+    LOG(ERROR) << "failed to create pipe: " << strerror(errno);
+    return;
+  }
   auto p = vfork();
   if (!p) {
     close_fds();
-    execlp(copy_command_.c_str(), copy_command_.c_str(), "--", text.c_str(), NULL);
+    close(pipe_fds[0]);
+    dup2(pipe_fds[1], 0);
+    close(pipe_fds[1]);
+    execlp(copy_command_.c_str(), copy_command_.c_str(), NULL);
+  } else {
+    close(pipe_fds[1]);
+    write(pipe_fds[0], text.data(), text.size());
+    close(pipe_fds[0]);
   }
 }
 

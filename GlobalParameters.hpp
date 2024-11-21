@@ -175,6 +175,13 @@ class GlobalParameters {
 
   void copy_to_primary_buffer(td::CSlice text);
   void copy_to_clipboard(td::CSlice text);
+  void copy_to_buffer(td::CSlice text, bool primary) {
+    if (primary) {
+      copy_to_primary_buffer(text);
+    } else {
+      copy_to_clipboard(text);
+    }
+  }
   void open_document(td::CSlice file_path);
   void open_link(td::CSlice url);
 
