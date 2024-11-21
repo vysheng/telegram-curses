@@ -60,4 +60,15 @@ std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWind
   return r;
 }
 
+template <typename T, typename T1>
+std::enable_if_t<!std::is_base_of<MenuWindow, T>::value && std::is_base_of<TdcursesWindowBase, T>::value,
+                 std::shared_ptr<MenuWindow>>
+loading_window_send_request(T &cur_window, std::string text, std::vector<windows::MarkupElement> markup,
+                            td::tl_object_ptr<T1> func, td::Promise<typename T1::ReturnType> P) {
+  std::shared_ptr<LoadingWindow> r = create_menu_window<LoadingWindow>(cur_window.root(), cur_window.root_actor_id(),
+                                                                       std::move(text), std::move(markup));
+  r->loading_window_send_request(std::move(func), std::move(P));
+  return r;
+}
+
 }  // namespace tdcurses

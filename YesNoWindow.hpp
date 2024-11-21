@@ -134,7 +134,7 @@ std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWind
     T &cur_window, std::string text, std::vector<windows::MarkupElement> markup, F &&cb, bool default_value = true) {
   class Cb : public YesNoWindow::Callback {
    public:
-    Cb(F &&cb, MenuWindow *win) : cb_(std::move(cb)), self_(win), self_id_(win->window_unique_id()) {
+    Cb(F &&cb, T *win) : cb_(std::move(cb)), self_(win), self_id_(win->window_unique_id()) {
     }
     void on_abort(YesNoWindow &w) override {
       if (w.root()->window_exists(self_id_)) {
@@ -150,12 +150,43 @@ std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWind
 
    private:
     F cb_;
-    MenuWindow *self_;
+    T *self_;
     td::int64 self_id_;
   };
   auto callback = std::make_unique<Cb>(std::move(cb), &cur_window);
   return cur_window.template spawn_submenu<YesNoWindow>(std::move(text), std::move(markup), std::move(callback),
                                                         default_value);
+}
+
+template <typename T, typename F>
+std::enable_if_t<!std::is_base_of<MenuWindow, T>::value && std::is_base_of<TdcursesWindowBase, T>::value,
+                 std::shared_ptr<MenuWindow>>
+spawn_yes_no_window(T &cur_window, std::string text, std::vector<windows::MarkupElement> markup, F &&cb,
+                    bool default_value = true) {
+  class Cb : public YesNoWindow::Callback {
+   public:
+    Cb(F &&cb, T *win) : cb_(std::move(cb)), self_(win), self_id_(win->window_unique_id()) {
+    }
+    void on_abort(YesNoWindow &w) override {
+      if (w.root()->window_exists(self_id_)) {
+        cb_(td::Status::Error("abort"));
+      }
+    }
+    void on_answer(YesNoWindow &w, bool answer) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+        cb_(std::move(answer));
+      }
+    }
+
+   private:
+    F cb_;
+    T *self_;
+    td::int64 self_id_;
+  };
+  auto callback = std::make_unique<Cb>(std::move(cb), &cur_window);
+  return create_menu_window<YesNoWindow>(cur_window.root(), cur_window.root_actor_id(), std::move(text),
+                                         std::move(markup), std::move(callback), default_value);
 }
 
 }  // namespace tdcurses

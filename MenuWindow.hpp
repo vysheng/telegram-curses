@@ -116,7 +116,7 @@ class MenuWindow : public TdcursesWindowBase {
 };
 
 template <typename T, typename... ArgsT>
-std::shared_ptr<MenuWindow> create_menu_window(Tdcurses *root, td::ActorId<Tdcurses> root_actor, ArgsT &&...args) {
+std::shared_ptr<T> create_menu_window(Tdcurses *root, td::ActorId<Tdcurses> root_actor, ArgsT &&...args) {
   auto res = std::make_shared<T>(root, root_actor, std::forward<ArgsT>(args)...);
   res->update_history(std::vector<std::shared_ptr<MenuWindow>>{res});
   auto boxed = MenuWindow::create_boxed_window(res);

@@ -12,6 +12,7 @@
 #include "MessageProcess.hpp"
 #include "CommandLineWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "LoadingWindow.hpp"
 #include "YesNoWindow.hpp"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"
@@ -669,9 +670,21 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
       create_menu_window<MessageInfoWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
                                             message->id_);
     } else if (!strcmp(info->str, "y")) {
-      auto text = message_get_formatted_text(*message);
-      if (text) {
-        global_parameters().copy_to_primary_buffer(text->text_);
+      if (!chat_window.multi_message_selection_mode()) {
+        auto text = message_get_formatted_text(*message);
+        if (text) {
+          global_parameters().copy_to_primary_buffer(text->text_);
+        }
+      } else {
+        Outputter out;
+        out.set_chat(&chat_window);
+        for (auto &m : chat_window.selected_messages_) {
+          auto msg = chat_window.get_message(m);
+          if (msg) {
+            out << *msg->message << "\n";
+          }
+        }
+        global_parameters().copy_to_primary_buffer(out.as_str());
       }
     } else if (!strcmp(info->str, "f")) {
       std::vector<MessageId> msg_ids;
@@ -684,39 +697,36 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
       }
       chat_window.root()->spawn_chat_selection_window(
           Tdcurses::ChatSelectionMode::Local,
-          [msg_ids = msg_ids, self = &chat_window](td::Result<std::shared_ptr<Chat>> R) {
-            if (R.is_error()) {
+          [msg_ids = msg_ids, self = &chat_window, self_id = chat_window.window_unique_id(),
+           curses = chat_window.root()](td::Result<std::shared_ptr<Chat>> R) {
+            if (R.is_error() || !curses->window_exists(self_id)) {
               return;
             }
 
             auto dst = R.move_as_ok();
-            //forwardMessages chat_id:int53 message_thread_id:int53 from_chat_id:int53 message_ids:vector<int53> options:messageSendOptions send_copy:Bool remove_caption:Bool = Messages;
 
             std::vector<td::int64> mids;
             for (auto &m : msg_ids) {
               mids.emplace_back(m.message_id);
             }
-            auto req = td::make_tl_object<td::td_api::forwardMessages>(dst->chat_id(), 0, msg_ids[0].chat_id,
-                                                                       std::move(mids), nullptr, false, false);
-
-            class Callback : public YesNoWindow::Callback {
-             public:
-              Callback(ChatWindow *self, td::tl_object_ptr<td::td_api::Function> func)
-                  : self_(self), func_(std::move(func)) {
-              }
-              void on_abort(YesNoWindow &w) override {
-                w.rollback();
-              }
-              void on_answer(YesNoWindow &w, bool answer) override {
-                w.rollback();
-              }
-
-             private:
-              ChatWindow *self_;
-              td::tl_object_ptr<td::td_api::Function> func_;
-            };
-
-            self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {});
+            Outputter out;
+            out << "forward " << mids.size() << " messages to chat " << dst;
+            spawn_yes_no_window(*self, out.as_str(), out.markup(),
+                                [dst, from_chat_id = msg_ids[0].chat_id, mids = std::move(mids), self, self_id,
+                                 curses](td::Result<bool> R) mutable {
+                                  if (R.is_error() || !R.move_as_ok() || !curses->window_exists(self_id)) {
+                                    return;
+                                  }
+                                  //forwardMessages chat_id:int53 message_thread_id:int53 from_chat_id:int53 message_ids:vector<int53> options:messageSendOptions send_copy:Bool remove_caption:Bool = Messages;
+                                  auto req = td::make_tl_object<td::td_api::forwardMessages>(
+                                      dst->chat_id(), 0, from_chat_id, std::move(mids), nullptr, false, false);
+                                  loading_window_send_request(
+                                      *self, "forwarding...", {}, std::move(req),
+                                      [dst, curses](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+                                        DROP_IF_DELETED(R);
+                                        curses->open_chat(dst->chat_id());
+                                      });
+                                });
           });
       return;
     }

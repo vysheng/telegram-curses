@@ -68,7 +68,8 @@ void Screen::resize(int width, int height) {
   }
 
   tickit_term_refresh_size(tickit_term_);
-  refresh();
+  refresh(true);
+  refresh(true);
 }
 
 td::int32 Screen::width() {
