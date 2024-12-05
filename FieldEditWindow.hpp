@@ -69,4 +69,28 @@ class FieldEditWindow
   }
 };
 
+template <typename T, typename F>
+std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<FieldEditWindow>> spawn_field_edit_window(
+    T &cur_window, std::string caption, std::string initial_value, F &&cb) {
+  class Cb : public FieldEditWindow::Callback {
+   public:
+    Cb(F &&cb, T *win) : cb_(std::move(cb)), self_(win), self_id_(win->window_unique_id()) {
+    }
+    void run(FieldEditWindow &w, td::Result<std::string> answer) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+        cb_(std::move(answer));
+      }
+    }
+
+   private:
+    F cb_;
+    T *self_;
+    td::int64 self_id_;
+  };
+  auto callback = std::make_unique<Cb>(std::move(cb), &cur_window);
+  return cur_window.template spawn_submenu<FieldEditWindow>(std::move(caption), std::move(initial_value),
+                                                            std::move(callback));
+}
+
 }  // namespace tdcurses

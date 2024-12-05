@@ -1,3 +1,5 @@
+#pragma once
+
 #include "MenuWindow.hpp"
 #include "td/utils/Promise.h"
 #include "windows/EditorWindow.hpp"
@@ -130,7 +132,7 @@ class YesNoWindow
 };
 
 template <typename T, typename F>
-std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWindow>> spawn_yes_no_window(
+std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<YesNoWindow>> spawn_yes_no_window(
     T &cur_window, std::string text, std::vector<windows::MarkupElement> markup, F &&cb, bool default_value = true) {
   class Cb : public YesNoWindow::Callback {
    public:
@@ -160,7 +162,7 @@ std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWind
 
 template <typename T, typename F>
 std::enable_if_t<!std::is_base_of<MenuWindow, T>::value && std::is_base_of<TdcursesWindowBase, T>::value,
-                 std::shared_ptr<MenuWindow>>
+                 std::shared_ptr<YesNoWindow>>
 spawn_yes_no_window(T &cur_window, std::string text, std::vector<windows::MarkupElement> markup, F &&cb,
                     bool default_value = true) {
   class Cb : public YesNoWindow::Callback {

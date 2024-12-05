@@ -31,8 +31,6 @@ class ChatInfoWindow : public MenuWindowCommon {
     ConfigWindow &win_;
     size_t idx_;
   };
-  struct user_id {};
-  struct chat_id {};
   ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Chat> chat)
       : MenuWindowCommon(root, std::move(root_actor)) {
     set_chat(std::move(chat));

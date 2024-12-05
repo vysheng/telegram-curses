@@ -104,7 +104,7 @@ class GlobalParameters {
   }
 
   void process_update(td::td_api::updateOwnedStarCount &update) {
-    stars_owned_ = update.star_count_;
+    stars_owned_ = std::move(update.star_amount_);
   }
 
   void process_update(td::td_api::updateDiceEmojis &update) {
@@ -133,7 +133,7 @@ class GlobalParameters {
     return downloaded_bytes_;
   }
 
-  auto stars_owned() const {
+  const auto &stars_owned() const {
     return stars_owned_;
   }
 
@@ -206,7 +206,7 @@ class GlobalParameters {
   std::vector<td::int64> avaliable_message_reaction_effect_ids_;
   std::vector<td::int64> avaliable_message_sticker_effect_ids_;
   td::tl_object_ptr<td::td_api::ReactionType> default_reaction_type_;
-  td::int64 stars_owned_{0};
+  td::tl_object_ptr<td::td_api::starAmount> stars_owned_;
   std::vector<std::string> dice_emojis_;
   std::string animation_search_provider_;
   std::vector<std::string> animation_search_suggested_emojis_;

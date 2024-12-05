@@ -168,6 +168,11 @@ class ChatWindow
     return multi_message_selection_mode_ && selected_messages_.count(id) > 0;
   }
 
+  void clear_multi_message_selection_mode() {
+    multi_message_selection_mode_ = false;
+    selected_messages_.clear();
+  }
+
  private:
   const td::int64 main_chat_id_;
   std::map<MessageId, std::shared_ptr<Element>> messages_;

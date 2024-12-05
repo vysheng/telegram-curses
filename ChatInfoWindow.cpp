@@ -21,99 +21,78 @@
 
 namespace tdcurses {
 
-static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
+static std::shared_ptr<MenuWindow> spawn_rename_group_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
   std::string prompt = "rename chat";
   std::string text = chat->title();
-  // text
 
-  if (chat->chat_type() == ChatType::User) {
-    auto cb = [user_id = chat->chat_base_id(), root = window->root(), self = window,
-               self_id = window->window_unique_id()](FieldEditWindow &w, td::Result<std::string> R) {
-      if (R.is_error()) {
-        return;
-      }
-      auto text = R.move_as_ok();
-      auto p = text.find(" ");
-      std::string first_name, last_name;
-      if (p == std::string::npos) {
-        first_name = text;
-        last_name = "";
-      } else {
-        first_name = text.substr(0, p);
-        last_name = text.substr(p + 1);
-      }
-      auto promise = td::PromiseCreator::lambda([root, self, self_id, first_name, last_name](td::Result<td::Unit> R) {
+  return spawn_field_edit_window(
+      *window, "rename chat", chat->title(), [chat_id = chat->chat_id(), self = window](td::Result<std::string> R) {
         if (R.is_error()) {
           return;
         }
-        if (!root->window_exists(self_id)) {
+
+        auto text = R.move_as_ok();
+
+        auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
+        loading_window_send_request(
+            *self, "renaming chat", {}, std::move(req),
+            [self, text = std::move(text)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+              if (R.is_error()) {
+                return;
+              }
+              self->updated_chat_title(text);
+            });
+      });
+}
+
+static std::shared_ptr<MenuWindow> spawn_rename_private_chat_window(ChatInfoWindow *window,
+                                                                    std::shared_ptr<Chat> chat) {
+  std::string prompt = "rename chat";
+  std::string text = chat->title();
+
+  return spawn_field_edit_window(
+      *window, "rename chat", chat->title(),
+      [chat_id = chat->chat_id(), user_id = chat->chat_base_id(), self = window](td::Result<std::string> R) {
+        if (R.is_error()) {
           return;
         }
-        self->updated_user_name(first_name, last_name);
-      });
-      auto x = w.rollback();
-      auto user = chat_manager().get_user(user_id);
-      bool is_self = user && (user->user_id() == global_parameters().my_user_id());
-      if (!is_self) {
+
+        auto text = R.move_as_ok();
+        auto p = text.find(" ");
+        std::string first_name, last_name;
+        if (p == std::string::npos) {
+          first_name = text;
+          last_name = "";
+        } else {
+          first_name = text.substr(0, p);
+          last_name = text.substr(p + 1);
+        }
+
+        auto user = chat_manager().get_user(user_id);
         auto contact = td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name,
                                                                "", user_id);
         auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
-        loading_window_send_request(
-            *x, "renaming user", {}, std::move(req),
-            [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-              if (R.is_error()) {
-                promise.set_error(R.move_as_error());
-              } else {
-                promise.set_value(td::Unit());
-              }
-            });
-      } else {
-        auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
-        loading_window_send_request(
-            *x, "renaming user", {}, std::move(req),
-            [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-              if (R.is_error()) {
-                promise.set_error(R.move_as_error());
-              } else {
-                promise.set_value(td::Unit());
-              }
-            });
-      }
-    };
-    return window->spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
-  } else {
-    auto cb = [chat_id = chat->chat_id(), root = window->root(), self = window, self_id = window->window_unique_id()](
-                  FieldEditWindow &w, td::Result<std::string> R) mutable {
-      if (R.is_error()) {
-        return;
-      }
 
-      auto x = w.rollback();
-      auto text = R.move_as_ok();
-
-      auto promise = td::PromiseCreator::lambda([root, self, self_id, text](td::Result<td::Unit> R) {
-        if (R.is_error()) {
-          return;
-        }
-        if (!root->window_exists(self_id)) {
-          return;
-        }
-        self->updated_chat_title(text);
+        loading_window_send_request(*self, "renaming chat", {}, std::move(req),
+                                    [self, first_name = std::move(first_name), last_name = std::move(last_name)](
+                                        td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                                      if (R.is_error()) {
+                                        return;
+                                      }
+                                      self->updated_user_name(std::move(first_name), std::move(last_name));
+                                    });
       });
+}
 
-      auto req = td::make_tl_object<td::td_api::setChatTitle>(chat_id, text);
-      loading_window_send_request(
-          *x, "renaming chat", {}, std::move(req),
-          [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-            if (R.is_error()) {
-              promise.set_error(R.move_as_error());
-            } else {
-              promise.set_value(td::Unit());
-            }
-          });
-    };
-    return window->spawn_submenu<FieldEditWindow>(prompt, text, FieldEditWindow::make_callback(std::move(cb)));
+static std::shared_ptr<MenuWindow> spawn_rename_chat_window(ChatInfoWindow *window, std::shared_ptr<Chat> chat) {
+  if (chat->chat_type() == ChatType::Basicgroup || chat->chat_type() == ChatType::Supergroup ||
+      chat->chat_type() == ChatType::Channel) {
+    return spawn_rename_group_chat_window(window, std::move(chat));
   }
+  if (chat->chat_type() == ChatType::User || chat->chat_type() == ChatType::SecretChat) {
+    return spawn_rename_private_chat_window(window, std::move(chat));
+  }
+  return nullptr;
 }
 
 static MenuWindowSpawnFunction spawn_rename_chat_window_func(std::shared_ptr<Chat> chat) {
