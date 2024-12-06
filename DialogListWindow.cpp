@@ -1,4 +1,5 @@
 #include "DialogListWindow.hpp"
+#include "ChatSearchWindow.hpp"
 #include "StickerManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
@@ -213,13 +214,13 @@ void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
       }
       return;
     } else if (!strcmp(info->str, "s") || !strcmp(info->str, "S")) {
-      root()->spawn_chat_selection_window(Tdcurses::ChatSelectionMode::Both,
-                                          [curses = root()](td::Result<std::shared_ptr<Chat>> R) {
-                                            if (R.is_ok()) {
-                                              auto chat = R.move_as_ok();
-                                              curses->open_chat(chat->chat_id());
-                                            }
-                                          });
+      spawn_chat_search_window(*this, ChatSearchWindow::Mode::Both,
+                               [curses = root()](td::Result<std::shared_ptr<Chat>> R) {
+                                 if (R.is_ok()) {
+                                   auto chat = R.move_as_ok();
+                                   curses->open_chat(chat->chat_id());
+                                 }
+                               });
     } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
       root()->command_line_window()->handle_input(info);
     } else if (!strcmp(info->str, "f")) {

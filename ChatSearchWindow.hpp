@@ -3,6 +3,7 @@
 #include "td/tl/TlObject.h"
 #include "TdcursesWindowBase.hpp"
 #include "ChatManager.hpp"
+#include "MenuWindow.hpp"
 #include "windows/EditorWindow.hpp"
 #include "td/utils/Promise.h"
 #include <memory>
@@ -12,18 +13,22 @@ namespace tdcurses {
 
 class ChatSearchWindow
     : public windows::Window
-    , public TdcursesWindowBase {
+    , public MenuWindow {
  public:
   enum class Mode { Local, Global, Both };
   class Callback {
    public:
     virtual ~Callback() = default;
-    virtual void on_answer(std::shared_ptr<Chat> chat) = 0;
-    virtual void on_abort() = 0;
+    virtual void on_answer(ChatSearchWindow &, std::shared_ptr<Chat> chat) = 0;
+    virtual void on_abort(ChatSearchWindow &) = 0;
   };
-  ChatSearchWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, Mode mode)
-      : TdcursesWindowBase(root, std::move(root_actor)), mode_(mode) {
+  ChatSearchWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, Mode mode, std::unique_ptr<Callback> callback)
+      : MenuWindow(root, std::move(root_actor)), mode_(mode), callback_(std::move(callback)) {
     build_subwindows();
+  }
+
+  std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow> value) override {
+    return std::static_pointer_cast<ChatSearchWindow>(std::move(value));
   }
 
   static size_t max_results() {
@@ -74,8 +79,90 @@ class ChatSearchWindow
   size_t cur_selected_{0};
   std::string last_request_text_;
   td::int32 running_request_{0};
-  std::unique_ptr<Callback> callback_;
   Mode mode_;
+  std::unique_ptr<Callback> callback_;
 };
+
+template <typename T, typename F>
+std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<ChatSearchWindow>> spawn_chat_search_window(
+    T &cur_window, ChatSearchWindow::Mode mode, F &&cb) {
+  class Cb : public ChatSearchWindow::Callback {
+   public:
+    Cb(F &&cb, T *win) : cb_(std::move(cb)), self_(win), self_id_(win->window_unique_id()) {
+    }
+    void on_abort(ChatSearchWindow &w) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+        cb_(td::Status::Error("aborted"));
+      }
+    }
+    void on_answer(ChatSearchWindow &w, std::shared_ptr<Chat> answer) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+        cb_(std::move(answer));
+      }
+    }
+
+   private:
+    F cb_;
+    T *self_;
+    td::int64 self_id_;
+  };
+  auto callback = std::make_unique<Cb>(std::move(cb), &cur_window);
+  return cur_window.template spawn_submenu<ChatSearchWindow>(mode, std::move(callback));
+}
+
+template <typename T, typename F>
+std::enable_if_t<!std::is_base_of<MenuWindow, T>::value && std::is_base_of<TdcursesWindowBase, T>::value,
+                 std::shared_ptr<ChatSearchWindow>>
+spawn_chat_search_window(T &cur_window, ChatSearchWindow::Mode mode, F &&cb) {
+  class Cb : public ChatSearchWindow::Callback {
+   public:
+    Cb(F &&cb, T *win) : cb_(std::move(cb)), self_(win), self_id_(win->window_unique_id()) {
+    }
+    void on_abort(ChatSearchWindow &w) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+        cb_(td::Status::Error("aborted"));
+      }
+    }
+    void on_answer(ChatSearchWindow &w, std::shared_ptr<Chat> answer) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+        cb_(std::move(answer));
+      }
+    }
+
+   private:
+    F cb_;
+    T *self_;
+    td::int64 self_id_;
+  };
+  auto callback = std::make_unique<Cb>(std::move(cb), &cur_window);
+  return create_menu_window<ChatSearchWindow>(cur_window.root(), cur_window.root_actor_id(), mode, std::move(callback));
+}
+
+template <typename F>
+std::shared_ptr<ChatSearchWindow> spawn_chat_search_window(Tdcurses &curses, td::ActorId<Tdcurses> curses_id,
+                                                           ChatSearchWindow::Mode mode, F &&cb) {
+  class Cb : public ChatSearchWindow::Callback {
+   public:
+    Cb(F &&cb) : cb_(std::move(cb)) {
+    }
+    void on_abort(ChatSearchWindow &w) override {
+      w.rollback();
+      cb_(td::Status::Error("aborted"));
+    }
+    void on_answer(ChatSearchWindow &w, std::shared_ptr<Chat> answer) override {
+      w.rollback();
+      cb_(std::move(answer));
+    }
+
+   private:
+    F cb_;
+  };
+  auto callback = std::make_unique<Cb>(std::move(cb));
+  return create_menu_window<ChatSearchWindow>(&curses, curses_id, mode, std::move(callback));
+}
 
 }  // namespace tdcurses

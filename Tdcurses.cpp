@@ -1904,36 +1904,6 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
         curses_->spawn_popup_view_window("TEST POPUP\n1\n2\n3\n4\n5\n6", 2);
         return;
       }
-      if (command == ":test_local_chat_search") {
-        curses_->spawn_chat_selection_window(ChatSelectionMode::Local,
-                                             [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
-                                               if (R.is_ok()) {
-                                                 auto chat = R.move_as_ok();
-                                                 curses->open_chat(chat->chat_id());
-                                               }
-                                             });
-        return;
-      }
-      if (command == ":test_public_chat_search") {
-        curses_->spawn_chat_selection_window(ChatSelectionMode::Global,
-                                             [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
-                                               if (R.is_ok()) {
-                                                 auto chat = R.move_as_ok();
-                                                 curses->open_chat(chat->chat_id());
-                                               }
-                                             });
-        return;
-      }
-      if (command == ":test_chat_search") {
-        curses_->spawn_chat_selection_window(ChatSelectionMode::Both,
-                                             [curses = curses_](td::Result<std::shared_ptr<Chat>> R) {
-                                               if (R.is_ok()) {
-                                                 auto chat = R.move_as_ok();
-                                                 curses->open_chat(chat->chat_id());
-                                               }
-                                             });
-        return;
-      }
       if (command == ":test_yes_no") {
         class Callback : public YesNoWindow::Callback {
          public:
@@ -2116,44 +2086,6 @@ void TdcursesImpl::update_status_line() {
   }
 }
 
-void Tdcurses::spawn_chat_selection_window(ChatSelectionMode mode, td::Promise<std::shared_ptr<Chat>> promise) {
-  auto new_mode = [&](ChatSelectionMode mode) -> ChatSearchWindow::Mode {
-    switch (mode) {
-      case ChatSelectionMode::Local:
-        return ChatSearchWindow::Mode::Local;
-      case ChatSelectionMode::Global:
-        return ChatSearchWindow::Mode::Global;
-      case ChatSelectionMode::Both:
-        return ChatSearchWindow::Mode::Both;
-      default:
-        UNREACHABLE();
-    }
-  }(mode);
-  auto window = std::make_shared<ChatSearchWindow>(this, actor_id(this), new_mode);
-  auto boxed_window = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
-  class Callback : public ChatSearchWindow::Callback {
-   public:
-    Callback(td::Promise<std::shared_ptr<Chat>> promise, std::shared_ptr<windows::Window> window, Tdcurses *curses)
-        : promise_(std::move(promise)), window_(std::move(window)), curses_(curses) {
-    }
-    void on_answer(std::shared_ptr<Chat> chat) override {
-      promise_.set_value(std::move(chat));
-      curses_->del_popup_window(window_.get());
-    }
-    void on_abort() override {
-      promise_.set_error(td::Status::Error("Cancelled"));
-      curses_->del_popup_window(window_.get());
-    }
-
-   private:
-    td::Promise<std::shared_ptr<Chat>> promise_;
-    std::shared_ptr<windows::Window> window_;
-    Tdcurses *curses_;
-  };
-  window->install_callback(std::make_unique<Callback>(std::move(promise), boxed_window, this));
-  add_popup_window(boxed_window, 1);
-}
-
 void Tdcurses::spawn_file_selection_window(td::Promise<std::string> promise) {
   class Callback : public FileSelectionWindow::Callback {
    public:
@@ -2247,6 +2179,7 @@ int main(int argc, char **argv) {
   std::cout << version_notice << std::flush; */
 
   std::string config_file_name;
+  std::string profile_name;
 
   td::OptionParser p;
   p.set_description("curses client for Telegram. Based on Tdlib");
@@ -2259,6 +2192,16 @@ int main(int argc, char **argv) {
 
   p.add_checked_option('c', "config", "config file name", [&](td::Slice arg) {
     config_file_name = arg.str();
+    return td::Status::OK();
+  });
+
+  p.add_checked_option('p', "profile", "profile name", [&](td::Slice arg) {
+    profile_name = arg.str();
+    for (auto c : profile_name) {
+      if (!isalnum(c)) {
+        return td::Status::Error("profile name must be alphanumeric");
+      }
+    }
     return td::Status::OK();
   });
 
@@ -2437,6 +2380,10 @@ int main(int argc, char **argv) {
       }
     }
     override_unicode_width(std::move(b));
+  }
+
+  if (profile_name.size() > 0) {
+    db_root = PSTRING() << db_root << "/" << profile_name;
   }
 
   auto log_dir = db_root + "logs/";

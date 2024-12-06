@@ -6,22 +6,27 @@
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "TdObjectsOutput.h"
+#include "ChatSearchWindow.hpp"
 #include "FieldEditWindow.hpp"
 #include "FileSelectionWindow.hpp"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
+#include "td/utils/misc.h"
 #include <memory>
 
 namespace tdcurses {
 
 static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window) {
-  AccountSettingsWindow *window = static_cast<AccountSettingsWindow *>(&_window);
+  auto window = static_cast<AccountSettingsWindow *>(&_window);
+  std::string prompt = "rename chat";
   auto u = chat_manager().get_user(global_parameters().my_user_id());
-  CHECK(u);
-  auto cb = [root = window->root(), self = window, self_id = window->window_unique_id()](FieldEditWindow &w,
-                                                                                         td::Result<std::string> R) {
+  std::string text = PSTRING() << u->first_name() + " " << u->last_name();
+
+  return spawn_field_edit_window(*window, "rename", text, [self = window](td::Result<std::string> R) {
     if (R.is_error()) {
       return;
     }
+
     auto text = R.move_as_ok();
     auto p = text.find(" ");
     std::string first_name, last_name;
@@ -32,65 +37,260 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window)
       first_name = text.substr(0, p);
       last_name = text.substr(p + 1);
     }
-    auto promise = td::PromiseCreator::lambda([root, self, self_id, first_name, last_name](td::Result<td::Unit> R) {
-      if (R.is_error()) {
-        return;
-      }
-      if (!root->window_exists(self_id)) {
-        return;
-      }
-      self->updated_user_name(first_name, last_name);
-    });
-    auto x = w.rollback();
+
     auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
-    auto loading = x->spawn_submenu<LoadingWindow>();
-    static_cast<LoadingWindow &>(*loading).loading_window_send_request(
-        std::move(req), [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-          if (R.is_error()) {
-            promise.set_error(R.move_as_error());
-          } else {
-            promise.set_value(td::Unit());
-          }
-        });
-  };
-  return window->spawn_submenu<FieldEditWindow>("change name", u->first_name() + " " + u->last_name(),
-                                                FieldEditWindow::make_callback(std::move(cb)));
+
+    loading_window_send_request(*self, "renaming", {}, std::move(req),
+                                [self, first_name = std::move(first_name), last_name = std::move(last_name)](
+                                    td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                                  if (R.is_error()) {
+                                    return;
+                                  }
+                                  self->updated_user_name(std::move(first_name), std::move(last_name));
+                                });
+  });
 }
 
 void AccountSettingsWindow::updated_user_name(std::string first_name, std::string last_name) {
-  if (name_el_) {
-    Outputter out;
-    out << first_name << " " << last_name << Outputter::RightPad{"<change>"};
-    change_element(name_el_, [&]() {
-      name_el_->menu_element()->data = out.as_str();
-      name_el_->menu_element()->markup = out.markup();
-    });
-  }
+  Outputter out;
+  out << first_name << " " << last_name << Outputter::RightPad{"<change>"};
+  change_element(name_el_, [&]() {
+    name_el_->menu_element()->data = out.as_str();
+    name_el_->menu_element()->markup = out.markup();
+  });
+}
+
+static std::shared_ptr<MenuWindow> spawn_change_photo_window(MenuWindow &_window) {
+  auto window = static_cast<AccountSettingsWindow *>(&_window);
+  std::string prompt = "rename chat";
+  auto u = chat_manager().get_user(global_parameters().my_user_id());
+  std::string text = PSTRING() << u->first_name() + " " << u->last_name();
+
+  return spawn_file_selection_window(*window, "user photo", "/", [self = window](td::Result<std::string> R) {
+    if (R.is_error()) {
+      return;
+    }
+
+    auto res = R.move_as_ok();
+
+    if (res.size() > 0) {
+      auto photo_file = td::make_tl_object<td::td_api::inputFileLocal>(res);
+      auto photo = td::make_tl_object<td::td_api::inputChatPhotoStatic>(std::move(photo_file));
+      auto req = td::make_tl_object<td::td_api::setProfilePhoto>(std::move(photo), false);
+
+      loading_window_send_request(*self, "changing photo", {}, std::move(req),
+                                  [self, res](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                                    if (R.is_error()) {
+                                      return;
+                                    }
+                                    self->updated_profile_photo(res);
+                                  });
+    }
+  });
+}
+
+void AccountSettingsWindow::updated_profile_photo(std::string photo) {
+  Outputter out;
+  out << "updated" << Outputter::RightPad{"<change>"};
+  change_element(photo_el_, [&]() {
+    photo_el_->menu_element()->data = out.as_str();
+    photo_el_->menu_element()->markup = out.markup();
+  });
   set_need_refresh();
 }
 
-/*static MenuWindowSpawnFunction spawn_change_chat_photo_window(AccountSettingsWindow *window) {
-  std::string prompt = "change name";
+void AccountSettingsWindow::deleted_profile_photo() {
+  Outputter out;
+  out << "<empty>" << Outputter::RightPad{"<change>"};
+  change_element(photo_el_, [&]() {
+    photo_el_->menu_element()->data = out.as_str();
+    photo_el_->menu_element()->markup = out.markup();
+  });
+  set_need_refresh();
+}
 
-  std::function<void(FileSelectionWindow &, std::string, td::Promise<td::Unit>)> cb;
+static std::shared_ptr<MenuWindow> spawn_change_username_window(MenuWindow &_window) {
+  auto window = static_cast<AccountSettingsWindow *>(&_window);
+  std::string prompt = "username";
+  auto u = chat_manager().get_user(global_parameters().my_user_id());
+  std::string text = u->username();
 
-  cb = [](FileSelectionWindow &w, std::string text, td::Promise<td::Unit> promise) {
-    auto req = td::make_tl_object<td::td_api::setProfilePhoto>(
-        td::make_tl_object<td::td_api::inputChatPhotoStatic>(td::make_tl_object<td::td_api::inputFileLocal>(text)),
-        true);
-    w.send_request(std::move(req),
-                   td::PromiseCreator::lambda(
-                       [promise = std::move(promise)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                         if (R.is_error()) {
-                           promise.set_error(R.move_as_error());
-                         } else {
-                           promise.set_value(td::Unit());
-                         }
-                       }));
-  };
+  return spawn_field_edit_window(*window, "changeusername", text, [self = window](td::Result<std::string> R) {
+    if (R.is_error()) {
+      return;
+    }
 
-  return FileSelectionWindow::spawn_function(prompt, cb);
-}*/
+    auto text = R.move_as_ok();
+    auto req = td::make_tl_object<td::td_api::setUsername>(text);
+
+    loading_window_send_request(*self, "updating username", {}, std::move(req),
+                                [self, username = text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                                  if (R.is_error()) {
+                                    return;
+                                  }
+                                  self->updated_username(std::move(username));
+                                });
+  });
+}
+
+void AccountSettingsWindow::updated_username(std::string username) {
+  Outputter out;
+  if (username.size() > 0) {
+    out << "@" << username << Outputter::RightPad{"<change>"};
+  } else {
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+  }
+  change_element(username_el_, [&]() {
+    username_el_->menu_element()->data = out.as_str();
+    username_el_->menu_element()->markup = out.markup();
+  });
+  set_need_refresh();
+}
+
+static std::shared_ptr<MenuWindow> spawn_change_bio_window(MenuWindow &_window) {
+  auto window = static_cast<AccountSettingsWindow *>(&_window);
+  std::string prompt = "update bio";
+  auto u = chat_manager().get_user(global_parameters().my_user_id());
+  std::string text = window->bio();
+
+  return spawn_field_edit_window(*window, "bio", text, [self = window](td::Result<std::string> R) {
+    if (R.is_error()) {
+      return;
+    }
+
+    auto text = R.move_as_ok();
+    auto req = td::make_tl_object<td::td_api::setBio>(text);
+
+    loading_window_send_request(*self, "updating bio", {}, std::move(req),
+                                [self, bio = text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                                  if (R.is_error()) {
+                                    return;
+                                  }
+                                  self->updated_bio(std::move(bio));
+                                });
+  });
+}
+
+void AccountSettingsWindow::updated_bio(std::string bio) {
+  bio_ = bio;
+  Outputter out;
+  if (bio.size() > 0) {
+    out << bio << Outputter::RightPad{"<change>"};
+  } else {
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+  }
+  change_element(bio_el_, [&]() {
+    bio_el_->menu_element()->data = out.as_str();
+    bio_el_->menu_element()->markup = out.markup();
+  });
+  set_need_refresh();
+}
+
+static std::shared_ptr<MenuWindow> spawn_change_channel_window(MenuWindow &_window) {
+  auto window = static_cast<AccountSettingsWindow *>(&_window);
+
+  return spawn_chat_search_window(
+      *window, ChatSearchWindow::Mode::Local, [self = window](td::Result<std::shared_ptr<Chat>> R) {
+        if (R.is_error()) {
+          return;
+        }
+
+        auto chat = R.move_as_ok();
+        auto req = td::make_tl_object<td::td_api::setPersonalChat>(chat->chat_id());
+
+        loading_window_send_request(
+            *self, "updating bio", {}, std::move(req),
+            [self, chat = std::move(chat)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+              if (R.is_error()) {
+                return;
+              }
+              self->updated_channel(chat);
+            });
+      });
+}
+
+void AccountSettingsWindow::updated_channel(std::shared_ptr<Chat> chat) {
+  Outputter out;
+  if (chat) {
+    out << chat->title() << Outputter::RightPad{"<change>"};
+  } else {
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+  }
+  change_element(channel_el_, [&]() {
+    channel_el_->menu_element()->data = out.as_str();
+    channel_el_->menu_element()->markup = out.markup();
+  });
+  set_need_refresh();
+}
+
+static std::shared_ptr<MenuWindow> spawn_change_birthdate_window(MenuWindow &_window) {
+  auto window = static_cast<AccountSettingsWindow *>(&_window);
+  std::string prompt = "update birthdate";
+  auto u = chat_manager().get_user(global_parameters().my_user_id());
+  std::string text = window->birthdate();
+
+  return spawn_field_edit_window(*window, "birthdate", text, [self = window](td::Result<std::string> R) {
+    if (R.is_error()) {
+      return;
+    }
+
+    auto text = R.move_as_ok();
+
+    auto x = td::full_split<td::Slice>(text, '.');
+    if (x.size() != 2 && x.size() != 3) {
+      LOG(ERROR) << "text = '" << text << "': size=" << x.size();
+      return;
+    }
+
+    td::int32 day = 0;
+    td::int32 month = 0;
+    td::int32 year = 0;
+    auto S = [&]() -> td::Status {
+      TRY_RESULT_ASSIGN(day, td::to_integer_safe<td::int32>(x[0]));
+      if (day < 0 || day > 31) {
+        return td::Status::Error("out of range");
+      }
+      TRY_RESULT_ASSIGN(month, td::to_integer_safe<td::int32>(x[1]));
+      if (month < 0 || month > 12) {
+        return td::Status::Error("out of range");
+      }
+      if (x.size() == 3) {
+        TRY_RESULT_ASSIGN(year, td::to_integer_safe<td::int32>(x[2]));
+      }
+      return td::Status::OK();
+    }();
+    if (S.is_error()) {
+      LOG(ERROR) << "err=" << S;
+      return;
+    }
+
+    auto req =
+        td::make_tl_object<td::td_api::setBirthdate>(td::make_tl_object<td::td_api::birthdate>(day, month, year));
+
+    loading_window_send_request(*self, "updating birthdate", {}, std::move(req),
+                                [self, text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+                                  if (R.is_error()) {
+                                    return;
+                                  }
+                                  self->updated_birthdate(std::move(text));
+                                });
+  });
+}
+
+void AccountSettingsWindow::updated_birthdate(std::string birthdate) {
+  birthdate_ = birthdate;
+  Outputter out;
+  if (birthdate_.size() > 0) {
+    out << birthdate_ << Outputter::RightPad{"<change>"};
+  } else {
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+  }
+  change_element(birthdate_el_, [&]() {
+    birthdate_el_->menu_element()->data = out.as_str();
+    birthdate_el_->menu_element()->markup = out.markup();
+  });
+  set_need_refresh();
+}
 
 void AccountSettingsWindow::got_full_user(td::tl_object_ptr<td::td_api::userFullInfo> user_full) {
   auto user = chat_manager().get_user(global_parameters().my_user_id());
@@ -107,35 +307,50 @@ void AccountSettingsWindow::got_full_user(td::tl_object_ptr<td::td_api::userFull
   }
   if (user->photo()) {
     Outputter out;
-    out << *user->photo();
-    add_element("photo", out.as_str(), out.markup());
+    out << *user->photo() << Outputter::RightPad{"<change>"};
+    photo_el_ = add_element("photo", out.as_str(), out.markup(), spawn_change_photo_window);
   } else {
-    add_element("photo", "<empty>", {});
+    photo_el_ = add_element("photo", "<empty>", {}, spawn_change_photo_window);
   }
   if (user->username().size() > 0) {
-    add_element("username", "@" + user->username());
+    Outputter out;
+    out << "@" << user->username() << Outputter::RightPad{"<change>"};
+    username_el_ = add_element("username", out.as_str(), out.markup(), spawn_change_username_window);
   } else {
-    add_element("username", "<empty>");
+    Outputter out;
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+    username_el_ = add_element("username", out.as_str(), out.markup(), spawn_change_username_window);
   }
   if (user_full->bio_ && user_full->bio_->text_.size() > 0) {
+    bio_ = user_full->bio_->text_;
     Outputter out;
-    add_element("bio", out.as_str(), out.markup());
+    out << *user_full->bio_ << Outputter::RightPad{"<change>"};
+    bio_el_ = add_element("bio", out.as_str(), out.markup(), spawn_change_bio_window);
   } else {
-    add_element("bio", "<empty>");
+    bio_ = "";
+    Outputter out;
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+    bio_el_ = add_element("bio", out.as_str(), out.markup(), spawn_change_bio_window);
   }
   if (user_full->personal_chat_id_) {
     auto chat = chat_manager().get_chat(user_full->personal_chat_id_);
     CHECK(chat);
-    add_element("channel", chat->title());
+    Outputter out;
+    out << chat->title() << Outputter::RightPad{"<change>"};
+    channel_el_ = add_element("channel", out.as_str(), out.markup(), spawn_change_channel_window);
   } else {
-    add_element("channel", "<empty>");
+    Outputter out;
+    out << "<empty>" << Outputter::RightPad{"<change>"};
+    channel_el_ = add_element("channel", out.as_str(), out.markup(), spawn_change_channel_window);
   }
   if (user_full->birthdate_) {
     Outputter out;
-    out << *user_full->birthdate_;
-    add_element("birthdate", out.as_str(), out.markup());
+    out << *user_full->birthdate_ << Outputter::RightPad{"<change>"};
+    birthdate_el_ = add_element("birthdate", out.as_str(), out.markup(), spawn_change_birthdate_window);
   } else {
-    add_element("birthdate", "<empty>");
+    Outputter out;
+    out << "<empty>" << Outputter::RightPad{"<set>"};
+    birthdate_el_ = add_element("birthdate", out.as_str(), out.markup(), spawn_change_birthdate_window);
   }
 }
 
@@ -154,6 +369,47 @@ void AccountSettingsWindow::build_menu() {
 
 void MainSettingsWindow::build_menu() {
   add_element("account settings", "", {}, create_menu_window_spawn_function<AccountSettingsWindow>());
+  add_element("notification settings", "", {}, create_menu_window_spawn_function<NotificationsSettingsWindow>());
+  add_element("privacy and security settings", "", {},
+              create_menu_window_spawn_function<PrivacyAndSecuritySettingsWindow>());
+  add_element("chat settings", "", {}, create_menu_window_spawn_function<ChatSettingsWindow>());
+  add_element("folders settings", "", {}, create_menu_window_spawn_function<FoldersSettingsWindow>());
+  add_element("advanced settings", "", {}, create_menu_window_spawn_function<FoldersSettingsWindow>());
+
+  premium_ = add_element("premium", "");
+  {
+    const auto &stars_amount = global_parameters().stars_owned();
+    if (stars_amount) {
+      auto amount = (double)stars_amount->star_count_ + 1e-9 * stars_amount->nanostar_count_;
+      add_element("stars owned", PSTRING() << amount);
+    } else {
+      add_element("stars owned", "0");
+    }
+  }
+}
+
+void MainSettingsWindow::send_requests() {
+  auto req = td::make_tl_object<td::td_api::getPremiumState>();
+  send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::premiumState>> R) {
+    if (R.is_error()) {
+      return;
+    }
+    self->got_premium(R.move_as_ok());
+  });
+}
+
+void MainSettingsWindow::got_premium(td::tl_object_ptr<td::td_api::premiumState> res) {
+  if (!res) {
+    return;
+  }
+  Outputter out;
+  out << *res->state_;
+
+  change_element(premium_, [&]() {
+    premium_->menu_element()->data = out.as_str();
+    premium_->menu_element()->markup = out.markup();
+  });
+  set_need_refresh();
 }
 
 }  // namespace tdcurses

@@ -30,7 +30,7 @@ void ChatSearchWindow::handle_input(TickitKeyEventInfo *info) {
       }
     } else if (!strcmp(info->str, "Enter") || !strcmp(info->str, "M-Enter")) {
       if (cur_selected_ != 0) {
-        callback_->on_answer(get_found_chat(cur_selected_ - 1));
+        callback_->on_answer(*this, get_found_chat(cur_selected_ - 1));
       }
     } else if (!strcmp(info->str, "Tab")) {
       cur_selected_++;
@@ -38,7 +38,7 @@ void ChatSearchWindow::handle_input(TickitKeyEventInfo *info) {
         cur_selected_ = 0;
       }
     } else if (!strcmp(info->str, "Escape")) {
-      callback_->on_abort();
+      callback_->on_abort(*this);
     } else {
       if (cur_selected_ == 0) {
         editor_window_->handle_input(info);

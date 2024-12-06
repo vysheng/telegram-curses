@@ -1,4 +1,5 @@
 #include "ChatWindow.hpp"
+#include "ChatSearchWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -697,8 +698,8 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
       } else {
         msg_ids.push_back(message_id());
       }
-      chat_window.root()->spawn_chat_selection_window(
-          Tdcurses::ChatSelectionMode::Local,
+      spawn_chat_search_window(
+          chat_window, ChatSearchWindow::Mode::Local,
           [msg_ids = msg_ids, self = &chat_window, self_id = chat_window.window_unique_id(),
            curses = chat_window.root()](td::Result<std::shared_ptr<Chat>> R) {
             if (R.is_error() || !curses->window_exists(self_id)) {
