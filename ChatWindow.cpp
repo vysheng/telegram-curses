@@ -1,5 +1,6 @@
 #include "ChatWindow.hpp"
 #include "ChatSearchWindow.hpp"
+#include "ErrorWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -722,10 +723,13 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
                                                                        nullptr, false, false);
             spawn_yes_no_window_and_loading_windows(
                 *self, out.as_str(), out.markup(), true, "forwarding...", {}, std::move(req),
-                [dst, curses = self->root()](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
-                  if (R.is_ok()) {
-                    curses->open_chat(dst->chat_id());
+                [dst, curses = self->root(), self](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+                  DROP_IF_DELETED(R);
+                  if (R.is_error()) {
+                    spawn_error_window(*self, PSTRING() << "deleting messages failed: " << R.move_as_error(), {});
+                    return;
                   }
+                  curses->open_chat(dst->chat_id());
                 });
           });
       chat_window.clear_multi_message_selection_mode();
@@ -749,8 +753,15 @@ void ChatWindow::Element::handle_input(PadWindow &root, TickitKeyEventInfo *info
       out << "Delete " << mids.size() << " messages " << (for_all ? "for all members" : "only for yourself") << "?";
       //deleteMessages chat_id:int53 message_ids:vector<int53> revoke:Bool = Ok;
       auto req = td::make_tl_object<td::td_api::deleteMessages>(from_chat_id, std::move(mids), for_all);
-      spawn_yes_no_window_and_loading_windows(chat_window, out.as_str(), out.markup(), true, "deleting...", {},
-                                              std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
+      spawn_yes_no_window_and_loading_windows(
+          chat_window, out.as_str(), out.markup(), true, "deleting...", {}, std::move(req),
+          [self = &chat_window](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+            DROP_IF_DELETED(R);
+            if (R.is_error()) {
+              spawn_error_window(*self, PSTRING() << "deleting messages failed: " << R.move_as_error(), {});
+              return;
+            }
+          });
       chat_window.clear_multi_message_selection_mode();
       return;
     }

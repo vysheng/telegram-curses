@@ -139,12 +139,24 @@ class BorderedWindow : public Window {
     return 2 * vert_border_thic_ + next_->best_height();
   }
 
+  void set_border_type(BorderType border_type, td::int32 color) {
+    border_type_ = border_type;
+    color_ = color;
+    set_need_refresh();
+  }
+
+  auto border_type() const {
+    return border_type_;
+  }
+
  private:
   std::shared_ptr<Window> next_;
 
   BorderType border_type_;
   td::int32 vert_border_thic_;
   td::int32 hor_border_thic_;
+
+  td::int32 color_{-1};
 };
 
 class EmptyWindow : public Window {

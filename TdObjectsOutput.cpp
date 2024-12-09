@@ -291,7 +291,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageBasicGroupChatCre
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageSupergroupChatCreate &content) {
-  return out << "[group '" << Color::Red << content.title_ << Color::Revert << "created]";
+  return out << "[group '" << Color::Red << content.title_ << Color::Revert << "' created]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatChangeTitle &content) {

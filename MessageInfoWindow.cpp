@@ -418,12 +418,14 @@ void MessageInfoWindow::add_action_forward(td::int64 chat_id, td::int64 message_
           auto req = td::make_tl_object<td::td_api::sendMessage>(
               dst->chat_id(), 0, nullptr /*replay_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
               td::make_tl_object<td::td_api::inputMessageForwarded>(chat_id, message_id, false, nullptr));
-          self->send_request(std::move(req), [self](td::Result<td::tl_object_ptr<td::td_api::message>> R) {
-            DROP_IF_DELETED(R);
-            self->exit();
-          });
+          self->send_request(std::move(req),
+                             [self, chat_id = dst->chat_id()](td::Result<td::tl_object_ptr<td::td_api::message>> R) {
+                               DROP_IF_DELETED(R);
+                               self->root()->open_chat(chat_id);
+                               self->exit();
+                             });
         });
-    return true;
+    return false;
   });
 }
 

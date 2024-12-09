@@ -1,3 +1,5 @@
+#include "Action.hpp"
+#include "ErrorWindow.hpp"
 #include "ChatInfoWindow.hpp"
 #include "CommonGroupsWindow.hpp"
 #include "GroupMembersWindow.hpp"
@@ -120,6 +122,74 @@ void ChatInfoWindow::generate_info() {
     title_el2_ = add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window_func(chat_));
   }
   add_element("id", PSTRING() << chat_->chat_id());
+
+  auto add_element_member_status = [&, self = this](const td::td_api::ChatMemberStatus &status) {
+    Outputter out;
+    std::function<bool(ChatInfoWindow &)> cb = [](ChatInfoWindow &) { return false; };
+    auto leave_cb = [chat_id = chat_->chat_id(), self](ChatInfoWindow &w) {
+      spawn_yes_no_window_and_loading_windows(
+          *self, PSTRING() << "Are you sure, you want to leave chat '" << self->chat_->title() << "'?", {}, true,
+          "leaving chat....", {}, td::make_tl_object<td::td_api::leaveChat>(chat_id),
+          [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+            DROP_IF_DELETED(R);
+            if (R.is_error()) {
+              spawn_error_window(*self, PSTRING() << "leaving chat failed: " << R.move_as_error(), {});
+              return;
+            }
+          });
+      return false;
+    };
+    auto join_cb = [chat_id = chat_->chat_id(), self](ChatInfoWindow &w) {
+      spawn_yes_no_window_and_loading_windows(
+          *self, PSTRING() << "Are you sure, you want to join chat '" << self->chat_->title() << "'?", {}, true,
+          "joining chat....", {}, td::make_tl_object<td::td_api::joinChat>(chat_id),
+          [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+            DROP_IF_DELETED(R);
+            if (R.is_error()) {
+              spawn_error_window(*self, PSTRING() << "joining chat failed: " << R.move_as_error(), {});
+              return;
+            }
+          });
+      return false;
+    };
+    td::td_api::downcast_call(const_cast<td::td_api::ChatMemberStatus &>(status),
+                              td::overloaded(
+                                  [&](td::td_api::chatMemberStatusLeft &status) {
+                                    out << "left" << Outputter::RightPad{"<join>"};
+                                    cb = join_cb;
+                                  },
+                                  [&](td::td_api::chatMemberStatusBanned &status) {
+                                    out << "banned until " << Outputter::Date{status.banned_until_date_}
+                                        << Outputter::RightPad{"<leave>"};
+                                    cb = leave_cb;
+                                  },
+                                  [&](td::td_api::chatMemberStatusMember &status) {
+                                    out << "member" << Outputter::RightPad{"<leave>"};
+                                    cb = leave_cb;
+                                  },
+                                  [&](td::td_api::chatMemberStatusCreator &status) {
+                                    if (status.is_anonymous_) {
+                                      out << "creator (anonymous)";
+                                    } else {
+                                      out << "creator (public)";
+                                    }
+                                  },
+                                  [&](td::td_api::chatMemberStatusRestricted &status) {
+                                    out << "restricted until " << Outputter::Date{status.restricted_until_date_}
+                                        << Outputter::RightPad{"<leave>"};
+                                    cb = leave_cb;
+                                  },
+                                  [&](td::td_api::chatMemberStatusAdministrator &status) {
+                                    if (status.custom_title_.size() > 0) {
+                                      out << "administrator (title " << status.custom_title_ << ")";
+                                    } else {
+                                      out << "administrator";
+                                    }
+                                  }));
+    add_element("status", out.as_str(), out.markup(),
+                [cb = std::move(cb)](MenuWindowCommon &w) { return cb(static_cast<ChatInfoWindow &>(w)); });
+  };
+
   auto chat_type = chat_->chat_type();
   switch (chat_type) {
     case ChatType::User: {
@@ -232,35 +302,7 @@ void ChatInfoWindow::generate_info() {
       add_element("type", "group");
       if (group) {
         add_element("group_id", PSTRING() << group->group_id());
-        {
-          Outputter out;
-          const auto &status = group->status();
-          td::td_api::downcast_call(
-              const_cast<td::td_api::ChatMemberStatus &>(*status),
-              td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
-                             [&](td::td_api::chatMemberStatusBanned &status) {
-                               out << "banned until " << Outputter::Date{status.banned_until_date_};
-                             },
-                             [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
-                             [&](td::td_api::chatMemberStatusCreator &status) {
-                               if (status.is_anonymous_) {
-                                 out << "creator (anonymous)";
-                               } else {
-                                 out << "creator (public)";
-                               }
-                             },
-                             [&](td::td_api::chatMemberStatusRestricted &status) {
-                               out << "restricted until " << Outputter::Date{status.restricted_until_date_};
-                             },
-                             [&](td::td_api::chatMemberStatusAdministrator &status) {
-                               if (status.custom_title_.size() > 0) {
-                                 out << "administrator (title " << status.custom_title_ << ")";
-                               } else {
-                                 out << "administrator";
-                               }
-                             }));
-          add_element("status", out.as_str(), out.markup());
-        }
+        add_element_member_status(*group->status());
         {
           Outputter out;
           out << group->member_count() << " " << Outputter::RightPad{"<view>"};
@@ -303,35 +345,7 @@ void ChatInfoWindow::generate_info() {
       }
 
       if (supergroup) {
-        {
-          Outputter out;
-          const auto &status = supergroup->status();
-          td::td_api::downcast_call(
-              const_cast<td::td_api::ChatMemberStatus &>(*status),
-              td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
-                             [&](td::td_api::chatMemberStatusBanned &status) {
-                               out << "banned until " << Outputter::Date{status.banned_until_date_};
-                             },
-                             [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
-                             [&](td::td_api::chatMemberStatusCreator &status) {
-                               if (status.is_anonymous_) {
-                                 out << "creator (anonymous)";
-                               } else {
-                                 out << "creator (public)";
-                               }
-                             },
-                             [&](td::td_api::chatMemberStatusRestricted &status) {
-                               out << "restricted until " << Outputter::Date{status.restricted_until_date_};
-                             },
-                             [&](td::td_api::chatMemberStatusAdministrator &status) {
-                               if (status.custom_title_.size() > 0) {
-                                 out << "administrator (title " << status.custom_title_ << ")";
-                               } else {
-                                 out << "administrator";
-                               }
-                             }));
-          add_element("status", out.as_str(), out.markup());
-        }
+        add_element_member_status(*supergroup->status());
         {
           Outputter out;
           out << supergroup->member_count() << " " << Outputter::RightPad{"<view>"};
@@ -377,35 +391,7 @@ void ChatInfoWindow::generate_info() {
       }
 
       if (channel) {
-        {
-          Outputter out;
-          const auto &status = channel->status();
-          td::td_api::downcast_call(
-              const_cast<td::td_api::ChatMemberStatus &>(*status),
-              td::overloaded([&](td::td_api::chatMemberStatusLeft &status) { out << "left"; },
-                             [&](td::td_api::chatMemberStatusBanned &status) {
-                               out << "banned until " << Outputter::Date{status.banned_until_date_};
-                             },
-                             [&](td::td_api::chatMemberStatusMember &status) { out << "member"; },
-                             [&](td::td_api::chatMemberStatusCreator &status) {
-                               if (status.is_anonymous_) {
-                                 out << "creator (anonymous)";
-                               } else {
-                                 out << "creator (public)";
-                               }
-                             },
-                             [&](td::td_api::chatMemberStatusRestricted &status) {
-                               out << "restricted until " << Outputter::Date{status.restricted_until_date_};
-                             },
-                             [&](td::td_api::chatMemberStatusAdministrator &status) {
-                               if (status.custom_title_.size() > 0) {
-                                 out << "administrator (title " << status.custom_title_ << ")";
-                               } else {
-                                 out << "administrator";
-                               }
-                             }));
-          add_element("status", out.as_str(), out.markup());
-        }
+        add_element_member_status(*channel->status());
         {
           Outputter out;
           out << channel->member_count() << " " << Outputter::RightPad{"<view>"};

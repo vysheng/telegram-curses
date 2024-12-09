@@ -25,6 +25,8 @@ class MenuWindow : public TdcursesWindowBase {
   }
 
   virtual std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow>) = 0;
+  virtual void on_install() {
+  }
 
   static std::shared_ptr<windows::Window> create_boxed_window(std::shared_ptr<MenuWindow> window) {
     auto ptr = window->get_window(window);
@@ -74,6 +76,7 @@ class MenuWindow : public TdcursesWindowBase {
     history_.push_back(res);
     res->update_history(std::move(history_));
     auto boxed = create_boxed_window(res);
+    res->on_install();
     res->root()->add_popup_window(boxed, 3);
     res->root()->del_popup_window(bordered_.get());
     return res;
@@ -110,9 +113,17 @@ class MenuWindow : public TdcursesWindowBase {
     return res;
   }
 
+  void set_border_color(td::int32 color) {
+    bordered_->set_border_type(bordered_->border_type(), color);
+  }
+
+  void set_border_color(windows::BorderedWindow::BorderType border_type, td::int32 color) {
+    bordered_->set_border_type(border_type, color);
+  }
+
  private:
   std::vector<std::shared_ptr<MenuWindow>> history_;
-  std::shared_ptr<windows::Window> bordered_;
+  std::shared_ptr<windows::BorderedWindow> bordered_;
 };
 
 template <typename T, typename... ArgsT>

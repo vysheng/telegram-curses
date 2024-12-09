@@ -240,32 +240,47 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     auto p = offset_in_cur_element_ * 1.0 / old_height;
     CHECK(p < 1.0);
     auto ptr = std::move(it->second);
-    auto it2 = it;
-    it2++;
+    auto next_el = it;
+    next_el++;
     elements_.erase(it);
     change();
     it = elements_.emplace(elem.get(), std::move(ptr)).first;
     auto &el = *it->second;
     bool unchanged_pos = false;
-    if (it2 != elements_.begin()) {
-      it2--;
-      if (it2 == it) {
+    if (next_el != elements_.begin()) {
+      auto prev_el = next_el;
+      prev_el--;
+      if (prev_el == it) {
         unchanged_pos = true;
       }
     }
+    el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
+    auto new_height = it->second->height;
+    offset_in_cur_element_ = (td::int32)(p * new_height);
+
+    if (!elem->is_visible()) {
+      if (next_el != elements_.end()) {
+        lines_after_cur_element_ -= next_el->second->height;
+        offset_in_cur_element_ = 0;
+        cur_element_ = next_el->second.get();
+        return delete_element(elem.get());
+      } else {
+        delete_element(elem.get());
+        if (glued_to_ == GluedTo::Top) {
+          scroll_first_line();
+        } else {
+          scroll_last_line();
+        }
+        return;
+      }
+    }
+
     if (!unchanged_pos) {
       lines_before_cur_element_ = 0;
       for (auto it3 = elements_.begin(); it3 != it; it3++) {
         lines_before_cur_element_ += it3->second->height;
       }
       lines_after_cur_element_ = tot_height - lines_before_cur_element_;
-    }
-
-    el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
-    auto new_height = it->second->height;
-    offset_in_cur_element_ = (td::int32)(p * new_height);
-    if (!elem->is_visible()) {
-      return delete_element(elem.get());
     }
   }
 

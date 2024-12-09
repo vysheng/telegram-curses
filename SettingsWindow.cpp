@@ -9,16 +9,17 @@
 #include "ChatSearchWindow.hpp"
 #include "FieldEditWindow.hpp"
 #include "FileSelectionWindow.hpp"
+#include "ErrorWindow.hpp"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
 #include "td/utils/misc.h"
+#include "Action.hpp"
 #include <memory>
 
 namespace tdcurses {
 
 static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window) {
   auto window = static_cast<AccountSettingsWindow *>(&_window);
-  std::string prompt = "rename chat";
   auto u = chat_manager().get_user(global_parameters().my_user_id());
   std::string text = PSTRING() << u->first_name() + " " << u->last_name();
 
@@ -40,14 +41,17 @@ static std::shared_ptr<MenuWindow> spawn_rename_chat_window(MenuWindow &_window)
 
     auto req = td::make_tl_object<td::td_api::setName>(first_name, last_name);
 
-    loading_window_send_request(*self, "renaming", {}, std::move(req),
-                                [self, first_name = std::move(first_name), last_name = std::move(last_name)](
-                                    td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                                  if (R.is_error()) {
-                                    return;
-                                  }
-                                  self->updated_user_name(std::move(first_name), std::move(last_name));
-                                });
+    spawn_yes_no_window_and_loading_windows(
+        *self, PSTRING() << "Are you sure you want to change name to '" << first_name << " " << last_name << "'", {},
+        true, "renaming", {}, std::move(req),
+        [self, first_name, last_name](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+          DROP_IF_DELETED(R);
+          if (R.is_error()) {
+            spawn_error_window(*self, PSTRING() << "renaiming failed: " << R.move_as_error(), {});
+            return;
+          }
+          self->updated_user_name(std::move(first_name), std::move(last_name));
+        });
   });
 }
 
@@ -62,9 +66,7 @@ void AccountSettingsWindow::updated_user_name(std::string first_name, std::strin
 
 static std::shared_ptr<MenuWindow> spawn_change_photo_window(MenuWindow &_window) {
   auto window = static_cast<AccountSettingsWindow *>(&_window);
-  std::string prompt = "rename chat";
   auto u = chat_manager().get_user(global_parameters().my_user_id());
-  std::string text = PSTRING() << u->first_name() + " " << u->last_name();
 
   return spawn_file_selection_window(*window, "user photo", "/", [self = window](td::Result<std::string> R) {
     if (R.is_error()) {
@@ -77,14 +79,16 @@ static std::shared_ptr<MenuWindow> spawn_change_photo_window(MenuWindow &_window
       auto photo_file = td::make_tl_object<td::td_api::inputFileLocal>(res);
       auto photo = td::make_tl_object<td::td_api::inputChatPhotoStatic>(std::move(photo_file));
       auto req = td::make_tl_object<td::td_api::setProfilePhoto>(std::move(photo), false);
-
-      loading_window_send_request(*self, "changing photo", {}, std::move(req),
-                                  [self, res](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                                    if (R.is_error()) {
-                                      return;
-                                    }
-                                    self->updated_profile_photo(res);
-                                  });
+      spawn_yes_no_window_and_loading_windows(
+          *self, "are you sure you want to change userpic?", {}, true, "changing userpic", {}, std::move(req),
+          [self, res](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+            DROP_IF_DELETED(R);
+            if (R.is_error()) {
+              spawn_error_window(*self, PSTRING() << "setting user photo failed: " << R.move_as_error(), {});
+              return;
+            }
+            self->updated_profile_photo(res);
+          });
     }
   });
 }
@@ -111,7 +115,6 @@ void AccountSettingsWindow::deleted_profile_photo() {
 
 static std::shared_ptr<MenuWindow> spawn_change_username_window(MenuWindow &_window) {
   auto window = static_cast<AccountSettingsWindow *>(&_window);
-  std::string prompt = "username";
   auto u = chat_manager().get_user(global_parameters().my_user_id());
   std::string text = u->username();
 
@@ -123,13 +126,17 @@ static std::shared_ptr<MenuWindow> spawn_change_username_window(MenuWindow &_win
     auto text = R.move_as_ok();
     auto req = td::make_tl_object<td::td_api::setUsername>(text);
 
-    loading_window_send_request(*self, "updating username", {}, std::move(req),
-                                [self, username = text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                                  if (R.is_error()) {
-                                    return;
-                                  }
-                                  self->updated_username(std::move(username));
-                                });
+    spawn_yes_no_window_and_loading_windows(
+        *self, PSTRING() << "are you sure, that you want to set username to '" << text << "'", {}, true,
+        "updating username", {}, std::move(req),
+        [self, username = text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+          DROP_IF_DELETED(R);
+          if (R.is_error()) {
+            spawn_error_window(*self, PSTRING() << "setting username failed: " << R.move_as_error(), {});
+            return;
+          }
+          self->updated_username(std::move(username));
+        });
   });
 }
 
@@ -150,7 +157,6 @@ void AccountSettingsWindow::updated_username(std::string username) {
 static std::shared_ptr<MenuWindow> spawn_change_bio_window(MenuWindow &_window) {
   auto window = static_cast<AccountSettingsWindow *>(&_window);
   std::string prompt = "update bio";
-  auto u = chat_manager().get_user(global_parameters().my_user_id());
   std::string text = window->bio();
 
   return spawn_field_edit_window(*window, "bio", text, [self = window](td::Result<std::string> R) {
@@ -161,13 +167,16 @@ static std::shared_ptr<MenuWindow> spawn_change_bio_window(MenuWindow &_window) 
     auto text = R.move_as_ok();
     auto req = td::make_tl_object<td::td_api::setBio>(text);
 
-    loading_window_send_request(*self, "updating bio", {}, std::move(req),
-                                [self, bio = text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                                  if (R.is_error()) {
-                                    return;
-                                  }
-                                  self->updated_bio(std::move(bio));
-                                });
+    spawn_yes_no_window_and_loading_windows(
+        *self, PSTRING() << "are you sure, that you want to update bio to '" << text << "'", {}, true, "updating bio",
+        {}, std::move(req), [self, bio = text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+          DROP_IF_DELETED(R);
+          if (R.is_error()) {
+            spawn_error_window(*self, PSTRING() << "updating bio failed: " << R.move_as_error(), {});
+            return;
+          }
+          self->updated_bio(std::move(bio));
+        });
   });
 }
 
@@ -198,10 +207,13 @@ static std::shared_ptr<MenuWindow> spawn_change_channel_window(MenuWindow &_wind
         auto chat = R.move_as_ok();
         auto req = td::make_tl_object<td::td_api::setPersonalChat>(chat->chat_id());
 
-        loading_window_send_request(
-            *self, "updating bio", {}, std::move(req),
+        spawn_yes_no_window_and_loading_windows(
+            *self, PSTRING() << "are you sure, that you want to set personal chat to '" << chat->title() << "'", {},
+            true, "setting chat", {}, std::move(req),
             [self, chat = std::move(chat)](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+              DROP_IF_DELETED(R);
               if (R.is_error()) {
+                spawn_error_window(*self, PSTRING() << "updating channel failed: " << R.move_as_error(), {});
                 return;
               }
               self->updated_channel(chat);
@@ -267,13 +279,17 @@ static std::shared_ptr<MenuWindow> spawn_change_birthdate_window(MenuWindow &_wi
     auto req =
         td::make_tl_object<td::td_api::setBirthdate>(td::make_tl_object<td::td_api::birthdate>(day, month, year));
 
-    loading_window_send_request(*self, "updating birthdate", {}, std::move(req),
-                                [self, text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
-                                  if (R.is_error()) {
-                                    return;
-                                  }
-                                  self->updated_birthdate(std::move(text));
-                                });
+    spawn_yes_no_window_and_loading_windows(
+        *self, PSTRING() << "are you sure, that you want to update birth date to " << text, {}, true,
+        "updating birthdate", {}, std::move(req),
+        [self, text](td::Result<td::tl_object_ptr<td::td_api::ok>> R) mutable {
+          DROP_IF_DELETED(R);
+          if (R.is_error()) {
+            spawn_error_window(*self, PSTRING() << "updating birth date failed: " << R.move_as_error(), {});
+            return;
+          }
+          self->updated_birthdate(std::move(text));
+        });
   });
 }
 

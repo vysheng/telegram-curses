@@ -33,6 +33,13 @@ void BorderedWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int
   tickit_renderbuffer_mask(rb, &rect);
 
   if (vert_border_thic_ != 0) {
+    auto pen = tickit_pen_new();
+    if (color_ != -1) {
+      tickit_pen_set_colour_attr(pen, (TickitPenAttr)TickitPenAttr::TICKIT_PEN_FG, color_);
+      if (rb) {
+        tickit_renderbuffer_setpen(rb, pen);
+      }
+    }
     TickitLineStyle line_style = (TickitLineStyle)0;
     switch (border_type_) {
       case BorderType::None:
@@ -46,7 +53,7 @@ void BorderedWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int
         break;
       case BorderType::Double:
         if (is_active()) {
-          line_style = TickitLineStyle::TICKIT_LINE_THICK;
+          line_style = TickitLineStyle::TICKIT_LINE_DOUBLE;
         } else {
           line_style = TickitLineStyle::TICKIT_LINE_DOUBLE;
         }
@@ -61,6 +68,9 @@ void BorderedWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int
     tickit_renderbuffer_eraserect(rb, &r1);
     r1.left = width() - 2;
     tickit_renderbuffer_eraserect(rb, &r1);
+    if (color_ != 0) {
+    }
+    tickit_pen_unref(pen);
   }
 }
 
