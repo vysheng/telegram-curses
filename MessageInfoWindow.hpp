@@ -5,6 +5,7 @@
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
 #include <memory>
+#include <set>
 
 namespace tdcurses {
 
@@ -14,6 +15,8 @@ class MessageInfoWindow : public MenuWindowCommon {
       : MenuWindowCommon(root, std::move(root_actor)), chat_id_(chat_id), message_id_(message_id) {
     request_message();
   }
+
+  ~MessageInfoWindow();
 
   void request_message() {
     auto req = td::make_tl_object<td::td_api::getMessage>(chat_id_, message_id_);
@@ -50,19 +53,26 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_forward(td::int64 chat_id, td::int64 message_id);
   void add_action_copy(std::string text);
   void add_action_copy_primary(std::string text);
+  void add_action_download_file(const td::td_api::file &file);
   void add_action_open_file(std::string file_path);
   void add_action_open_file(const td::td_api::file &file) {
     if (file.local_->is_downloading_completed_) {
       add_action_open_file(file.local_->path_);
+    } else {
+      add_action_download_file(file);
     }
   }
   void add_action_reply(td::int64 chat_id, td::int64 message_id);
   void add_action_reactions(td::int64 chat_id, td::int64 message_id);
   void add_action_delete_message(td::int64 chat_id, td::int64 message_id);
 
+  void handle_file_update(const td::td_api::updateFile &);
+
   td::int64 chat_id_;
   td::int64 message_id_;
   td::tl_object_ptr<td::td_api::message> message_;
+  std::map<td::int64, std::pair<td::int64, std::shared_ptr<ElInfo>>> subscription_ids_;
+  std::shared_ptr<ElInfo> open_file_el_;
 };
 
 }  // namespace tdcurses

@@ -5,16 +5,25 @@
 #include "ChatInfoWindow.hpp"
 #include "ChatSearchWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "FileManager.hpp"
 #include "TdObjectsOutput.h"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
+#include "windows/Markup.hpp"
 #include "windows/unicode.h"
 #include "YesNoWindow.hpp"
 #include "LoadingWindow.hpp"
+#include <utility>
 #include <vector>
 
 namespace tdcurses {
+
+MessageInfoWindow::~MessageInfoWindow() {
+  for (auto x : subscription_ids_) {
+    file_manager().unsubscribe_from_file_updates(x.first, x.second.first);
+  }
+}
 
 void MessageInfoWindow::process_message() {
   add_action_forward(message_->chat_id_, message_->id_);
@@ -114,6 +123,7 @@ void MessageInfoWindow::process_message() {
   };
 
   if (message_->content_) {
+    LOG(ERROR) << "content = " << message_->content_->get_id();
     td::td_api::downcast_call(
         *message_->content_,
         td::overloaded(
@@ -132,6 +142,7 @@ void MessageInfoWindow::process_message() {
             },
             [&](const td::td_api::messagePaidMedia &content) { process_formatted_text(*content.caption_); },
             [&](const td::td_api::messagePhoto &content) {
+              LOG(ERROR) << "photo";
               process_formatted_text(*content.caption_);
               add_action_open_file(*content.photo_->sizes_.back()->photo_);
             },
@@ -444,10 +455,33 @@ void MessageInfoWindow::add_action_copy_primary(std::string text) {
 }
 
 void MessageInfoWindow::add_action_open_file(std::string file_path) {
-  add_element("open", "document", {}, [file_path = std::move(file_path)]() {
+  open_file_el_ = add_element("open", "document", {}, [file_path = std::move(file_path)]() {
     global_parameters().open_document(file_path);
     return true;
   });
+}
+
+void MessageInfoWindow::add_action_download_file(const td::td_api::file &file) {
+  if (subscription_ids_.count(file.id_) == 0) {
+    auto sub_id = file_manager().subscribe_to_file_updates(
+        file.id_, [self = this, self_id = window_unique_id(), root = root()](const td::td_api::updateFile &upd) {
+          if (!root->window_exists(self_id)) {
+            return;
+          }
+          self->handle_file_update(upd);
+        });
+    auto el = add_element("download", "document", {},
+                          [self = this, self_id = window_unique_id(), root = root(), file_id = file.id_]() {
+                            if (!root->window_exists(self_id)) {
+                              return false;
+                            }
+                            //downloadFile file_id:int32 priority:int32 offset:int53 limit:int53 synchronous:Bool = File;
+                            self->send_request(td::make_tl_object<td::td_api::downloadFile>(file_id, 20, 0, 0, false),
+                                               [](td::Result<td::tl_object_ptr<td::td_api::file>> R) {});
+                            return false;
+                          });
+    subscription_ids_.emplace(file.id_, std::make_pair(sub_id, std::move(el)));
+  }
 }
 
 void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 message_id) {
@@ -508,6 +542,26 @@ void MessageInfoWindow::add_action_delete_message(td::int64 chat_id, td::int64 m
     });
     return false;
   });
+}
+
+void MessageInfoWindow::handle_file_update(const td::td_api::updateFile &f) {
+  auto it = subscription_ids_.find(f.file_->id_);
+  if (it != subscription_ids_.end()) {
+    auto el = it->second.second;
+    if (f.file_->local_->is_downloading_completed_) {
+      auto new_el = std::make_shared<MenuWindowElementRun>("open", "document", std::vector<windows::MarkupElement>{},
+                                                           [file_path = f.file_->local_->path_]() -> bool {
+                                                             global_parameters().open_document(file_path);
+                                                             return true;
+                                                           });
+      change_element(el, [&]() { el->update_element(new_el); });
+    } else {
+      auto percent =
+          (int)(f.file_->size_ ? (double)f.file_->local_->downloaded_prefix_size_ * 100.0 / (double)f.file_->size_
+                               : 0.0);
+      change_element(el, [&]() { el->menu_element()->data = PSTRING() << "document (downloaded " << percent << "%)"; });
+    }
+  }
 }
 
 }  // namespace tdcurses
