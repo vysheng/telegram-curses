@@ -3,6 +3,7 @@
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "windows/EditorWindow.hpp"
+#include "windows/Output.hpp"
 #include "windows/PadWindow.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "ChatManager.hpp"
@@ -15,22 +16,6 @@ namespace tdcurses {
 
 class ChatInfoWindow : public MenuWindowCommon {
  public:
-  class Element : public windows::PadWindowElement {
-   public:
-    Element(ConfigWindow &win, size_t idx) : win_(win), idx_(idx) {
-    }
-    bool is_less(const PadWindowElement &other) const override {
-      return idx_ < static_cast<const Element &>(other).idx_;
-    }
-
-    td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override;
-
-    Tdcurses::Option &get_opt() const;
-
-   private:
-    ConfigWindow &win_;
-    size_t idx_;
-  };
   ChatInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Chat> chat)
       : MenuWindowCommon(root, std::move(root_actor)) {
     set_chat(std::move(chat));

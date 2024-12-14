@@ -2,7 +2,7 @@
 
 #include "td/tl/TlObject.h"
 #include "auto/td/telegram/td_api.h"
-#include "windows/EditorWindow.hpp"
+#include "windows/ViewWindow.hpp"
 #include <memory>
 
 namespace tdcurses {

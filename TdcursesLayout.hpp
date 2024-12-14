@@ -1,5 +1,8 @@
+#include "windows/Output.hpp"
 #include "windows/WindowLayout.hpp"
 #include "windows/Window.hpp"
+#include "windows/EmptyWindow.hpp"
+#include "windows/BorderedWindow.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "ConfigWindow.hpp"
 #include "Debug.hpp"
@@ -21,6 +24,12 @@ class TdcursesLayout
     chat_window_ = std::make_shared<windows::EmptyWindow>();
     command_line_ = std::make_shared<windows::EmptyWindow>();
     status_line_ = std::make_shared<windows::EmptyWindow>();
+
+    log_window_->set_parent(this);
+    dialog_list_window_->set_parent(this);
+    chat_window_->set_parent(this);
+    command_line_->set_parent(this);
+    status_line_->set_parent(this);
 
     update_windows_list();
     activate_window(dialog_list_window_);
@@ -54,17 +63,24 @@ class TdcursesLayout
     auto w = (td::int32)(width() * dialog_list_window_width_);
     h -= 2;
     dialog_list_window_->resize(w, h);
+    dialog_list_window_->set_parent_offset(0, 0);
     if (!compose_window_) {
       chat_window_->resize(width() - 1 - w, h);
+      chat_window_->set_parent_offset(0, w + 1);
     } else {
       auto h2 = (td::int32)(height() * chat_window_height_);
       chat_window_->resize(width() - 1 - w, h2);
+      chat_window_->set_parent_offset(0, w + 1);
       compose_window_->resize(width() - 1 - w, h - 1 - h2);
+      compose_window_->set_parent_offset(h2 + 1, w + 1);
     }
     status_line_->resize(width(), 1);
+    status_line_->set_parent_offset(h, 0);
     command_line_->resize(width(), 1);
+    command_line_->set_parent_offset(h + 1, 0);
     if (log_window_enabled_) {
       log_window_->resize(width(), height() - 1 - h - 2);
+      log_window_->set_parent_offset(h + 3, 0);
     }
     update_windows_list();
   }
@@ -86,16 +102,19 @@ class TdcursesLayout
     set_subwindow_list(std::move(windows));
   }
 
-  void render_borders(TickitRenderBuffer *rb) override {
+  void render_borders(windows::WindowOutputter &rb) override {
     /*if (log_window_enabled_) {
       tickit_renderbuffer_hline_at(rb, dialog_list_window_->height() + 2, 0, width() - 1,
                                    TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
     }*/
-    tickit_renderbuffer_vline_at(rb, 0, dialog_list_window_->height() - 1, dialog_list_window_->width(),
-                                 TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);
+    /*tickit_renderbuffer_vline_at(rb, 0, dialog_list_window_->height() - 1, dialog_list_window_->width(),
+                                 TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_BOTH);*/
+    const auto &borders = get_border_type_info(windows::BorderType::Simple, false);
+    rb.fill_vert_yx(0, dialog_list_window_->width(), borders[0], dialog_list_window_->height());
     if (compose_window_) {
-      tickit_renderbuffer_hline_at(rb, chat_window_->height(), dialog_list_window_->width(), width() - 1,
-                                   TickitLineStyle::TICKIT_LINE_SINGLE, TickitLineCaps::TICKIT_LINECAP_END);
+      rb.fill_yx(chat_window_->height(), dialog_list_window_->width(), borders[10],
+                 width() - dialog_list_window_->width());
+      rb.putstr_yx(chat_window_->height(), dialog_list_window_->width(), borders[4]);
     }
   }
 
@@ -122,28 +141,23 @@ class TdcursesLayout
     on_resize(width(), height(), width(), height());
   }
 
-  void handle_input(TickitKeyEventInfo *info) override {
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "F9")) {
-        root()->show_config_window();
-        return;
+  void handle_input(const windows::InputEvent &info) override {
+    if (info == "T-F9") {
+      root()->show_config_window();
+      return;
+    } else if (info == "T-F8") {
+      auto user = chat_manager().get_user(global_parameters().my_user_id());
+      if (user) {
+        create_menu_window<ChatInfoWindow>(root(), root_actor_id(), user);
       }
-      if (!strcmp(info->str, "F8")) {
-        auto user = chat_manager().get_user(global_parameters().my_user_id());
-        if (user) {
-          create_menu_window<ChatInfoWindow>(root(), root_actor_id(), user);
-        }
-        return;
-      }
-      if (!strcmp(info->str, "F7")) {
-        create_menu_window<MainSettingsWindow>(root(), root_actor_id());
-        return;
-      }
-      if (!strcmp(info->str, "F1")) {
-        auto s = debug_counters().to_str();
-        root()->spawn_popup_view_window(s, 1);
-        return;
-      }
+      return;
+    } else if (info == "T-F7") {
+      create_menu_window<MainSettingsWindow>(root(), root_actor_id());
+      return;
+    } else if (info == "T-F1") {
+      auto s = debug_counters().to_str();
+      root()->spawn_popup_view_window(s, 1);
+      return;
     }
 
     if (command_line_->force_active()) {
@@ -196,6 +210,9 @@ class TdcursesLayout
 
   void replace_window_in(std::shared_ptr<windows::Window> &old, std::shared_ptr<windows::Window> window,
                          bool need_empty = true) {
+    if (window) {
+      window->set_parent(this);
+    }
     auto cur_active = active_window();
     if (!window && need_empty) {
       window = std::make_shared<windows::EmptyWindow>();

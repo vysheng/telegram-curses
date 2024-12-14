@@ -2,6 +2,7 @@
 #include "td/actor/impl/ActorId-decl.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
+#include "windows/Output.hpp"
 #include "windows/PadWindow.hpp"
 #include "td/generate/auto/td/telegram/td_api.h"
 #include "td/generate/auto/td/telegram/td_api.hpp"
@@ -36,7 +37,7 @@ class ChatWindow
         : message(std::move(message)), generation(generation) {
     }
 
-    td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override;
+    td::int32 render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override;
 
     bool is_less(const windows::PadWindowElement &elx) const override {
       const Element &el = static_cast<const Element &>(elx);
@@ -44,7 +45,7 @@ class ChatWindow
       return (generation < el.generation) || (generation == el.generation && message->id_ < el.message->id_);
     }
 
-    void handle_input(PadWindow &root, TickitKeyEventInfo *info) override;
+    void handle_input(PadWindow &root, const windows::InputEvent &info) override;
 
     void run(ChatWindow *window);
 
@@ -60,7 +61,7 @@ class ChatWindow
     return main_chat_id_;
   }
 
-  void handle_input(TickitKeyEventInfo *info) override;
+  void handle_input(const windows::InputEvent &info) override;
 
   void request_bottom_elements_ex(td::int32 message_id);
   void request_bottom_elements() override {

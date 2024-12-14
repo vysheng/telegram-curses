@@ -9,6 +9,8 @@
 #include "td/utils/format.h"
 #include "td/utils/port/path.h"
 #include "port/dirlist.h"
+#include "windows/Input.hpp"
+#include "windows/Output.hpp"
 #include <memory>
 
 namespace tdcurses {
@@ -56,29 +58,25 @@ class FileSelectionWindow : public MenuWindowPad {
           UNREACHABLE();
       };
     }
-    void handle_input(PadWindow &root, TickitKeyEventInfo *info) override {
+    void handle_input(PadWindow &root, const windows::InputEvent &info) override {
       auto &w = static_cast<FileSelectionWindow &>(root);
-      if (info->type == TICKIT_KEYEV_KEY) {
-        if (!strcmp(info->str, "Enter")) {
-          if (info_.is_dir) {
-            w.change_folder(name_);
-          } else {
-            w.on_result(name_);
-          }
-        } else if (!strcmp(info->str, "Escape")) {
-          if (!w.sent_answer_) {
-            w.callback_->on_abort(w);
-          }
-          w.sent_answer_ = true;
+      if (info == "T-Enter") {
+        if (info_.is_dir) {
+          w.change_folder(name_);
+        } else {
+          w.on_result(name_);
         }
-      } else {
-        if (!strcmp(info->str, "s")) {
-          w.set_sort_mode((SortMode)((w.sort_mode_ + 1) % SortMode::Count));
+      } else if (info == "T-Escape") {
+        if (!w.sent_answer_) {
+          w.callback_->on_abort(w);
         }
+        w.sent_answer_ = true;
+      } else if (info == "s") {
+        w.set_sort_mode((SortMode)((w.sort_mode_ + 1) % SortMode::Count));
       }
     }
 
-    td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
       std::string s;
       if (!info_.has_access) {
         s = "<INACCESSIBLE>";

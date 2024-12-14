@@ -4,8 +4,9 @@
 #include "TdcursesWindowBase.hpp"
 #include "ChatManager.hpp"
 #include "MenuWindow.hpp"
-#include "windows/EditorWindow.hpp"
+#include "windows/OneLineInputWindow.hpp"
 #include "td/utils/Promise.h"
+#include "windows/Output.hpp"
 #include <memory>
 #include <vector>
 
@@ -40,9 +41,8 @@ class ChatSearchWindow
   }
   void build_subwindows();
 
-  void handle_input(TickitKeyEventInfo *info) override;
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override;
+  void handle_input(const windows::InputEvent &info) override;
+  void render(windows::WindowOutputter &rb, bool force) override;
 
   void try_run_request();
   void got_chats(td::tl_object_ptr<td::td_api::chats> res, bool is_local);

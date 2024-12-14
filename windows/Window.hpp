@@ -5,13 +5,13 @@
 #include <atomic>
 #include <memory>
 #include <utility>
-#include <tickit.h>
+#include "Input.hpp"
+#include "Output.hpp"
 
 namespace windows {
 
 class Window {
  public:
-  enum class BorderType { None, Simple, Double };
   enum class Type { Normal, Popup, Fullscreen, ErrorPopup };
 
   virtual ~Window() = default;
@@ -21,10 +21,10 @@ class Window {
   virtual void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) {
     set_need_refresh();
   }
-  virtual void handle_input(TickitKeyEventInfo *info) {
+  virtual void handle_input(const InputEvent &info) {
   }
-  virtual void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-                      bool force) = 0;
+  virtual void render(WindowOutputter &rb, bool force) = 0;
+  void render_wrap(WindowOutputter &rb, bool force);
 
   auto width() const {
     return width_;
@@ -85,90 +85,32 @@ class Window {
     return false;
   }
 
- private:
-  td::int32 width_{10};
-  td::int32 height_{10};
-  bool is_active_{false};
-  std::atomic<bool> need_refresh_{true};
-
-  td::Timestamp refresh_at_;
-};
-
-class BorderedWindow : public Window {
- public:
-  BorderedWindow(std::shared_ptr<Window> window, BorderType border_type)
-      : next_(std::move(window)), border_type_(border_type) {
-    switch (border_type_) {
-      case BorderType::None:
-        hor_border_thic_ = 0;
-        vert_border_thic_ = 0;
-        break;
-      case BorderType::Simple:
-      case BorderType::Double:
-        hor_border_thic_ = 2;
-        vert_border_thic_ = 1;
-        break;
-    }
+  void set_parent(Window *window) {
+    parent_ = window;
   }
 
-  bool need_refresh() override {
-    return Window::need_refresh() || next_->need_refresh();
-  }
-  void set_refreshed() override {
-    Window::set_refreshed();
-    next_->set_refreshed();
-  }
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
-    next_->resize(new_width - 2 * hor_border_thic_, new_height - 2 * vert_border_thic_);
-  }
-
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override;
-  void handle_input(TickitKeyEventInfo *info) override;
-
-  td::int32 min_width() override {
-    return 2 * hor_border_thic_ + next_->min_width();
-  }
-  td::int32 min_height() override {
-    return 2 * vert_border_thic_ + next_->min_height();
-  }
-  td::int32 best_width() override {
-    return 2 * hor_border_thic_ + next_->best_width();
-  }
-  td::int32 best_height() override {
-    return 2 * vert_border_thic_ + next_->best_height();
-  }
-
-  void set_border_type(BorderType border_type, td::int32 color) {
-    border_type_ = border_type;
-    color_ = color;
+  void set_parent_offset(td::int32 y_offset, td::int32 x_offset) {
+    y_offset_ = y_offset;
+    x_offset_ = x_offset;
     set_need_refresh();
   }
 
-  auto border_type() const {
-    return border_type_;
-  }
+  void render_subwindow(WindowOutputter &rb, Window *next, bool force, bool update_cursor_pos);
 
  private:
-  std::shared_ptr<Window> next_;
+  td::int32 width_{10};
+  td::int32 height_{10};
+  td::int32 y_offset_{0};
+  td::int32 x_offset_{0};
+  bool is_active_{false};
+  std::atomic<bool> need_refresh_{true};
 
-  BorderType border_type_;
-  td::int32 vert_border_thic_;
-  td::int32 hor_border_thic_;
+  td::int32 saved_cursor_y_{0};
+  td::int32 saved_cursor_x_{0};
+  WindowOutputter::CursorShape saved_cursor_shape_{WindowOutputter::CursorShape::None};
 
-  td::int32 color_{-1};
-};
-
-class EmptyWindow : public Window {
- public:
-  td::int32 min_width() override {
-    return 0;
-  }
-  td::int32 min_height() override {
-    return 0;
-  }
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override;
+  td::Timestamp refresh_at_;
+  Window *parent_{nullptr};
 };
 
 }  // namespace windows

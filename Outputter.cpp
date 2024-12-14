@@ -88,12 +88,12 @@ void Outputter::set_attr(td::int32 attr, ChangeBool mode) {
 }
 
 Outputter &Outputter::operator<<(FgColor color) {
-  set_attr_ex(TickitPenAttr::TICKIT_PEN_FG, (td::int32)color.color);
+  set_attr_ex(windows::MarkupElement::Attr::FgColor, (td::int32)color.color);
   return *this;
 }
 
 Outputter &Outputter::operator<<(BgColor color) {
-  set_attr_ex(TickitPenAttr::TICKIT_PEN_BG, (td::int32)color.color);
+  set_attr_ex(windows::MarkupElement::Attr::BgColor, (td::int32)color.color);
   return *this;
 }
 

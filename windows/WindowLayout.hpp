@@ -46,7 +46,7 @@ class WindowLayout : public Window {
     return t;
   }
 
-  void handle_input(TickitKeyEventInfo *info) override;
+  void handle_input(const InputEvent &info) override;
   virtual void activate_next_window();
   virtual void activate_prev_window();
   virtual void activate_left_window() {
@@ -65,20 +65,15 @@ class WindowLayout : public Window {
     return active_window_;
   }
 
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override;
+  void render(WindowOutputter &rb, bool force) override;
 
-  virtual void render_borders(TickitRenderBuffer *rb) {
+  virtual void render_borders(WindowOutputter &rb) {
   }
 
  private:
   std::list<std::unique_ptr<WindowInfo>> windows_;
   std::shared_ptr<Window> active_window_;
   bool window_edit_mode_{false};
-
-  td::int32 cursor_x_;
-  td::int32 cursor_y_;
-  TickitCursorShape cursor_shape_;
 };
 
 }  // namespace windows

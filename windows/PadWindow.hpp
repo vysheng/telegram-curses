@@ -16,7 +16,7 @@ class PadWindow;
 class PadWindowElement {
  public:
   virtual ~PadWindowElement() = default;
-  virtual td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) = 0;
+  virtual td::int32 render(PadWindow &root, WindowOutputter &rb, bool is_selected) = 0;
   void change_width(td::int32 width) {
     width_ = width;
   }
@@ -30,16 +30,16 @@ class PadWindowElement {
     return true;
   }
 
-  virtual void handle_input(PadWindow &root, TickitKeyEventInfo *info) {
+  virtual void handle_input(PadWindow &root, const InputEvent &info) {
   }
 
   /*virtual td::uint32 empty_element_effects() {
     return 0;
   }*/
 
-  static td::int32 render_plain_text(TickitRenderBuffer *rb, td::Slice text, td::int32 width, td::int32 max_height,
+  static td::int32 render_plain_text(WindowOutputter &rb, td::Slice text, td::int32 width, td::int32 max_height,
                                      bool is_selected);
-  static td::int32 render_plain_text(TickitRenderBuffer *rb, td::Slice text, std::vector<MarkupElement> markup,
+  static td::int32 render_plain_text(WindowOutputter &rb, td::Slice text, std::vector<MarkupElement> markup,
                                      td::int32 width, td::int32 max_height, bool is_selected);
 
  private:
@@ -48,8 +48,7 @@ class PadWindowElement {
 
 class PadWindow : public Window {
  public:
-  PadWindow() {
-  }
+  PadWindow();
   struct ElementInfo {
     ElementInfo(std::shared_ptr<PadWindowElement> element) : element(std::move(element)) {
     }
@@ -67,14 +66,14 @@ class PadWindow : public Window {
   virtual void request_bottom_elements() {
   }
 
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override;
+  void render(WindowOutputter &rb, bool force) override;
+  void render_body(WindowOutputter &rb, bool force);
 
   ElementInfo *get_element(td::int32 height);
   void change_selection();
 
-  void handle_input(TickitKeyEventInfo *info) override;
-  void active_element_handle_input(TickitKeyEventInfo *info);
+  void handle_input(const InputEvent &info) override;
+  void active_element_handle_input(const InputEvent &info);
 
   td::int32 pad_height() const {
     return lines_before_cur_element_ + lines_after_cur_element_ + (cur_element_ ? cur_element_->height : 0);
@@ -164,6 +163,17 @@ class PadWindow : public Window {
   }
 
  private:
+  class PadWindowBody : public Window {
+   public:
+    PadWindowBody(PadWindow *win) : win_(win) {
+    }
+    void render(WindowOutputter &rb, bool force) override {
+      win_->render_body(rb, force);
+    }
+
+   private:
+    PadWindow *win_;
+  };
   class Compare {
    public:
     bool operator()(const PadWindowElement *l, const PadWindowElement *r) const {
@@ -182,6 +192,7 @@ class PadWindow : public Window {
   PadTo pad_to_{PadTo::Top};
 
   std::string title_;
+  std::shared_ptr<Window> pad_window_body_;
 };
 
 }  // namespace windows

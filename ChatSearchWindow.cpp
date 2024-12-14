@@ -7,6 +7,7 @@
 #include "td/utils/Status.h"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"
+#include "windows/Output.hpp"
 #include "windows/TextEdit.hpp"
 #include <memory>
 #include <vector>
@@ -18,36 +19,28 @@ void ChatSearchWindow::build_subwindows() {
   editor_window_->resize(width(), 1);
 }
 
-void ChatSearchWindow::handle_input(TickitKeyEventInfo *info) {
-  if (info->type == TICKIT_KEYEV_KEY) {
-    if (!strcmp(info->str, "Up")) {
-      if (cur_selected_ > 0) {
-        cur_selected_--;
-      }
-    } else if (!strcmp(info->str, "Down")) {
-      if (cur_selected_ < found_chats()) {
-        cur_selected_++;
-      }
-    } else if (!strcmp(info->str, "Enter") || !strcmp(info->str, "M-Enter")) {
-      if (cur_selected_ != 0) {
-        callback_->on_answer(*this, get_found_chat(cur_selected_ - 1));
-      }
-    } else if (!strcmp(info->str, "Tab")) {
+void ChatSearchWindow::handle_input(const windows::InputEvent &info) {
+  if (info == "T-Up") {
+    if (cur_selected_ > 0) {
+      cur_selected_--;
+    }
+  } else if (info == "T-Down") {
+    if (cur_selected_ < found_chats()) {
       cur_selected_++;
-      if (cur_selected_ > found_chats()) {
-        cur_selected_ = 0;
-      }
-    } else if (!strcmp(info->str, "Escape")) {
-      callback_->on_abort(*this);
-    } else {
-      if (cur_selected_ == 0) {
-        editor_window_->handle_input(info);
-      }
     }
-  } else {
-    if (cur_selected_ == 0) {
-      editor_window_->handle_input(info);
+  } else if (info == "T-Enter" || info == "M-T-Enter") {
+    if (cur_selected_ != 0) {
+      callback_->on_answer(*this, get_found_chat(cur_selected_ - 1));
     }
+  } else if (info == "T-Tab") {
+    cur_selected_++;
+    if (cur_selected_ > found_chats()) {
+      cur_selected_ = 0;
+    }
+  } else if (info == "T-Escape") {
+    callback_->on_abort(*this);
+  } else if (cur_selected_ == 0) {
+    editor_window_->handle_input(info);
   }
 
   try_run_request();
@@ -133,34 +126,24 @@ void ChatSearchWindow::failed_to_get_chats(td::Status error, bool is_local) {
   try_run_request();
 }
 
-void ChatSearchWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                              TickitCursorShape &cursor_shape, bool force) {
-  td::int32 t_x, t_y;
-  TickitCursorShape t_cur;
+void ChatSearchWindow::render(windows::WindowOutputter &rb, bool force) {
+  editor_window_->render(rb, force);
 
-  editor_window_->render(rb, t_x, t_y, t_cur, force);
-
-  if (cur_selected_ == 0) {
-    cursor_x = t_x;
-    cursor_y = t_y;
-    cursor_shape = t_cur;
+  if (cur_selected_ != 0) {
+    rb.cursor_move_yx(0, 0, windows::WindowOutputter::CursorShape::None);
   }
 
   td::uint32 i = 0;
   for (i = 0; i < (td::uint32)height() - 1 && i < found_chats(); i++) {
+    rb.translate(i + 1, 0);
     bool is_selected = i + 1 == cur_selected_;
-    auto rect = TickitRect{.top = (int)i + 1, .left = 0, .lines = 1, .cols = width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
-    tickit_renderbuffer_translate(rb, i + 1, 0);
-    windows::TextEdit::render(rb, t_x, t_y, t_cur, width(), get_found_chat(i)->title(), 0,
-                              std::vector<windows::MarkupElement>(), is_selected, false);
-    tickit_renderbuffer_restore(rb);
+    windows::TextEdit::render(rb, width(), get_found_chat(i)->title(), 0, std::vector<windows::MarkupElement>(),
+                              is_selected, false);
+    rb.untranslate(i + 1, 0);
   }
 
   if (i + 1 < (td::uint32)height()) {
-    auto rect = TickitRect{.top = (td::int32)i + 1, .left = 0, .lines = height() - (td::int32)i - 1, .cols = width()};
-    tickit_renderbuffer_eraserect(rb, &rect);
+    rb.erase_rect(i + 1, 0, height() - i - 1, width());
   }
 }
 

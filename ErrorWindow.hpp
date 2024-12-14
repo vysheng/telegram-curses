@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MenuWindow.hpp"
-#include "windows/EditorWindow.hpp"
+#include "windows/ViewWindow.hpp"
 #include "windows/Markup.hpp"
 #include "windows/Window.hpp"
 #include <memory>
@@ -35,7 +35,7 @@ class ErrorWindow
     return std::static_pointer_cast<ErrorWindow>(std::move(value));
   }
   void on_install() override {
-    set_border_color(windows::BorderedWindow::BorderType::Double, (td::int32)Color::Red);
+    set_border_color(windows::BorderType::Double, (td::int32)Color::Red);
     set_need_refresh();
   }
 };

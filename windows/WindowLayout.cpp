@@ -44,47 +44,32 @@ void WindowLayout::activate_prev_window() {
   UNREACHABLE();
 }
 
-void WindowLayout::handle_input(TickitKeyEventInfo *info) {
-  if (info->type == TICKIT_KEYEV_KEY && !strcmp(info->str, "C-w")) {
+void WindowLayout::handle_input(const InputEvent &info) {
+  if (info == "C-w") {
     window_edit_mode_ = !window_edit_mode_;
     return;
   }
   if (window_edit_mode_) {
     window_edit_mode_ = false;
-    if (info->type == TICKIT_KEYEV_TEXT) {
-      if (!strcmp(info->str, "w")) {
-        activate_next_window();
-        return;
-      }
-      if (!strcmp(info->str, "W")) {
-        activate_prev_window();
-        return;
-      }
-      if (!strcmp(info->str, "h")) {
-        activate_left_window();
-        return;
-      }
-      if (!strcmp(info->str, "l")) {
-        activate_right_window();
-        return;
-      }
-      if (!strcmp(info->str, "j")) {
-        activate_lower_window();
-        return;
-      }
-      if (!strcmp(info->str, "k")) {
-        activate_upper_window();
-        return;
-      }
-    } else {
-      if (!strcmp(info->str, "C-w")) {
-        return;
-      }
+    if (info == "w") {
+      activate_next_window();
+      return;
+    } else if (info == "W") {
+      activate_prev_window();
+      return;
+    } else if (info == "h") {
+      activate_left_window();
+      return;
+    } else if (info == "l") {
+      activate_right_window();
+      return;
+    } else if (info == "j") {
+      activate_lower_window();
+      return;
+    } else if (info == "k") {
+      activate_upper_window();
+      return;
     }
-  }
-  if (info->type == TICKIT_KEYEV_KEY && !strcmp(info->str, "C-w")) {
-    window_edit_mode_ = true;
-    return;
   }
 
   if (active_window_) {
@@ -97,33 +82,14 @@ void WindowLayout::set_subwindow_list(std::list<std::unique_ptr<WindowInfo>> win
   windows_ = std::move(windows);
 }
 
-void WindowLayout::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                          TickitCursorShape &cursor_shape, bool force) {
+void WindowLayout::render(WindowOutputter &rb, bool force) {
   render_borders(rb);
   for (auto &w : windows_) {
-    auto rect = TickitRect{.top = w->y_pos, .left = w->x_pos, .lines = w->window->height(), .cols = w->window->width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
-    tickit_renderbuffer_translate(rb, w->y_pos, w->x_pos);
+    bool is_active = w->window.get() == active_window_.get();
     if (force || (w->window->need_refresh() && w->window->need_refresh_at().is_in_past())) {
       w->window->set_refreshed();
-      td::int32 cx = 0, cy = 0;
-      TickitCursorShape cs;
-      w->window->render(rb, cx, cy, cs, force);
-      if (w->window.get() == active_window_.get()) {
-        cursor_x = cursor_x_ = cx + w->x_pos;
-        cursor_y = cursor_y_ = cy + w->y_pos;
-        cursor_shape = cursor_shape_ = cs;
-      }
-    } else {
-      if (w->window.get() == active_window_.get()) {
-        cursor_x = cursor_x_;
-        cursor_y = cursor_y_;
-        cursor_shape = cursor_shape_;
-      }
+      render_subwindow(rb, w->window.get(), force, is_active);
     }
-    tickit_renderbuffer_restore(rb);
-    tickit_renderbuffer_mask(rb, &rect);
   }
 }
 

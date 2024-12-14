@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Markup.hpp"
+#include "Output.hpp"
 
 #include "td/utils/int_types.h"
 #include "td/utils/Slice.h"
 
 #include <string>
-#include <tickit.h>
 #include <vector>
 
 namespace windows {
@@ -41,12 +41,10 @@ class TextEdit {
   void remove_prev_char();
   void remove_next_char();
 
-  static td::int32 render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                          TickitCursorShape &cursor_shape, td::int32 width, td::Slice text, size_t pos,
+  static td::int32 render(WindowOutputter &rb, td::int32 width, td::Slice text, size_t pos,
                           const std::vector<MarkupElement> &markup, bool is_selected, bool is_password,
                           td::int32 pad_width = 0, std::string pad_char = " ");
-  td::int32 render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-                   td::int32 width, bool is_selected, bool is_password, td::int32 pad_width = 0,
+  td::int32 render(WindowOutputter &rb, td::int32 width, bool is_selected, bool is_password, td::int32 pad_width = 0,
                    std::string pad_char = " ");
 
   bool is_empty() const {

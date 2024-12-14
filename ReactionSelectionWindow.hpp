@@ -14,6 +14,7 @@
 #include "td/utils/common.h"
 #include "td/utils/overloaded.h"
 #include "windows/EditorWindow.hpp"
+#include "windows/Output.hpp"
 #include "windows/PadWindow.hpp"
 #include <memory>
 #include <vector>
@@ -40,7 +41,7 @@ class ReactionSelectionWindow : public MenuWindowPad {
     }
     Element(PaidReaction, td::int32 count, bool selected) : emoji_(PaidReaction()), count_(count), selected_(selected) {
     }
-    td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
       Outputter out;
       if (selected_) {
         out << Color::Yellow;
@@ -149,18 +150,14 @@ class ReactionSelectionWindow : public MenuWindowPad {
     set_pad_to(PadWindow::PadTo::Top);
   }
 
-  void handle_input(TickitKeyEventInfo *info) override {
+  void handle_input(const windows::InputEvent &info) override {
     set_need_refresh();
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Enter")) {
-        toggle();
-        return;
-      }
-    } else {
-      if (!strcmp(info->str, " ")) {
-        toggle();
-        return;
-      }
+    if (info == "T-Enter") {
+      toggle();
+      return;
+    } else if (info == " ") {
+      toggle();
+      return;
     }
     MenuWindowPad::handle_input(info);
   }

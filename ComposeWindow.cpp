@@ -6,6 +6,7 @@
 #include "windows/EditorWindow.hpp"
 #include "Outputter.hpp"
 #include "TdObjectsOutput.h"
+#include "windows/Output.hpp"
 #include "windows/TextEdit.hpp"
 #include <memory>
 #include <vector>
@@ -70,36 +71,26 @@ void ComposeWindow::set_draft(std::string message) {
   root()->close_compose_window();
 }
 
-void ComposeWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                           TickitCursorShape &cursor_shape, bool force) {
+void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
   if (!reply_message_id_) {
-    editor_window_->render(rb, cursor_x, cursor_y, cursor_shape, force);
+    editor_window_->render(rb, force);
     return;
   }
 
-  auto pad_rect = TickitRect{.top = 1, .left = 0, .lines = height() - 1, .cols = width()};
-  tickit_renderbuffer_save(rb);
-  tickit_renderbuffer_clip(rb, &pad_rect);
-  tickit_renderbuffer_translate(rb, 1, 0);
-  editor_window_->render(rb, cursor_x, cursor_y, cursor_shape, true);
-  tickit_renderbuffer_restore(rb);
-  cursor_y++;
-
-  auto rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
-  tickit_renderbuffer_clip(rb, &rect);
   auto msg = chat_window_->get_message_as_message(chat_id_, reply_message_id_);
   if (!msg) {
-    tickit_renderbuffer_eraserect(rb, &rect);
-    tickit_renderbuffer_textn_at(rb, 0, 0, "reply to: ", 10);
+    rb.erase_yx(0, 0, width());
+    rb.putstr_yx(0, 0, "reply to: ", 10);
   } else {
     Outputter out;
-    out << "reply to: " << Color::Red << msg->sender_id_ << Color::Revert << " " << msg->content_;
-    td::int32 t_cursor_x, t_cursor_y;
-    TickitCursorShape t_cursor_shape;
-    windows::TextEdit::render(rb, t_cursor_x, t_cursor_y, t_cursor_shape, width(), out.as_cslice(), 0, out.markup(),
-                              false, false);
+    out << Outputter::NoLb(true) << "reply to: " << Color::Red << msg->sender_id_ << Color::Revert << " "
+        << msg->content_;
+    windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
   }
-  tickit_renderbuffer_restore(rb);
+
+  rb.translate(1, 0);
+  editor_window_->render(rb, true);
+  rb.untranslate(1, 0);
 }
 
 }  // namespace tdcurses

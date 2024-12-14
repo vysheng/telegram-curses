@@ -4,7 +4,7 @@
 #include "td/utils/Promise.h"
 #include "td/utils/Status.h"
 #include "td/utils/common.h"
-#include "windows/EditorWindow.hpp"
+#include "windows/ViewWindow.hpp"
 #include <memory>
 
 namespace tdcurses {
@@ -17,7 +17,7 @@ class LoadingWindow
                 std::vector<windows::MarkupElement> markup = {})
       : MenuWindow(root, root_actor), windows::ViewWindow(std::move(text), std::move(markup), nullptr) {
   }
-  void handle_input(TickitKeyEventInfo *info) override {
+  void handle_input(const windows::InputEvent &info) override {
     if (menu_window_handle_input(info)) {
       return;
     }

@@ -5,6 +5,7 @@
 #include "GlobalParameters.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
+#include "windows/Output.hpp"
 #include <memory>
 
 namespace tdcurses {
@@ -22,18 +23,16 @@ class FolderSelectionWindow : public MenuWindowPad {
     bool is_less(const PadWindowElement &other) const override {
       return idx_ < static_cast<const Element &>(other).idx_;
     }
-    void handle_input(PadWindow &root, TickitKeyEventInfo *info) override {
-      if (info->type == TICKIT_KEYEV_KEY) {
-        if (!strcmp(info->str, "Enter")) {
-          auto &w = static_cast<FolderSelectionWindow &>(root);
-          w.root()->dialog_list_window()->set_sublist(std::move(chat_list_));
-          w.exit();
-          return;
-        }
+    void handle_input(PadWindow &root, const windows::InputEvent &info) override {
+      if (info == "T-Enter") {
+        auto &w = static_cast<FolderSelectionWindow &>(root);
+        w.root()->dialog_list_window()->set_sublist(std::move(chat_list_));
+        w.exit();
+        return;
       }
     }
 
-    td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
       return render_plain_text(rb, text_, width(), 1, is_selected);
     }
 

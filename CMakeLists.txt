@@ -133,10 +133,20 @@ add_subdirectory(td)
 add_subdirectory(third-party/libtickit)
 
 add_executable(telegram-curses 
+  windows/BorderedWindow.cpp
+  windows/BorderedWindow.hpp
   windows/EditorWindow.cpp
   windows/EditorWindow.hpp
+  windows/EmptyWindow.cpp
+  windows/EmptyWindow.hpp
+  windows/Input.cpp
+  windows/Input.hpp
   windows/LogWindow.hpp
   windows/Markup.hpp
+  windows/OneLineInputWindow.cpp
+  windows/OneLineInputWindow.hpp
+  windows/Output.cpp
+  windows/Output.hpp
   windows/PadWindow.cpp
   windows/PadWindow.hpp
   windows/Screen.cpp
@@ -146,6 +156,8 @@ add_executable(telegram-curses
   windows/TextEdit.hpp
   windows/unicode.cpp
   windows/unicode.h
+  windows/ViewWindow.cpp
+  windows/ViewWindow.hpp
   windows/Window.cpp
   windows/Window.hpp
   windows/WindowLayout.cpp
@@ -214,7 +226,7 @@ add_executable(telegram-curses
 
   third-party/qrcodegen/qrcodegen.cpp 
 )
-target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc)
+target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc notcurses-core notcurses)
 target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}

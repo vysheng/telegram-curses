@@ -1,10 +1,17 @@
 #include "PadWindow.hpp"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/StringBuilder.h"
+#include "td/utils/ScopeGuard.h"
 #include <memory>
 #include <vector>
 
 namespace windows {
+
+PadWindow::PadWindow() {
+  pad_window_body_ = std::make_shared<PadWindowBody>(this);
+  pad_window_body_->set_parent(this);
+  pad_window_body_->set_parent_offset(1, 0);
+}
 
 static PadWindow::GluedTo adjust_glued_to_up(PadWindow::GluedTo from) {
   switch (from) {
@@ -80,48 +87,42 @@ void PadWindow::scroll_last_line() {
   adjust_cur_element(1000000000);
 }
 
-void PadWindow::handle_input(TickitKeyEventInfo *info) {
+void PadWindow::handle_input(const InputEvent &info) {
   set_need_refresh();
-  if (info->type == TICKIT_KEYEV_KEY) {
-    if (!strcmp(info->str, "PageUp")) {
-      scroll_up(effective_height() / 2);
-    } else if (!strcmp(info->str, "Up")) {
-      scroll_up(1);
-    } else if (!strcmp(info->str, "PageDown")) {
-      scroll_down(effective_height() / 2);
-    } else if (!strcmp(info->str, "Down")) {
-      scroll_down(1);
-    } else if (!strcmp(info->str, "C-u")) {
-      scroll_up(effective_height() / 2);
-    } else if (!strcmp(info->str, "C-d")) {
-      scroll_down(effective_height() / 2);
-    } else if (!strcmp(info->str, "C-b")) {
-      scroll_up(effective_height() - 1);
-    } else if (!strcmp(info->str, "C-f")) {
-      scroll_down(effective_height() - 1);
-    } else {
-      active_element_handle_input(info);
-    }
+  if (info == "T-PageUp") {
+    scroll_up(effective_height() / 2);
+  } else if (info == "T-Up") {
+    scroll_up(1);
+  } else if (info == "T-PageDown") {
+    scroll_down(effective_height() / 2);
+  } else if (info == "T-Down") {
+    scroll_down(1);
+  } else if (info == "C-u") {
+    scroll_up(effective_height() / 2);
+  } else if (info == "C-d") {
+    scroll_down(effective_height() / 2);
+  } else if (info == "C-b") {
+    scroll_up(effective_height() - 1);
+  } else if (info == "C-f") {
+    scroll_down(effective_height() - 1);
+  } else if (info == "k") {
+    scroll_up(1);
+  } else if (info == "j") {
+    scroll_down(1);
+  } else if (info == "g") {
+    scroll_first_line();
+  } else if (info == "G") {
+    scroll_last_line();
+  } else if (info == "n") {
+    scroll_next_element();
+  } else if (info == "N") {
+    scroll_prev_element();
   } else {
-    if (!strcmp(info->str, "k")) {
-      scroll_up(1);
-    } else if (!strcmp(info->str, "j")) {
-      scroll_down(1);
-    } else if (!strcmp(info->str, "g")) {
-      scroll_first_line();
-    } else if (!strcmp(info->str, "G")) {
-      scroll_last_line();
-    } else if (!strcmp(info->str, "n")) {
-      scroll_next_element();
-    } else if (!strcmp(info->str, "N")) {
-      scroll_prev_element();
-    } else {
-      active_element_handle_input(info);
-    }
+    active_element_handle_input(info);
   }
 }
 
-void PadWindow::active_element_handle_input(TickitKeyEventInfo *info) {
+void PadWindow::active_element_handle_input(const InputEvent &info) {
   auto el = get_active_element();
   if (el) {
     el->handle_input(*this, info);
@@ -129,6 +130,8 @@ void PadWindow::active_element_handle_input(TickitKeyEventInfo *info) {
 }
 
 void PadWindow::on_resize(td::int32, td::int32 old_height, td::int32 new_width, td::int32 new_height) {
+  pad_window_body_->resize(new_width, new_height - 2);
+
   if (elements_.size() == 0) {
     return;
   }
@@ -137,7 +140,7 @@ void PadWindow::on_resize(td::int32, td::int32 old_height, td::int32 new_width, 
     auto &el = *p.second;
     auto old_height = el.height;
     el.element->change_width(new_width);
-    el.height = el.element->render(*this, nullptr, cur_element_ == nullptr);
+    el.height = el.element->render(*this, empty_window_outputter(), cur_element_ == nullptr);
     auto new_height = el.height;
 
     if (el.element->is_less(*cur_element_->element)) {
@@ -172,7 +175,7 @@ void PadWindow::change_element(PadWindowElement *elem) {
 
   auto old_height = it->second->height;
 
-  el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
+  el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
 
   auto new_height = it->second->height;
 
@@ -212,7 +215,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     if (elem->is_visible()) {
       it = elements_.emplace(elem.get(), std::move(ptr)).first;
       auto &el = *it->second;
-      el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
+      el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
         lines_after_cur_element_ += it->second->height;
       } else {
@@ -227,7 +230,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     if (elem->is_visible()) {
       it = elements_.emplace(elem.get(), std::move(ptr)).first;
       auto &el = *it->second;
-      el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
+      el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
         lines_after_cur_element_ += it->second->height;
       } else {
@@ -254,7 +257,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
         unchanged_pos = true;
       }
     }
-    el.height = el.element->render(*this, nullptr, it->second.get() == cur_element_);
+    el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
     auto new_height = it->second->height;
     offset_in_cur_element_ = (td::int32)(p * new_height);
 
@@ -355,7 +358,7 @@ void PadWindow::add_element(std::shared_ptr<PadWindowElement> element) {
   CHECK(el.element);
   el.element->change_width(width());
 
-  el.height = el.element->render(*this, nullptr, cur_element_ == nullptr);
+  el.height = el.element->render(*this, empty_window_outputter(), cur_element_ == nullptr);
 
   auto new_height = it->second->height;
 
@@ -589,14 +592,10 @@ std::vector<std::shared_ptr<PadWindowElement>> PadWindow::get_visible_elements()
   return res;
 }
 
-void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                       TickitCursorShape &cursor_shape, bool force) {
+void PadWindow::render(WindowOutputter &rb, bool force) {
   {
-    auto rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
-    tickit_renderbuffer_eraserect(rb, &rect);
-
-    rect.top = height() - 1;
-    tickit_renderbuffer_eraserect(rb, &rect);
+    rb.erase_rect(0, 0, 1, width());
+    rb.erase_rect(height() - 1, 0, 1, width());
   }
 
   {
@@ -615,9 +614,6 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
       lines_under_window = 0;
     }
 
-    td::int32 t_x, t_y;
-    TickitCursorShape t_cursor;
-    TickitRect rect;
     td::CSlice text;
 
     td::StringBuilder sb;
@@ -629,16 +625,13 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     }
     sb << " ";
     sb << title() << "\n";
-    rect = TickitRect{.top = 0, .left = 0, .lines = 1, .cols = width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
     text = sb.as_cslice();
-    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
+    TextEdit::render(rb, width(), text, 0,
+                     {MarkupElement::fg_color(0, text.size() + 1, Color::Grey), MarkupElement::nolb(0, text.size())},
                      is_active(), false);
-    tickit_renderbuffer_restore(rb);
-
     sb.clear();
 
+    rb.translate(height() - 1, 0);
     sb << "↓";
     if (glued_to_ == GluedTo::Bottom) {
       sb << "glued";
@@ -647,30 +640,20 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
     }
     sb << " ";
     sb << title() << "\n";
-    rect = TickitRect{.top = height() - 1, .left = 0, .lines = 1, .cols = width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
-    tickit_renderbuffer_translate(rb, height() - 1, 0);
     text = sb.as_cslice();
-    TextEdit::render(rb, t_x, t_y, t_cursor, width(), text, 0, {MarkupElement::fg_color(0, text.size(), 8)},
+    TextEdit::render(rb, width(), text, 0,
+                     {MarkupElement::fg_color(0, text.size() + 1, Color::Grey), MarkupElement::nolb(0, text.size())},
                      is_active(), false);
-    tickit_renderbuffer_restore(rb);
+    rb.untranslate(height() - 1, 0);
   }
 
-  auto pad_rect = TickitRect{.top = 1, .left = 0, .lines = effective_height(), .cols = width()};
-  tickit_renderbuffer_save(rb);
-  tickit_renderbuffer_clip(rb, &pad_rect);
-  tickit_renderbuffer_translate(rb, 1, 0);
+  render_subwindow(rb, pad_window_body_.get(), force, true);
+  rb.cursor_move_yx(0, 0, WindowOutputter::CursorShape::None);
+}
 
-  cursor_x = 0;
-  cursor_y = 0;
-  cursor_shape = (TickitCursorShape)0;
+void PadWindow::render_body(WindowOutputter &rb, bool force) {
   if (!elements_.size()) {
-    cursor_x = 0;
-    cursor_y = 0;
-    auto rect = TickitRect{.top = 0, .left = 0, .lines = effective_height(), .cols = width()};
-    tickit_renderbuffer_eraserect(rb, &rect);
-    tickit_renderbuffer_restore(rb);
+    rb.erase_rect(0, 0, effective_height(), width());
     return;
   }
 
@@ -687,19 +670,14 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
   }
 
   if (offset > 0) {
-    auto rect = TickitRect{.top = 0, .left = 0, .lines = offset, .cols = width()};
-    tickit_renderbuffer_eraserect(rb, &rect);
-
+    rb.erase_rect(0, 0, offset, width());
     request_top_elements();
   }
 
   while (offset < effective_height() && it != elements_.end()) {
-    auto rect = TickitRect{.top = offset, .left = 0, .lines = it->second->height, .cols = width()};
-    tickit_renderbuffer_save(rb);
-    tickit_renderbuffer_clip(rb, &rect);
-    tickit_renderbuffer_translate(rb, offset, 0);
+    rb.translate(offset, 0);
     auto x = it->second->element->render(*this, rb, it->second.get() == cur_element_);
-    tickit_renderbuffer_restore(rb);
+    rb.untranslate(offset, 0);
 
     offset += x;
 
@@ -722,36 +700,27 @@ void PadWindow::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &c
   }
 
   if (offset < effective_height()) {
-    auto rect = TickitRect{.top = offset, .left = 0, .lines = effective_height() - offset, .cols = width()};
-    tickit_renderbuffer_eraserect(rb, &rect);
+    rb.erase_rect(offset, 0, effective_height() - offset, width());
     request_bottom_elements();
   }
 
   if (need_refresh()) {
     adjust_cur_element(0);
   }
-
-  tickit_renderbuffer_restore(rb);
-  cursor_x++;
 }
 
-td::int32 PadWindowElement::render_plain_text(TickitRenderBuffer *rb, td::Slice text, td::int32 width,
+td::int32 PadWindowElement::render_plain_text(WindowOutputter &rb, td::Slice text, td::int32 width,
                                               td::int32 max_height, bool is_selected) {
-  td::int32 cursor_x, cursor_y;
-  TickitCursorShape cursor_shape;
-  auto h = TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width, text, 0, std::vector<MarkupElement>(),
-                            is_selected, false);
+  auto h = TextEdit::render(rb, width, text, 0, std::vector<MarkupElement>(), is_selected, false);
   if (h > max_height) {
     h = max_height;
   }
   return h;
 }
 
-td::int32 PadWindowElement::render_plain_text(TickitRenderBuffer *rb, td::Slice text, std::vector<MarkupElement> markup,
+td::int32 PadWindowElement::render_plain_text(WindowOutputter &rb, td::Slice text, std::vector<MarkupElement> markup,
                                               td::int32 width, td::int32 max_height, bool is_selected) {
-  td::int32 cursor_x, cursor_y;
-  TickitCursorShape cursor_shape;
-  auto h = TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width, text, 0, markup, is_selected, false);
+  auto h = TextEdit::render(rb, width, text, 0, markup, is_selected, false);
   if (h > max_height) {
     h = max_height;
   }

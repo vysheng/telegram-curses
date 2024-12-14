@@ -35,21 +35,18 @@ class SelectionWindow : public PadWindow {
     }
     set_need_refresh();
   }
-  void handle_input(TickitKeyEventInfo *info) {
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Enter")) {
-        auto a = get_active_element();
-        if (a) {
-          auto el = static_cast<Element *>(a.get());
-          el->run_callback();
-          callback_->on_end();
-        }
-        return;
+  void handle_input(const InputEvent &info) {
+    if (info == "T-Enter") {
+      auto a = get_active_element();
+      if (a) {
+        auto el = static_cast<Element *>(a.get());
+        el->run_callback();
+        callback_->on_end();
       }
-      if (!strcmp(info->str, "Escape")) {
-        callback_->on_abort();
-        return;
-      }
+      return;
+    } else if (info == "T-Escape") {
+      callback_->on_abort();
+      return;
     }
     return PadWindow::handle_input(info);
   }
@@ -64,7 +61,7 @@ class SelectionWindow : public PadWindow {
     Element(std::string text, std::vector<MarkupElement> markup, size_t idx, std::function<void()> callback)
         : text_(std::move(text)), markup_(std::move(markup)), idx_(idx), callback_(std::move(callback)) {
     }
-    td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, WindowOutputter &rb, bool is_selected) override {
       return render_plain_text(rb, text_, markup_, width(), 1, is_selected);
     }
 

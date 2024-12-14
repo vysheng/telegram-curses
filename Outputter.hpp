@@ -12,30 +12,13 @@
 #include "td/utils/buffer.h"
 #include "td/utils/StringBuilder.h"
 #include "td/utils/int_types.h"
+#include "windows/Output.hpp"
 #include <type_traits>
 #include <vector>
 
 namespace tdcurses {
 
-enum class Color : td::int32 {
-  Revert = -1,
-  Black = 0,
-  Maroon,
-  Green,
-  Olive,
-  Navy,
-  Purple,
-  Teal,
-  Silver,
-  Grey,
-  Red,
-  Lime,
-  Yellow,
-  Blue,
-  Fuchsia,
-  Aqua,
-  White
-};
+using Color = windows::Color;
 
 class ChatWindow;
 
@@ -82,12 +65,12 @@ class Outputter {
     td::Slice data;
   };
 
-  using Underline = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_UNDER>;
-  using Bold = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_BOLD>;
-  using Italic = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_ITALIC>;
-  using Reverse = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_REVERSE>;
-  using Blink = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_BLINK>;
-  using Strike = ChangeBoolImpl<windows::MarkupElement::Attr::Tickit::TICKIT_PEN_STRIKE>;
+  using Underline = ChangeBoolImpl<windows::MarkupElement::Attr::Underline>;
+  using Bold = ChangeBoolImpl<windows::MarkupElement::Attr::Bold>;
+  using Italic = ChangeBoolImpl<windows::MarkupElement::Attr::Italic>;
+  using Reverse = ChangeBoolImpl<windows::MarkupElement::Attr::Reverse>;
+  using Blink = ChangeBoolImpl<windows::MarkupElement::Attr::Blink>;
+  using Strike = ChangeBoolImpl<windows::MarkupElement::Attr::Strike>;
   using NoLb = ChangeBoolImpl<windows::MarkupElement::Attr::NoLB>;
 
   template <typename T>

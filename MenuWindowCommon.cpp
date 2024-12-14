@@ -2,37 +2,29 @@
 
 namespace tdcurses {
 
-void MenuWindowElementSpawn::handle_input(MenuWindowCommon &window, TickitKeyEventInfo *info) {
-  if (info->type == TICKIT_KEYEV_KEY) {
-    if (!strcmp(info->str, "Enter")) {
-      cb_(window);
-      return;
-    }
-  } else {
-    if (!strcmp(info->str, " ")) {
-      cb_(window);
-      return;
-    }
+void MenuWindowElementSpawn::handle_input(MenuWindowCommon &window, const windows::InputEvent &info) {
+  if (info == "T-Enter") {
+    cb_(window);
+    return;
+  } else if (info == " ") {
+    cb_(window);
+    return;
   }
 }
 
-void MenuWindowElementRun::handle_input(MenuWindowCommon &window, TickitKeyEventInfo *info) {
-  if (info->type == TICKIT_KEYEV_KEY) {
-    if (!strcmp(info->str, "Enter")) {
-      auto res = cb_(window, *this);
-      if (res) {
-        window.exit();
-      }
-      return;
+void MenuWindowElementRun::handle_input(MenuWindowCommon &window, const windows::InputEvent &info) {
+  if (info == "T-Enter") {
+    auto res = cb_(window, *this);
+    if (res) {
+      window.exit();
     }
-  } else {
-    if (!strcmp(info->str, " ")) {
-      auto res = cb_(window, *this);
-      if (res) {
-        window.exit();
-      }
-      return;
+    return;
+  } else if (info == " ") {
+    auto res = cb_(window, *this);
+    if (res) {
+      window.exit();
     }
+    return;
   }
 }
 

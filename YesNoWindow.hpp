@@ -4,7 +4,9 @@
 #include "td/utils/Promise.h"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"
+#include "windows/Output.hpp"
 #include "windows/Window.hpp"
+#include "windows/ViewWindow.hpp"
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -46,13 +48,12 @@ class YesNoWindow
     return 6;
   }
 
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override {
-    if (!rb) {
+  void render(windows::WindowOutputter &rb, bool force) override {
+    if (!rb.is_real()) {
       return;
     }
 
-    view_window_->render(rb, cursor_x, cursor_y, cursor_shape, force);
+    view_window_->render(rb, force);
 
     CHECK(width() >= 10);
     auto pad = (width() - 10) / 2;
@@ -71,45 +72,34 @@ class YesNoWindow
       markup.emplace_back(windows::MarkupElement::reverse(s + 6, s + 10));
     }
 
-    if (rb) {
-      tickit_renderbuffer_save(rb);
-      tickit_renderbuffer_translate(rb, height() - 2, 0);
-    }
-    windows::TextEdit::render(rb, cursor_x, cursor_y, cursor_shape, width(), text, 0, markup, false, false, 0, "");
-    if (rb) {
-      tickit_renderbuffer_restore(rb);
-    }
-
-    cursor_y = 0;
-    cursor_x = 0;
-    cursor_shape = (TickitCursorShape)0;
+    rb.translate(height() - 2, 0);
+    windows::TextEdit::render(rb, width(), text, 0, markup, false, false, 0, "");
+    rb.untranslate(height() - 2, 0);
+    rb.cursor_move_yx(0, 0, windows::WindowOutputter::CursorShape::None);
   }
 
-  void handle_input(TickitKeyEventInfo *info) override {
+  void handle_input(const windows::InputEvent &info) override {
     set_need_refresh();
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Enter")) {
-        if (!sent_answer_) {
-          sent_answer_ = true;
-          callback_->on_answer(*this, ok_);
-        }
-        return;
-      } else if (!strcmp(info->str, "Right")) {
-        ok_ = false;
-        return;
-      } else if (!strcmp(info->str, "Left")) {
-        ok_ = true;
-        return;
+    if (info == "T-Enter") {
+      if (!sent_answer_) {
+        sent_answer_ = true;
+        callback_->on_answer(*this, ok_);
       }
-    } else {
-      if (!strcmp(info->str, "h")) {
-        ok_ = true;
-        return;
-      } else if (!strcmp(info->str, "l")) {
-        ok_ = false;
-        return;
-      }
+      return;
+    } else if (info == "T-Right") {
+      ok_ = false;
+      return;
+    } else if (info == "T-Left") {
+      ok_ = true;
+      return;
+    } else if (info == "h") {
+      ok_ = true;
+      return;
+    } else if (info == "l") {
+      ok_ = false;
+      return;
     }
+
     if (menu_window_handle_input(info)) {
       return;
     }

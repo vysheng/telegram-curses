@@ -2,7 +2,6 @@
 #include "td/utils/Status.h"
 #include "td/utils/utf8.h"
 #include "unicode.h"
-#include <tickit.h>
 #include <vector>
 #include <algorithm>
 #include <functional>
@@ -14,72 +13,90 @@ bool is_printable_control_char(td::Slice data) {
   return data.size() == 1 && (data[0] == '\n' || data[0] == '\t');
 }
 
-MarkupElement MarkupElement::fg_color(size_t first_pos, size_t last_pos, td::int32 fg_color) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_FG, fg_color);
+MarkupElement MarkupElement::fg_color(size_t first_pos, size_t last_pos, Color fg_color) {
+  return MarkupElement(first_pos, last_pos, Attr::FgColor, (td::int32)fg_color);
 }
-MarkupElement MarkupElement::bg_color(size_t first_pos, size_t last_pos, td::int32 bg_color) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BG, bg_color);
+MarkupElement MarkupElement::bg_color(size_t first_pos, size_t last_pos, Color bg_color) {
+  return MarkupElement(first_pos, last_pos, Attr::BgColor, (td::int32)bg_color);
 }
 MarkupElement MarkupElement::bold(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BOLD, 1);
+  return MarkupElement(first_pos, last_pos, Attr::Bold, 1);
 }
-MarkupElement MarkupElement::underline(size_t first_pos, size_t last_pos, TickitPenUnderline line_type) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_UNDER, line_type);
+MarkupElement MarkupElement::underline(size_t first_pos, size_t last_pos, td::int32 line_type) {
+  return MarkupElement(first_pos, last_pos, Attr::Underline, line_type);
 }
 MarkupElement MarkupElement::italic(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_ITALIC, 1);
+  return MarkupElement(first_pos, last_pos, Attr::Italic, 1);
 }
 MarkupElement MarkupElement::reverse(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_REVERSE, 1);
+  return MarkupElement(first_pos, last_pos, Attr::Reverse, 1);
 }
 MarkupElement MarkupElement::strike(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_STRIKE, 1);
-}
-MarkupElement MarkupElement::altfont(size_t first_pos, size_t last_pos, td::int32 font_id) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_ALTFONT, font_id);
+  return MarkupElement(first_pos, last_pos, Attr::Strike, 1);
 }
 MarkupElement MarkupElement::blink(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, TickitPenAttr::TICKIT_PEN_BLINK, 1);
+  return MarkupElement(first_pos, last_pos, Attr::Blink, 1);
+}
+MarkupElement MarkupElement::nolb(size_t first_pos, size_t last_pos) {
+  return MarkupElement(first_pos, last_pos, Attr::NoLB, 1);
 }
 
-void MarkupElement::install(TickitPen *pen) const {
+void MarkupElement::install(WindowOutputter &rb) const {
   switch (attr) {
-    case Attr::Tickit::TICKIT_PEN_FG:
-    case Attr::Tickit::TICKIT_PEN_BG:
-      tickit_pen_set_colour_attr(pen, (TickitPenAttr)attr, arg);
+    case Attr::FgColor:
+      rb.set_fg_color((Color)arg);
       break;
-    case Attr::Tickit::TICKIT_PEN_BOLD:
-    case Attr::Tickit::TICKIT_PEN_ITALIC:
-    case Attr::Tickit::TICKIT_PEN_REVERSE:
-    case Attr::Tickit::TICKIT_PEN_STRIKE:
-    case Attr::Tickit::TICKIT_PEN_BLINK:
-      tickit_pen_set_bool_attr(pen, (TickitPenAttr)attr, arg ? 1 : 0);
+    case Attr::BgColor:
+      rb.set_bg_color((Color)arg);
       break;
-    case Attr::Tickit::TICKIT_PEN_UNDER:
-    case Attr::Tickit::TICKIT_PEN_ALTFONT:
-      tickit_pen_set_int_attr(pen, (TickitPenAttr)attr, arg);
+    case Attr::Bold:
+      rb.set_bold(arg);
+      break;
+    case Attr::Italic:
+      rb.set_italic(arg);
+      break;
+    case Attr::Reverse:
+      rb.set_reverse(arg);
+      break;
+    case Attr::Strike:
+      rb.set_strike(arg);
+      break;
+    case Attr::Blink:
+      rb.set_blink(arg);
+      break;
+    case Attr::Underline:
+      rb.set_underline(arg);
       break;
     default:
       break;
   }
 }
 
-void MarkupElement::uninstall(TickitPen *pen) const {
+void MarkupElement::uninstall(WindowOutputter &rb) const {
   switch (attr) {
-    case Attr::Tickit::TICKIT_PEN_FG:
-    case Attr::Tickit::TICKIT_PEN_BG:
-      tickit_pen_clear_attr(pen, (TickitPenAttr)attr);
+    case Attr::FgColor:
+      rb.unset_fg_color();
       break;
-    case Attr::Tickit::TICKIT_PEN_ITALIC:
-    case Attr::Tickit::TICKIT_PEN_BOLD:
-    case Attr::Tickit::TICKIT_PEN_REVERSE:
-    case Attr::Tickit::TICKIT_PEN_STRIKE:
-    case Attr::Tickit::TICKIT_PEN_BLINK:
-      tickit_pen_clear_attr(pen, (TickitPenAttr)attr);
+    case Attr::BgColor:
+      rb.unset_bg_color();
       break;
-    case Attr::Tickit::TICKIT_PEN_UNDER:
-    case Attr::Tickit::TICKIT_PEN_ALTFONT:
-      tickit_pen_clear_attr(pen, (TickitPenAttr)attr);
+    case Attr::Bold:
+      rb.unset_bold();
+      break;
+    case Attr::Italic:
+      rb.unset_italic();
+      break;
+    case Attr::Reverse:
+      rb.unset_reverse();
+      break;
+    case Attr::Strike:
+      rb.unset_strike();
+      break;
+    case Attr::Blink:
+      rb.unset_blink();
+      break;
+    case Attr::Underline:
+      rb.unset_underline();
       break;
     default:
       break;
@@ -214,37 +231,23 @@ std::string TextEdit::export_data() {
   return text_;
 }
 
-td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                           TickitCursorShape &cursor_shape, td::int32 width, bool is_selected, bool is_password,
+td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, bool is_selected, bool is_password,
                            td::int32 pad_width, std::string pad_char) {
-  return render(rb, cursor_x, cursor_y, cursor_shape, width, text_, pos_, std::vector<MarkupElement>(), is_selected,
-                is_password, pad_width, pad_char);
+  return render(rb, width, text_, pos_, std::vector<MarkupElement>(), is_selected, is_password, pad_width, pad_char);
 }
 
 namespace {
 
 class Builder {
  public:
-  Builder(TickitRenderBuffer *rb, td::int32 width, bool is_password)
-      : rb_(rb), width_(width), is_password_(is_password) {
-    if (rb_) {
-      pen_ = tickit_pen_new();
-    }
+  Builder(WindowOutputter &rb, td::int32 width, bool is_password) : rb_(rb), width_(width), is_password_(is_password) {
   }
   ~Builder() {
-    if (pen_) {
-      tickit_pen_unref(pen_);
-    }
   }
   void start_new_line() {
-    if (rb_) {
-      tickit_renderbuffer_erase_at(rb_, cur_line_, cur_line_pos_, width_ - cur_line_pos_);
-    }
-    if (rb_) {
-      tickit_renderbuffer_setpen(rb_, pen_);
-      for (int i = 0; i < pad_width_; i++) {
-        tickit_renderbuffer_textn_at(rb_, cur_line_, width_ + i, pad_char_.c_str(), pad_char_.size());
-      }
+    rb_.erase_yx(cur_line_, cur_line_pos_, width_ - cur_line_pos_);
+    for (int i = 0; i < pad_width_; i++) {
+      rb_.putstr_yx(cur_line_, width_ + i, pad_char_.c_str(), pad_char_.size());
     }
     cur_line_++;
     cur_line_pos_ = 0;
@@ -258,18 +261,10 @@ class Builder {
     }
 
     if (!is_password_) {
-      if (rb_) {
-        tickit_renderbuffer_setpen(rb_, pen_);
-        if (width > 0) {
-          tickit_renderbuffer_textn_at(rb_, cur_line_, cur_line_pos_, data.data(), data.size());
-        }
-      }
+      rb_.putstr_yx(cur_line_, cur_line_pos_, data.data(), data.size());
       cur_line_pos_ += width;
     } else {
-      if (rb_) {
-        tickit_renderbuffer_setpen(rb_, pen_);
-        tickit_renderbuffer_textn_at(rb_, cur_line_, cur_line_pos_, "*", 1);
-      }
+      rb_.putstr_yx(cur_line_, cur_line_pos_, "*", 1);
       cur_line_pos_++;
     }
 
@@ -363,18 +358,16 @@ class Builder {
   void add_markup(const MarkupElement &me) {
     if (me.attr == MarkupElement::Attr::NoLB) {
       nolb_++;
-    } else if (pen_) {
-      me.install(pen_);
-      tickit_renderbuffer_setpen(rb_, pen_);
+    } else {
+      me.install(rb_);
     }
   }
 
   void del_markup(const MarkupElement &me) {
     if (me.attr == MarkupElement::Attr::NoLB) {
       nolb_--;
-    } else if (pen_) {
-      me.uninstall(pen_);
-      tickit_renderbuffer_setpen(rb_, pen_);
+    } else {
+      me.uninstall(rb_);
     }
   }
 
@@ -394,8 +387,7 @@ class Builder {
   }
 
  private:
-  TickitRenderBuffer *rb_;
-  TickitPen *pen_{nullptr};
+  WindowOutputter &rb_;
   td::int32 width_;
   td::int32 pad_width_{0};
   std::string pad_char_;
@@ -409,8 +401,7 @@ class Builder {
 
 }  // namespace
 
-td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y,
-                           TickitCursorShape &cursor_shape, td::int32 width, td::Slice text, size_t pos,
+td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text, size_t pos,
                            const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password,
                            td::int32 pad_width, std::string pad_char) {
   struct Action {
@@ -467,9 +458,13 @@ td::int32 TextEdit::render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int3
     cur_pos += x.data.size();
   }
   builder.complete(pos == text.size());
-  cursor_x = builder.cursor_x();
-  cursor_y = builder.cursor_y();
-  cursor_shape = TickitCursorShape::TICKIT_CURSORSHAPE_BLOCK;
+  while (actions_pos < actions.size()) {
+    if (actions[actions_pos].enable) {
+      builder.add_markup(*actions[actions_pos++].el);
+    } else {
+      builder.del_markup(*actions[actions_pos++].el);
+    }
+  }
   return builder.height() - 1;
 }
 

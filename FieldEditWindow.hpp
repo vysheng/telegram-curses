@@ -4,7 +4,7 @@
 #include "td/utils/Promise.h"
 #include "td/utils/Status.h"
 #include "td/utils/common.h"
-#include "windows/EditorWindow.hpp"
+#include "windows/OneLineInputWindow.hpp"
 #include <functional>
 #include <memory>
 #include <utility>
@@ -51,8 +51,8 @@ class FieldEditWindow
     set_callback(std::move(callback));
   }
 
-  void handle_input(TickitKeyEventInfo *info) override {
-    if (info->type == TICKIT_KEYEV_KEY) {
+  void handle_input(const windows::InputEvent &info) override {
+    if (info.is_text_key()) {
       if (menu_window_handle_input(info)) {
         return;
       }

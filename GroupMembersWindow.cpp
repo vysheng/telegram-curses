@@ -6,6 +6,7 @@
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
 #include "td/utils/overloaded.h"
+#include "windows/Output.hpp"
 #include "windows/PadWindow.hpp"
 #include "Outputter.hpp"
 #include "windows/TextEdit.hpp"
@@ -20,7 +21,7 @@ class Element : public windows::PadWindowElement {
   }
   Element(std::shared_ptr<User> chat, size_t idx) : user_(std::move(chat)), idx_(idx) {
   }
-  td::int32 render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+  td::int32 render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
     return render_plain_text(rb, title(), width(), 1, is_selected);
   }
 
@@ -39,14 +40,12 @@ class Element : public windows::PadWindowElement {
     return idx_ < static_cast<const Element &>(other).idx_;
   }
 
-  void handle_input(windows::PadWindow &root, TickitKeyEventInfo *info) override {
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Enter")) {
-        if (chat_) {
-          static_cast<GroupMembersWindow &>(root).spawn_submenu<ChatInfoWindow>(chat_);
-        } else {
-          static_cast<GroupMembersWindow &>(root).spawn_submenu<ChatInfoWindow>(user_);
-        }
+  void handle_input(windows::PadWindow &root, const windows::InputEvent &info) override {
+    if (info == "T-Enter") {
+      if (chat_) {
+        static_cast<GroupMembersWindow &>(root).spawn_submenu<ChatInfoWindow>(chat_);
+      } else {
+        static_cast<GroupMembersWindow &>(root).spawn_submenu<ChatInfoWindow>(user_);
       }
     }
   }

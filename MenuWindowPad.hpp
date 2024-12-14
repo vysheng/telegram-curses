@@ -12,7 +12,7 @@ class MenuWindowPad
  public:
   MenuWindowPad(Tdcurses *root, td::ActorId<Tdcurses> root_actor) : MenuWindow(root, root_actor) {
   }
-  void handle_input(TickitKeyEventInfo *info) override {
+  void handle_input(const windows::InputEvent &info) override {
     if (menu_window_handle_input(info)) {
       return;
     }

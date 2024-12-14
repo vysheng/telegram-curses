@@ -1,6 +1,6 @@
 #pragma once
 
-#include "windows/EditorWindow.hpp"
+#include "windows/ViewWindow.hpp"
 #include <memory>
 
 namespace tdcurses {

@@ -277,7 +277,7 @@ class TdcursesImpl : public Tdcurses {
     };
     auto cb = std::make_unique<Callback>(this);
     auto w = std::make_shared<windows::OneLineInputWindow>("db password: ", true, nullptr);
-    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderedWindow::BorderType::Double);
+    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderType::Double);
     cb->set_window(box.get());
     w->set_callback(std::move(cb));
     add_popup_window(box, 0);
@@ -344,7 +344,7 @@ class TdcursesImpl : public Tdcurses {
     };
     auto cb = std::make_unique<Callback>(this);
     auto w = std::make_shared<windows::OneLineInputWindow>("phone number: ", false, nullptr);
-    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderedWindow::BorderType::Double);
+    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderType::Double);
     cb->set_window(box.get());
     w->set_callback(std::move(cb));
     add_popup_window(box, 0);
@@ -401,7 +401,7 @@ class TdcursesImpl : public Tdcurses {
     };
     auto cb = std::make_unique<Callback>(this);
     auto w = std::make_shared<windows::OneLineInputWindow>("auth code: ", false, nullptr);
-    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderedWindow::BorderType::Double);
+    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderType::Double);
     cb->set_window(box.get());
     w->set_callback(std::move(cb));
     add_popup_window(box, 0);
@@ -426,13 +426,13 @@ class TdcursesImpl : public Tdcurses {
         for (td::int32 j = -1; j <= size; j++) {
           auto col = code.getModule(i, j);
           if (col) {
-            out << Outputter::FgColor{Color::Black};
+            out << Outputter::FgColor{windows::Color::Black};
           } else {
-            out << Outputter::FgColor{Color::White};
+            out << Outputter::FgColor{windows::Color::White};
           }
           out << "\xe2\x96\x88"
               << "\xe2\x96\x88";
-          out << Outputter::FgColor{Color::Revert};
+          out << Outputter::FgColor{windows::Color::Revert};
         }
         out << "\n";
       }
@@ -463,7 +463,7 @@ class TdcursesImpl : public Tdcurses {
     };
 
     auto w = std::make_shared<QrWindow>(out.as_str(), out.markup(), size);
-    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderedWindow::BorderType::Double);
+    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderType::Double);
     add_qr_code_window(box);
   }
   void received_name(td::Result<td::BufferSlice> res) {
@@ -511,7 +511,7 @@ class TdcursesImpl : public Tdcurses {
     };
     auto cb = std::make_unique<Callback>(this);
     auto w = std::make_shared<windows::OneLineInputWindow>("your name: ", false, nullptr);
-    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderedWindow::BorderType::Double);
+    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderType::Double);
     cb->set_window(box.get());
     w->set_callback(std::move(cb));
     add_popup_window(box, 0);
@@ -558,7 +558,7 @@ class TdcursesImpl : public Tdcurses {
     };
     auto cb = std::make_unique<Callback>(this);
     auto w = std::make_shared<windows::OneLineInputWindow>("password: ", true, nullptr);
-    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderedWindow::BorderType::Double);
+    auto box = std::make_shared<windows::BorderedWindow>(w, windows::BorderType::Double);
     cb->set_window(box.get());
     w->set_callback(std::move(cb));
     add_popup_window(box, 0);
@@ -1941,7 +1941,7 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   };
   command_line_window_ =
       std::make_shared<CommandLineWindow>(std::make_unique<CommandLineCallback>(this, actor_id(this)));
-  status_line_window_->replace_text("", {windows::MarkupElement::bg_color(0, 1000, (td::int32)Color::Grey)});
+  status_line_window_->replace_text("", {windows::MarkupElement::bg_color(0, 1000, windows::Color::Grey)});
   //td::log_interface = log_interface_.get();
   screen_->change_layout(layout_);
   layout_->replace_log_window(log_window_);
@@ -2060,7 +2060,7 @@ void TdcursesImpl::update_status_line() {
     out << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
 
     if (unread_chats_) {
-      out << Outputter::FgColor(Color::Red) << unread_chats_ << Outputter::FgColor(Color::Revert);
+      out << Outputter::FgColor(Color::Red) << unread_chats_ << Outputter::FgColor(windows::Color::Revert);
     } else {
       out << unread_chats_;
     }
@@ -2080,8 +2080,8 @@ void TdcursesImpl::update_status_line() {
     out << "\n";
     auto markup = out.markup();
     auto str = out.as_str();
-    markup.push_back(windows::MarkupElement::bg_color(0, 1000, (td::int32)Color::Grey));
-    markup.push_back(windows::MarkupElement::fg_color(0, 1000, (td::int32)Color::Lime));
+    markup.push_back(windows::MarkupElement::bg_color(0, 1000, windows::Color::Grey));
+    markup.push_back(windows::MarkupElement::fg_color(0, 1000, windows::Color::Lime));
     w->replace_text(std::move(str), std::move(markup));
   }
 }
@@ -2132,7 +2132,7 @@ void Tdcurses::spawn_popup_view_window(std::string text, std::vector<windows::Ma
     std::shared_ptr<windows::Window> to_close_;
   };
   auto window = std::make_shared<windows::ViewWindow>(std::move(text), std::move(markup), nullptr);
-  auto box = std::make_shared<windows::BorderedWindow>(window, windows::BorderedWindow::BorderType::Double);
+  auto box = std::make_shared<windows::BorderedWindow>(window, windows::BorderType::Double);
   window->set_callback(std::make_unique<Callback>(this, box));
   add_popup_window(box, priority);
 }

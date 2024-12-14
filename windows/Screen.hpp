@@ -8,8 +8,8 @@
 #include <vector>
 #include <list>
 #include <map>
-
-#include <tickit.h>
+#include "Input.hpp"
+#include "Output.hpp"
 
 namespace windows {
 
@@ -26,14 +26,27 @@ class Screen {
     }
   };
 
+  class Impl {
+   public:
+    virtual ~Impl() = default;
+    virtual bool stop() = 0;
+    virtual void on_resize() = 0;
+    virtual td::int32 width() = 0;
+    virtual td::int32 height() = 0;
+    virtual void tick() = 0;
+    virtual void refresh(bool force, std::shared_ptr<Window> base_window) = 0;
+  };
+
   Screen(std::unique_ptr<Callback> callback);
   ~Screen();
   void init();
+  void init_tickit();
   void stop();
-  void handle_input(TickitKeyEventInfo *info);
+  void handle_input(const InputEvent &info);
   void loop();
-  void resize(int width, int height);
+  void on_resize(int width, int height);
   void refresh(bool force = false);
+  void render(Window &root, WindowOutputter &rb, bool force);
 
   td::int32 width();
   td::int32 height();
@@ -48,17 +61,9 @@ class Screen {
  private:
   void activate_window_in();
 
-  Tickit *tickit_root_{nullptr};
-  TickitTerm *tickit_term_{nullptr};
-  TickitWindow *tickit_root_window_{nullptr};
+  std::unique_ptr<Impl> impl_;
 
-  std::shared_ptr<WindowLayout> layout_;
-  std::list<std::pair<td::int32, std::shared_ptr<Window>>> popup_windows_;
-
-  td::int32 cursor_x_{0}, cursor_y_{0};
-  TickitCursorShape cursor_shape_ = TickitCursorShape::TICKIT_CURSORSHAPE_BLOCK;
-
-  std::shared_ptr<Window> active_window_;
+  std::shared_ptr<Window> base_window_;
   std::unique_ptr<Callback> callback_;
   bool finished_{false};
 };

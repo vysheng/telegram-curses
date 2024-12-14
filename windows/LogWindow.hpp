@@ -25,8 +25,7 @@ class LogWindow : public windows::PadWindow {
     set_need_refresh();
   }
 
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override {
+  void render(WindowOutputter &rb, bool force) override {
     std::list<std::string> r;
     {
       std::lock_guard<std::mutex> lock(mutex);
@@ -38,7 +37,7 @@ class LogWindow : public windows::PadWindow {
         E(std::string text, td::int64 id) : text_(std::move(text)), id_(id) {
         }
 
-        td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+        td::int32 render(PadWindow &root, WindowOutputter &rb, bool is_selected) override {
           return render_plain_text(rb, text_, width(), 1, is_selected);
         }
 
@@ -53,7 +52,7 @@ class LogWindow : public windows::PadWindow {
 
       add_element(std::make_shared<E>(std::move(e), ++last_id_));
     }
-    PadWindow::render(rb, cursor_x, cursor_y, cursor_shape, force);
+    PadWindow::render(rb, force);
   }
 
  private:

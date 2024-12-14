@@ -1,4 +1,5 @@
 #include "WindowLayout.hpp"
+#include "EmptyWindow.hpp"
 #include <memory>
 #include <vector>
 
@@ -54,11 +55,7 @@ class WindowLayoutSplit : public WindowLayout {
     update_windows_list();
   }
 
-  void render_borders(TickitRenderBuffer *rb) override {
-    tickit_renderbuffer_hline_at(rb, windows_[0]->height(), 0, width() - 1, TickitLineStyle::TICKIT_LINE_SINGLE,
-                                 TickitLineCaps::TICKIT_LINECAP_BOTH);
-    tickit_renderbuffer_vline_at(rb, 0, height() - 1, windows_[0]->width(), TickitLineStyle::TICKIT_LINE_SINGLE,
-                                 TickitLineCaps::TICKIT_LINECAP_BOTH);
+  void render_borders(WindowOutputter &rb) override {
   }
 
  private:

@@ -10,12 +10,13 @@
 #include "td/utils/Status.h"
 #include "ChatInfoWindow.hpp"
 #include "FolderSelectionWindow.hpp"
+#include "windows/Output.hpp"
 #include <memory>
 #include <vector>
 
 namespace tdcurses {
 
-td::int32 DialogListWindow::Element::render(windows::PadWindow &root, TickitRenderBuffer *rb, bool is_selected) {
+td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) {
   auto &dialog_list_window = static_cast<DialogListWindow &>(root);
   Outputter out;
   std::string prefix;
@@ -195,37 +196,36 @@ void DialogListWindow::process_update(td::td_api::updateChatPosition &update) {
   });
 }
 
-void DialogListWindow::handle_input(TickitKeyEventInfo *info) {
-  if (info->type == TICKIT_KEYEV_KEY) {
-    if (!strcmp(info->str, "Enter")) {
-      auto a = get_active_element();
-      if (a) {
-        auto el = std::static_pointer_cast<Element>(std::move(a));
-        root()->open_chat(el->chat_id());
-      }
-      return;
+void DialogListWindow::handle_input(const windows::InputEvent &info) {
+  if (info == "T-Enter") {
+    auto a = get_active_element();
+    if (a) {
+      auto el = std::static_pointer_cast<Element>(std::move(a));
+      root()->open_chat(el->chat_id());
     }
-  } else {
-    if (!strcmp(info->str, "I")) {
-      auto a = get_active_element();
-      if (a) {
-        auto el = std::static_pointer_cast<Element>(std::move(a));
-        create_menu_window<ChatInfoWindow>(root(), root_actor_id(), el);
-      }
-      return;
-    } else if (!strcmp(info->str, "s") || !strcmp(info->str, "S")) {
-      spawn_chat_search_window(*this, ChatSearchWindow::Mode::Both,
-                               [curses = root()](td::Result<std::shared_ptr<Chat>> R) {
-                                 if (R.is_ok()) {
-                                   auto chat = R.move_as_ok();
-                                   curses->open_chat(chat->chat_id());
-                                 }
-                               });
-    } else if (!strcmp(info->str, "/") || !strcmp(info->str, ":")) {
-      root()->command_line_window()->handle_input(info);
-    } else if (!strcmp(info->str, "f")) {
-      create_menu_window<FolderSelectionWindow>(root(), root_actor_id());
+    return;
+  } else if (info == "I") {
+    auto a = get_active_element();
+    if (a) {
+      auto el = std::static_pointer_cast<Element>(std::move(a));
+      create_menu_window<ChatInfoWindow>(root(), root_actor_id(), el);
     }
+    return;
+  } else if (info == "s" || info == "S") {
+    spawn_chat_search_window(*this, ChatSearchWindow::Mode::Both,
+                             [curses = root()](td::Result<std::shared_ptr<Chat>> R) {
+                               if (R.is_ok()) {
+                                 auto chat = R.move_as_ok();
+                                 curses->open_chat(chat->chat_id());
+                               }
+                             });
+    return;
+  } else if (info == "/" || info == ":") {
+    root()->command_line_window()->handle_input(info);
+    return;
+  } else if (info == "f") {
+    create_menu_window<FolderSelectionWindow>(root(), root_actor_id());
+    return;
   }
   return PadWindow::handle_input(info);
 }

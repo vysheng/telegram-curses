@@ -1,5 +1,6 @@
 #pragma once
 #include "MenuWindowPad.hpp"
+#include "windows/Output.hpp"
 #include <functional>
 #include <memory>
 #include <utility>
@@ -24,7 +25,7 @@ class MenuWindowElement {
       : name(std::move(name)), data(std::move(data)), markup(std::move(markup)) {
   }
   virtual ~MenuWindowElement() = default;
-  virtual void handle_input(MenuWindowCommon &root, TickitKeyEventInfo *info) {
+  virtual void handle_input(MenuWindowCommon &root, const windows::InputEvent &info) {
   }
   std::string name;
   std::string data;
@@ -37,7 +38,7 @@ class MenuWindowElementSpawn : public MenuWindowElement {
                          MenuWindowSpawnFunction cb)
       : MenuWindowElement(std::move(name), std::move(data), std::move(markup)), cb_(std::move(cb)) {
   }
-  void handle_input(MenuWindowCommon &root, TickitKeyEventInfo *info) override;
+  void handle_input(MenuWindowCommon &root, const windows::InputEvent &info) override;
 
  private:
   MenuWindowSpawnFunction cb_;
@@ -60,7 +61,7 @@ class MenuWindowElementRun : public MenuWindowElement {
       : MenuWindowElement(std::move(name), std::move(data), std::move(markup))
       , cb_([cb = std::move(cb)](MenuWindowCommon &, MenuWindowElementRun &r) { return cb(r); }) {
   }
-  void handle_input(MenuWindowCommon &root, TickitKeyEventInfo *info) override;
+  void handle_input(MenuWindowCommon &root, const windows::InputEvent &info) override;
 
   void replace_text(std::string data, std::vector<windows::MarkupElement> markup = {}) {
   }
@@ -78,13 +79,13 @@ class MenuWindowCommon : public MenuWindowPad {
     Element(size_t idx, std::shared_ptr<MenuWindowElement> element) : idx_(idx), element_(std::move(element)) {
     }
 
-    void handle_input(windows::PadWindow &pad, TickitKeyEventInfo *info) override {
+    void handle_input(windows::PadWindow &pad, const windows::InputEvent &info) override {
       element_->handle_input(static_cast<MenuWindowCommon &>(pad), info);
     }
     bool is_less(const PadWindowElement &other) const override {
       return idx_ < static_cast<const Element &>(other).idx_;
     }
-    td::int32 render(PadWindow &root, TickitRenderBuffer *rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
       auto markup = element_->markup;
       auto text = element_->name;
       while (text.size() < static_cast<MenuWindowCommon &>(root).pad_size()) {
@@ -100,7 +101,7 @@ class MenuWindowCommon : public MenuWindowPad {
         e.last_pos += size;
       }
       markup.push_back(windows::MarkupElement::bold(0, size));
-      markup.push_back(windows::MarkupElement::fg_color(0, size, (td::int32)Color::White));
+      markup.push_back(windows::MarkupElement::fg_color(0, size, windows::Color::White));
       return Element::render_plain_text(rb, text, std::move(markup), width(), std::numeric_limits<td::int32>::max(),
                                         is_selected);
     }

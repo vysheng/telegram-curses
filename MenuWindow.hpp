@@ -3,6 +3,7 @@
 #include "Debug.hpp"
 #include "Outputter.hpp"
 #include "windows/Markup.hpp"
+#include "windows/BorderedWindow.hpp"
 #include "windows/PadWindow.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "windows/Window.hpp"
@@ -30,7 +31,7 @@ class MenuWindow : public TdcursesWindowBase {
 
   static std::shared_ptr<windows::Window> create_boxed_window(std::shared_ptr<MenuWindow> window) {
     auto ptr = window->get_window(window);
-    auto boxed = std::make_shared<windows::BorderedWindow>(std::move(ptr), windows::BorderedWindow::BorderType::Double);
+    auto boxed = std::make_shared<windows::BorderedWindow>(std::move(ptr), windows::BorderType::Double);
     window->bordered_ = boxed;
     return boxed;
   }
@@ -82,28 +83,25 @@ class MenuWindow : public TdcursesWindowBase {
     return res;
   }
 
-  bool menu_window_handle_input(TickitKeyEventInfo *info) {
-    if (info->type == TICKIT_KEYEV_KEY) {
-      if (!strcmp(info->str, "Escape")) {
-        rollback();
-        return true;
-      } else if (!strcmp(info->str, "C-q")) {
-        rollback();
-        return true;
-      } else if (!strcmp(info->str, "C-Q")) {
-        exit();
-        return true;
-      }
+  bool menu_window_handle_input(const windows::InputEvent &info) {
+    if (info == "T-Escape") {
+      rollback();
+      return true;
+    } else if (info == "C-q") {
+      rollback();
+      return true;
+    } else if (info == "C-Q") {
+      exit();
+      return true;
+    } else if (info == "q") {
+      rollback();
+      return true;
+    } else if (info == "Q") {
+      exit();
+      return true;
     } else {
-      if (!strcmp(info->str, "q")) {
-        rollback();
-        return true;
-      } else if (!strcmp(info->str, "Q")) {
-        exit();
-        return true;
-      }
+      return false;
     }
-    return false;
   }
 
   template <typename T, typename... ArgsT>
@@ -117,7 +115,7 @@ class MenuWindow : public TdcursesWindowBase {
     bordered_->set_border_type(bordered_->border_type(), color);
   }
 
-  void set_border_color(windows::BorderedWindow::BorderType border_type, td::int32 color) {
+  void set_border_color(windows::BorderType border_type, td::int32 color) {
     bordered_->set_border_type(border_type, color);
   }
 
@@ -134,5 +132,4 @@ std::shared_ptr<T> create_menu_window(Tdcurses *root, td::ActorId<Tdcurses> root
   res->root()->add_popup_window(boxed, 3);
   return res;
 }
-
 };  // namespace tdcurses

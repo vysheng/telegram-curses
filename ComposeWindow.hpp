@@ -4,6 +4,7 @@
 #include "td/utils/Status.h"
 #include "windows/EditorWindow.hpp"
 #include "TdcursesWindowBase.hpp"
+#include "windows/Output.hpp"
 #include "windows/Window.hpp"
 #include <memory>
 
@@ -34,15 +35,14 @@ class ComposeWindow
   void message_sent(td::Result<td::tl_object_ptr<td::td_api::message>> result);
   void set_draft(std::string message);
 
-  void render(TickitRenderBuffer *rb, td::int32 &cursor_x, td::int32 &cursor_y, TickitCursorShape &cursor_shape,
-              bool force) override;
+  void render(windows::WindowOutputter &rb, bool force) override;
   void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
     editor_window_->resize(width(), reply_message_id_ ? height() - 1 : height());
   }
   bool need_refresh() override {
     return Window::need_refresh() || (editor_window_ && editor_window_->need_refresh());
   }
-  void handle_input(TickitKeyEventInfo *info) override {
+  void handle_input(const windows::InputEvent &info) override {
     editor_window_->handle_input(info);
   }
   void set_reply_message_id(td::int64 reply_message_id) {

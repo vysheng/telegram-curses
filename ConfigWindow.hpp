@@ -21,7 +21,7 @@ class ConfigWindow : public MenuWindowCommon {
     set_title("config");
   }
 
-  void handle_input(TickitKeyEventInfo *info) override {
+  void handle_input(const windows::InputEvent &info) override {
     return MenuWindowCommon::handle_input(info);
   }
 
