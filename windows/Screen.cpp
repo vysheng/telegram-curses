@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <tickit.h>
+#include <notcurses/notcurses.h>
 
 #include "td/utils/Time.h"
 #include "td/utils/Timer.h"
@@ -22,10 +23,19 @@ class BaseWindow : public Window {
   }
 
   void render(WindowOutputter &rb, bool force) override {
-    bool is_first = true;
+    if (layout_) {
+      layout_->resize(width(), height());
+      if (force || (layout_->need_refresh() && layout_->need_refresh_at().is_in_past())) {
+        render_subwindow(rb, layout_.get(), force, popup_windows_.size() == 0, true);
+      }
+    } else if (force) {
+      rb.erase_rect(0, 0, height(), width());
+    }
 
-    for (auto &p : popup_windows_) {
-      auto &window = p.second;
+    size_t x = popup_windows_.size();
+    for (auto it = popup_windows_.rbegin(); it != popup_windows_.rend(); it++) {
+      bool is_last = --x == 0;
+      auto &window = it->second;
       if (window->min_width() > width() || window->min_height() > height()) {
         UNREACHABLE();
       }
@@ -41,20 +51,8 @@ class BaseWindow : public Window {
       window->set_parent_offset(h_off, w_off);
 
       if (force || (window->need_refresh() && window->need_refresh_at().is_in_past())) {
-        render_subwindow(rb, window.get(), force, is_first);
-        window->set_refreshed();
+        render_subwindow(rb, window.get(), force, is_last, true);
       }
-      is_first = false;
-    }
-
-    if (layout_) {
-      layout_->resize(width(), height());
-      if (force || (layout_->need_refresh() && layout_->need_refresh_at().is_in_past())) {
-        render_subwindow(rb, layout_.get(), force, is_first);
-        layout_->set_refreshed();
-      }
-    } else if (force) {
-      rb.erase_rect(0, 0, height(), width());
     }
   }
 
@@ -241,6 +239,115 @@ struct ImplTickit : public Screen::Impl {
 
     tickit_term_flush(tickit_term_);
   }
+
+  td::int32 poll_fd() override {
+    return 0;
+  }
+};
+
+struct ImplNotcurses : public Screen::Impl {
+  /*Tickit *tickit_root_{nullptr};
+  TickitTerm *tickit_term_{nullptr};
+  TickitWindow *tickit_root_window_{nullptr};*/
+  struct notcurses *nc_{nullptr};
+  struct ncplane *baseplane_{nullptr};
+  Screen *screen_{nullptr};
+  bool cursor_enabled_{true};
+
+  bool stop() override {
+    if (nc_) {
+      notcurses_stop(nc_);
+      nc_ = nullptr;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void on_resize() override {
+    //tickit_term_refresh_size(tickit_term_);
+  }
+
+  td::int32 height() override {
+    unsigned lines, cols;
+    notcurses_stddim_yx(nc_, &lines, &cols);
+    return lines;
+  }
+
+  td::int32 width() override {
+    unsigned lines, cols;
+    notcurses_stddim_yx(nc_, &lines, &cols);
+    return cols;
+  }
+
+  void tick() override {
+    while (true) {
+      struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
+      struct ncinput ni;
+      auto res = notcurses_get(nc_, &ts, &ni);
+      if (!res) {
+        break;
+      }
+
+      if (ni.id == NCKEY_RESIZE) {
+        screen_->on_resize(width(), height());
+        continue;
+      }
+
+      if (ni.evtype != NCTYPE_PRESS && ni.evtype != NCTYPE_REPEAT) {
+        continue;
+      }
+
+      char buf[64];
+      size_t pos = 0;
+      size_t p = 0;
+      while (ni.eff_text[p]) {
+        pos += utf8_code_to_str(ni.eff_text[p++], buf + pos);
+      }
+
+      td::MutableCSlice eff_text(buf, buf + pos);
+
+      LOG(ERROR) << "has_ctrl=" << ncinput_ctrl_p(&ni) << " has_alt=" << ncinput_alt_p(&ni)
+                 << " has_shift=" << ncinput_shift_p(&ni) << " letter=" << eff_text.data() << " code=" << ni.id;
+
+      auto r =
+          parse_notcurses_input_event(ni.id, eff_text, ncinput_alt_p(&ni), ncinput_ctrl_p(&ni), ncinput_shift_p(&ni));
+      if (!r) {
+        continue;
+      }
+      screen_->handle_input(*r);
+    }
+    screen_->refresh(true);
+  }
+
+  void refresh(bool force, std::shared_ptr<Window> base_window) override {
+    td::int32 cursor_y = 0, cursor_x = 0;
+    WindowOutputter::CursorShape cursor_shape = WindowOutputter::CursorShape::None;
+    {
+      auto rb = notcurses_window_outputter(baseplane_, height(), width());
+      static_cast<BaseWindow &>(*base_window).render(*rb, force);
+      cursor_y = rb->global_cursor_y();
+      cursor_x = rb->global_cursor_x();
+      cursor_shape = rb->cursor_shape();
+    }
+
+    notcurses_render(nc_);
+
+    if (cursor_shape != WindowOutputter::CursorShape::None && cursor_y >= 0 && cursor_x >= 0) {
+      LOG(ERROR) << "y=" << cursor_y << " x=" << cursor_x;
+      notcurses_cursor_enable(nc_, cursor_y, cursor_x);
+      cursor_enabled_ = true;
+    } else {
+      if (cursor_enabled_) {
+        notcurses_cursor_disable(nc_);
+        cursor_enabled_ = false;
+      }
+    }
+  }
+
+  td::int32 poll_fd() override {
+    return notcurses_inputready_fd(nc_);
+  }
 };
 
 void Screen::init_tickit() {
@@ -287,8 +394,30 @@ void Screen::init_tickit() {
   on_resize(cols, lines);
 }
 
+void Screen::init_notcurses() {
+  impl_ = std::make_unique<ImplNotcurses>();
+  auto impl = (ImplNotcurses *)(impl_.get());
+
+  base_window_ = std::make_shared<BaseWindow>();
+
+  struct notcurses_options opts{.termtype = NULL,
+                                .loglevel = NCLOGLEVEL_WARNING,
+                                .margin_t = 0,
+                                .margin_r = 0,
+                                .margin_b = 0,
+                                .margin_l = 0,
+                                .flags = 0};
+
+  impl->nc_ = notcurses_init(&opts, NULL);
+  impl->baseplane_ = notcurses_stdplane(impl->nc_);
+  impl->screen_ = this;
+
+  on_resize(impl->width(), impl->height());
+}
+
 void Screen::init() {
-  init_tickit();
+  //init_tickit();
+  init_notcurses();
 }
 
 void Screen::stop() {
@@ -393,6 +522,14 @@ void Screen::refresh(bool force) {
 td::Timestamp Screen::need_refresh_at() {
   td::Timestamp r = static_cast<BaseWindow &>(*base_window_).need_refresh_at();
   return r;
+}
+
+td::int32 Screen::poll_fd() {
+  if (impl_) {
+    return impl_->poll_fd();
+  } else {
+    return -1;
+  }
 }
 
 Screen::~Screen() {

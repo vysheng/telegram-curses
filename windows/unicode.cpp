@@ -327,7 +327,7 @@ td::Slice get_utf8_string_substring_utf16_codepoints(td::Slice text, size_t from
   return td::Slice(text).remove_prefix(from_pos).truncate(to_pos - from_pos);
 }
 
-void utf8_code_to_str(td::int32 code, char buf[6]) {
+td::uint32 utf8_code_to_str(td::int32 code, char buf[6]) {
   td::int32 p = 0;
   if (code <= 0x7f) {
     buf[p++] = static_cast<char>(code);
@@ -345,4 +345,5 @@ void utf8_code_to_str(td::int32 code, char buf[6]) {
     buf[p++] = static_cast<char>(0x80 | (code & 0x3f));
   }
   buf[p++] = 0;
+  return p - 1;
 }

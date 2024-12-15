@@ -416,8 +416,10 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
   };
   std::vector<Action> actions;
   for (auto &m : input_markup) {
-    actions.emplace_back(m.first_pos, true, &m);
-    actions.emplace_back(m.last_pos, false, &m);
+    if (m.first_pos != m.last_pos) {
+      actions.emplace_back(m.first_pos, true, &m);
+      actions.emplace_back(m.last_pos, false, &m);
+    }
   }
   auto reverse_markup = MarkupElement::reverse(0, text.size() + 1);
   if (is_selected) {
@@ -465,6 +467,7 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
       builder.del_markup(*actions[actions_pos++].el);
     }
   }
+  rb.cursor_move_yx(builder.cursor_y(), builder.cursor_x(), WindowOutputter::CursorShape::Block);
   return builder.height() - 1;
 }
 

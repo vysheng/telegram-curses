@@ -9,10 +9,12 @@ void WindowLayout::activate_window(std::shared_ptr<Window> active_window) {
   }
   if (active_window_) {
     active_window_->set_active(false);
+    active_window_->set_need_refresh();
   }
   active_window_ = active_window;
   if (active_window_) {
     active_window_->set_active(true);
+    active_window_->set_need_refresh();
   }
 }
 
@@ -88,7 +90,7 @@ void WindowLayout::render(WindowOutputter &rb, bool force) {
     bool is_active = w->window.get() == active_window_.get();
     if (force || (w->window->need_refresh() && w->window->need_refresh_at().is_in_past())) {
       w->window->set_refreshed();
-      render_subwindow(rb, w->window.get(), force, is_active);
+      render_subwindow(rb, w->window.get(), force, is_active, is_active);
     }
   }
 }

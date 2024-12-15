@@ -15,8 +15,11 @@ void Window::resize(td::int32 new_width, td::int32 new_height) {
   on_resize(old_width, old_height, new_width, new_height);
 }
 
-void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, bool update_cursor_pos) {
-  auto tmp_rb = rb.create_subwindow_outputter(next->y_offset_, next->x_offset_, next->height(), next->width());
+void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, bool is_active_rec,
+                              bool update_cursor_pos) {
+  is_active_rec &= rb.is_active();
+  auto tmp_rb =
+      rb.create_subwindow_outputter(next->y_offset_, next->x_offset_, next->height(), next->width(), is_active_rec);
   next->render_wrap(*tmp_rb, force);
   if (update_cursor_pos) {
     rb.update_cursor_position_from(*tmp_rb);
@@ -24,7 +27,7 @@ void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, boo
 }
 
 void Window::render_wrap(WindowOutputter &rb, bool force) {
-  if (!force && !need_refresh()) {
+  if (!force && (!need_refresh() || !need_refresh_at().is_in_past())) {
     rb.cursor_move_yx(saved_cursor_y_, saved_cursor_x_, saved_cursor_shape_);
     return;
   }
@@ -32,8 +35,8 @@ void Window::render_wrap(WindowOutputter &rb, bool force) {
   set_refreshed();
   render(rb, force);
 
-  saved_cursor_x_ = rb.local_cursor_x();
   saved_cursor_y_ = rb.local_cursor_y();
+  saved_cursor_x_ = rb.local_cursor_x();
   saved_cursor_shape_ = rb.cursor_shape();
 }
 

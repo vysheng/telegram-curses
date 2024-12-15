@@ -95,7 +95,7 @@ class Window {
     set_need_refresh();
   }
 
-  void render_subwindow(WindowOutputter &rb, Window *next, bool force, bool update_cursor_pos);
+  void render_subwindow(WindowOutputter &rb, Window *next, bool force, bool is_active, bool update_cursor_pos);
 
  private:
   td::int32 width_{10};

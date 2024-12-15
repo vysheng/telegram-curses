@@ -19,6 +19,8 @@ class InputEvent {
 };
 
 std::unique_ptr<InputEvent> parse_tickit_input_event(td::CSlice utf8, bool is_special);
+std::unique_ptr<InputEvent> parse_notcurses_input_event(td::int32 code, td::MutableCSlice utf8, bool alt, bool ctrl,
+                                                        bool shift);
 std::unique_ptr<InputEvent> parse_ignore_input_event();
 
 }  // namespace windows

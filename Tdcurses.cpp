@@ -19,6 +19,8 @@
 #include "td/utils/logging.h"
 #include "td/utils/misc.h"
 #include "td/utils/overloaded.h"
+#include "td/utils/port/detail/NativeFd.h"
+#include "td/utils/port/detail/PollableFd.h"
 #include "td/utils/port/signals.h"
 #include "td/utils/OptionParser.h"
 #include "td/utils/filesystem.h"
@@ -1885,7 +1887,9 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   auto cb = std::make_unique<Cb>(self_);
   screen_ = std::make_unique<windows::Screen>(std::move(cb));
   screen_->init();
-  td::Scheduler::subscribe(td::Stdin().get_poll_info().extract_pollable_fd(this), td::PollFlags::Read());
+  auto poll_fd = screen_->poll_fd();
+  poll_fd_.set_native_fd(td::NativeFd{poll_fd});
+  td::Scheduler::subscribe(poll_fd_.extract_pollable_fd(this), td::PollFlags::Read());
   loop();
   layout_ = std::make_shared<TdcursesLayout>(this, actor_id(this));
   log_window_ = std::make_shared<windows::LogWindow>();
@@ -2011,7 +2015,7 @@ void Tdcurses::close_compose_window() {
 }
 
 void Tdcurses::loop() {
-  td::sync_with_poll(td::Stdin());
+  poll_fd_.sync_with_poll();
   screen_->loop();
   auto t = screen_->need_refresh_at();
   if (t) {
@@ -2028,7 +2032,7 @@ void Tdcurses::refresh() {
 }
 
 void Tdcurses::tear_down() {
-  td::Scheduler::unsubscribe(td::Stdin().get_poll_info().get_pollable_fd_ref());
+  td::Scheduler::unsubscribe(poll_fd_.get_pollable_fd_ref());
 }
 
 void Tdcurses::initialize_options(TdcursesParameters &params) {

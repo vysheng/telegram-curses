@@ -31,4 +31,4 @@ Graphem next_graphems(td::Slice data, size_t pos = 0, size_t limit_bytes = (size
                       td::int32 limit_graphems = -1, td::int32 limit_codepoints = -1);
 td::Slice get_utf8_string_substring(td::Slice text, size_t from, size_t to);
 td::Slice get_utf8_string_substring_utf16_codepoints(td::Slice text, size_t from, size_t to);
-void utf8_code_to_str(td::int32 code, char buf[6]);
+td::uint32 utf8_code_to_str(td::int32 code, char buf[6]);

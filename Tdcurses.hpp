@@ -210,6 +210,7 @@ class Tdcurses : public TdcursesInterface {
   void unregister_alive_window(TdcursesWindowBase *window);
 
   virtual void update_status_line() = 0;
+  td::PollableFdInfo poll_fd_;
 };
 
 }  // namespace tdcurses

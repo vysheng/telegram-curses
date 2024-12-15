@@ -125,11 +125,14 @@ class WindowOutputter {
   }
 
   virtual std::unique_ptr<WindowOutputter> create_subwindow_outputter(td::int32 y_offset, td::int32 x_offset,
-                                                                      td::int32 height, td::int32 width) = 0;
+                                                                      td::int32 height, td::int32 width,
+                                                                      bool is_active) = 0;
   virtual void update_cursor_position_from(WindowOutputter &from) = 0;
+  virtual bool is_active() const = 0;
 };
 
 WindowOutputter &empty_window_outputter();
 std::unique_ptr<WindowOutputter> tickit_window_outputter(void *rb, td::int32 height, td::int32 width);
+std::unique_ptr<WindowOutputter> notcurses_window_outputter(void *rb, td::int32 height, td::int32 width);
 
 }  // namespace windows

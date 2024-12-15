@@ -31,7 +31,7 @@ void BorderedWindow::render(WindowOutputter &rb, bool force) {
     return;
   }
 
-  render_subwindow(rb, next_.get(), force, true);
+  render_subwindow(rb, next_.get(), force, true, true);
 
   if (vert_border_thic_ != 0) {
     if (color_ != -1) {

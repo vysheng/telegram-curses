@@ -647,7 +647,7 @@ void PadWindow::render(WindowOutputter &rb, bool force) {
     rb.untranslate(height() - 1, 0);
   }
 
-  render_subwindow(rb, pad_window_body_.get(), force, true);
+  render_subwindow(rb, pad_window_body_.get(), force, true, true);
   rb.cursor_move_yx(0, 0, WindowOutputter::CursorShape::None);
 }
 

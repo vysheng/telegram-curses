@@ -35,12 +35,14 @@ class Screen {
     virtual td::int32 height() = 0;
     virtual void tick() = 0;
     virtual void refresh(bool force, std::shared_ptr<Window> base_window) = 0;
+    virtual td::int32 poll_fd() = 0;
   };
 
   Screen(std::unique_ptr<Callback> callback);
   ~Screen();
   void init();
   void init_tickit();
+  void init_notcurses();
   void stop();
   void handle_input(const InputEvent &info);
   void loop();
@@ -57,6 +59,8 @@ class Screen {
   void change_layout(std::shared_ptr<WindowLayout> window_layout);
 
   td::Timestamp need_refresh_at();
+
+  td::int32 poll_fd();
 
  private:
   void activate_window_in();
