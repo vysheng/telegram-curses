@@ -140,7 +140,7 @@ void PadWindow::on_resize(td::int32, td::int32 old_height, td::int32 new_width, 
     auto &el = *p.second;
     auto old_height = el.height;
     el.element->change_width(new_width);
-    el.height = el.element->render(*this, empty_window_outputter(), cur_element_ == nullptr);
+    el.height = el.element->render_fake(*this, empty_window_outputter(), cur_element_ == nullptr);
     auto new_height = el.height;
 
     if (el.element->is_less(*cur_element_->element)) {
@@ -175,7 +175,7 @@ void PadWindow::change_element(PadWindowElement *elem) {
 
   auto old_height = it->second->height;
 
-  el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
+  el.height = el.element->render_fake(*this, empty_window_outputter(), it->second.get() == cur_element_);
 
   auto new_height = it->second->height;
 
@@ -215,7 +215,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     if (elem->is_visible()) {
       it = elements_.emplace(elem.get(), std::move(ptr)).first;
       auto &el = *it->second;
-      el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
+      el.height = el.element->render_fake(*this, empty_window_outputter(), it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
         lines_after_cur_element_ += it->second->height;
       } else {
@@ -230,7 +230,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     if (elem->is_visible()) {
       it = elements_.emplace(elem.get(), std::move(ptr)).first;
       auto &el = *it->second;
-      el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
+      el.height = el.element->render_fake(*this, empty_window_outputter(), it->second.get() == cur_element_);
       if (cur_element_->element->is_less(*elem)) {
         lines_after_cur_element_ += it->second->height;
       } else {
@@ -257,7 +257,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
         unchanged_pos = true;
       }
     }
-    el.height = el.element->render(*this, empty_window_outputter(), it->second.get() == cur_element_);
+    el.height = el.element->render_fake(*this, empty_window_outputter(), it->second.get() == cur_element_);
     auto new_height = it->second->height;
     offset_in_cur_element_ = (td::int32)(p * new_height);
 
@@ -358,7 +358,7 @@ void PadWindow::add_element(std::shared_ptr<PadWindowElement> element) {
   CHECK(el.element);
   el.element->change_width(width());
 
-  el.height = el.element->render(*this, empty_window_outputter(), cur_element_ == nullptr);
+  el.height = el.element->render_fake(*this, empty_window_outputter(), cur_element_ == nullptr);
 
   auto new_height = it->second->height;
 
@@ -657,6 +657,8 @@ void PadWindow::render_body(WindowOutputter &rb, bool force) {
     return;
   }
 
+  auto dir = SavedRenderedImagesDirectory(std::move(saved_images_));
+
   auto offset = offset_from_window_top_ - offset_in_cur_element_;
   auto it = elements_.find(cur_element_->element.get());
   CHECK(it != elements_.end());
@@ -676,7 +678,7 @@ void PadWindow::render_body(WindowOutputter &rb, bool force) {
 
   while (offset < effective_height() && it != elements_.end()) {
     rb.translate(offset, 0);
-    auto x = it->second->element->render(*this, rb, it->second.get() == cur_element_);
+    auto x = it->second->element->render(*this, rb, dir, it->second.get() == cur_element_);
     rb.untranslate(offset, 0);
 
     offset += x;
@@ -707,11 +709,14 @@ void PadWindow::render_body(WindowOutputter &rb, bool force) {
   if (need_refresh()) {
     adjust_cur_element(0);
   }
+
+  saved_images_ = dir.release();
 }
 
 td::int32 PadWindowElement::render_plain_text(WindowOutputter &rb, td::Slice text, td::int32 width,
-                                              td::int32 max_height, bool is_selected) {
-  auto h = TextEdit::render(rb, width, text, 0, std::vector<MarkupElement>(), is_selected, false);
+                                              td::int32 max_height, bool is_selected,
+                                              SavedRenderedImagesDirectory *images) {
+  auto h = TextEdit::render(rb, width, text, 0, std::vector<MarkupElement>(), is_selected, false, images);
   if (h > max_height) {
     h = max_height;
   }
@@ -719,8 +724,9 @@ td::int32 PadWindowElement::render_plain_text(WindowOutputter &rb, td::Slice tex
 }
 
 td::int32 PadWindowElement::render_plain_text(WindowOutputter &rb, td::Slice text, std::vector<MarkupElement> markup,
-                                              td::int32 width, td::int32 max_height, bool is_selected) {
-  auto h = TextEdit::render(rb, width, text, 0, markup, is_selected, false);
+                                              td::int32 width, td::int32 max_height, bool is_selected,
+                                              SavedRenderedImagesDirectory *images) {
+  auto h = TextEdit::render(rb, width, text, 0, markup, is_selected, false, images);
   if (h > max_height) {
     h = max_height;
   }

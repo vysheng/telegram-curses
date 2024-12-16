@@ -251,6 +251,7 @@ struct ImplNotcurses : public Screen::Impl {
   TickitWindow *tickit_root_window_{nullptr};*/
   struct notcurses *nc_{nullptr};
   struct ncplane *baseplane_{nullptr};
+  struct ncplane *renderplane_{nullptr};
   Screen *screen_{nullptr};
   bool cursor_enabled_{true};
 
@@ -324,7 +325,7 @@ struct ImplNotcurses : public Screen::Impl {
     td::int32 cursor_y = 0, cursor_x = 0;
     WindowOutputter::CursorShape cursor_shape = WindowOutputter::CursorShape::None;
     {
-      auto rb = notcurses_window_outputter(baseplane_, height(), width());
+      auto rb = notcurses_window_outputter(nc_, baseplane_, renderplane_, height(), width());
       static_cast<BaseWindow &>(*base_window).render(*rb, force);
       cursor_y = rb->global_cursor_y();
       cursor_x = rb->global_cursor_x();
@@ -334,7 +335,6 @@ struct ImplNotcurses : public Screen::Impl {
     notcurses_render(nc_);
 
     if (cursor_shape != WindowOutputter::CursorShape::None && cursor_y >= 0 && cursor_x >= 0) {
-      LOG(ERROR) << "y=" << cursor_y << " x=" << cursor_x;
       notcurses_cursor_enable(nc_, cursor_y, cursor_x);
       cursor_enabled_ = true;
     } else {
@@ -391,6 +391,8 @@ void Screen::init_tickit() {
 
   tickit_term_observe_sigwinch(impl->tickit_term_, true);
 
+  create_empty_window_outputter_libtickit();
+
   on_resize(cols, lines);
 }
 
@@ -400,18 +402,31 @@ void Screen::init_notcurses() {
 
   base_window_ = std::make_shared<BaseWindow>();
 
-  struct notcurses_options opts{.termtype = NULL,
-                                .loglevel = NCLOGLEVEL_WARNING,
-                                .margin_t = 0,
-                                .margin_r = 0,
-                                .margin_b = 0,
-                                .margin_l = 0,
-                                .flags = 0};
+  struct notcurses_options curses_opts{.termtype = NULL,
+                                       .loglevel = NCLOGLEVEL_WARNING,
+                                       .margin_t = 0,
+                                       .margin_r = 0,
+                                       .margin_b = 0,
+                                       .margin_l = 0,
+                                       .flags = 0};
 
-  impl->nc_ = notcurses_init(&opts, NULL);
-  impl->baseplane_ = notcurses_stdplane(impl->nc_);
   impl->screen_ = this;
+  impl->nc_ = notcurses_init(&curses_opts, NULL);
+  impl->baseplane_ = notcurses_stdplane(impl->nc_);
 
+  struct ncplane_options plane_opts{.y = 0,
+                                    .x = 0,
+                                    .rows = (unsigned int)impl->height(),
+                                    .cols = (unsigned int)impl->width(),
+                                    .userptr = nullptr,
+                                    .name = nullptr,
+                                    .resizecb = nullptr,
+                                    .flags = NCPLANE_OPTION_FIXED,
+                                    .margin_b = 0,
+                                    .margin_r = 0};
+
+  impl->renderplane_ = ncplane_create(impl->baseplane_, &plane_opts);
+  create_empty_window_outputter_notcurses(impl->nc_, impl->baseplane_, impl->renderplane_);
   on_resize(impl->width(), impl->height());
 }
 

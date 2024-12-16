@@ -55,6 +55,7 @@ class ViewWindow : public Window {
   std::vector<MarkupElement> markup_;
   td::int32 offset_from_top_{0};
   std::unique_ptr<Callback> callback_;
+  SavedRenderedImages saved_images_;
 };
 
 }  // namespace windows

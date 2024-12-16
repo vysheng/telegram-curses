@@ -106,6 +106,7 @@ Outputter &operator<<(Outputter &, const td::td_api::animation &content);
 Outputter &operator<<(Outputter &, const td::td_api::audio &content);
 Outputter &operator<<(Outputter &, const td::td_api::document &content);
 Outputter &operator<<(Outputter &, const td::td_api::photo &content);
+Outputter &operator<<(Outputter &, const td::td_api::photoSize &content);
 Outputter &operator<<(Outputter &, const td::td_api::sticker &content);
 Outputter &operator<<(Outputter &, const td::td_api::video &content);
 Outputter &operator<<(Outputter &, const td::td_api::videoNote &content);

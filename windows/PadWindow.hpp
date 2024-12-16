@@ -16,7 +16,15 @@ class PadWindow;
 class PadWindowElement {
  public:
   virtual ~PadWindowElement() = default;
-  virtual td::int32 render(PadWindow &root, WindowOutputter &rb, bool is_selected) = 0;
+  virtual td::int32 render(PadWindow &root, WindowOutputter &rb, SavedRenderedImagesDirectory &dir,
+                           bool is_selected) = 0;
+  virtual td::int32 render_fake(PadWindow &root, WindowOutputter &rb, bool is_selected) {
+    CHECK(!rb.is_real());
+    SavedRenderedImagesDirectory dir{{}};
+    auto r = render(root, rb, dir, is_selected);
+    CHECK(!dir.new_images.size());
+    return r;
+  }
   void change_width(td::int32 width) {
     width_ = width;
   }
@@ -37,10 +45,10 @@ class PadWindowElement {
     return 0;
   }*/
 
-  static td::int32 render_plain_text(WindowOutputter &rb, td::Slice text, td::int32 width, td::int32 max_height,
-                                     bool is_selected);
-  static td::int32 render_plain_text(WindowOutputter &rb, td::Slice text, std::vector<MarkupElement> markup,
-                                     td::int32 width, td::int32 max_height, bool is_selected);
+  td::int32 render_plain_text(WindowOutputter &rb, td::Slice text, td::int32 width, td::int32 max_height,
+                              bool is_selected, SavedRenderedImagesDirectory *images);
+  td::int32 render_plain_text(WindowOutputter &rb, td::Slice text, std::vector<MarkupElement> markup, td::int32 width,
+                              td::int32 max_height, bool is_selected, SavedRenderedImagesDirectory *images);
 
  private:
   td::int32 width_;
@@ -193,6 +201,8 @@ class PadWindow : public Window {
 
   std::string title_;
   std::shared_ptr<Window> pad_window_body_;
+
+  SavedRenderedImages saved_images_;
 };
 
 }  // namespace windows

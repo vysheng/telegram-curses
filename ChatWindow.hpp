@@ -37,7 +37,8 @@ class ChatWindow
         : message(std::move(message)), generation(generation) {
     }
 
-    td::int32 render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override;
+    td::int32 render(windows::PadWindow &root, windows::WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
+                     bool is_selected) override;
 
     bool is_less(const windows::PadWindowElement &elx) const override {
       const Element &el = static_cast<const Element &>(elx);

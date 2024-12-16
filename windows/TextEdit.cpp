@@ -2,6 +2,7 @@
 #include "td/utils/Status.h"
 #include "td/utils/utf8.h"
 #include "unicode.h"
+#include <memory>
 #include <vector>
 #include <algorithm>
 #include <functional>
@@ -39,6 +40,14 @@ MarkupElement MarkupElement::blink(size_t first_pos, size_t last_pos) {
 }
 MarkupElement MarkupElement::nolb(size_t first_pos, size_t last_pos) {
   return MarkupElement(first_pos, last_pos, Attr::NoLB, 1);
+}
+
+MarkupElement MarkupElement::photo(size_t first_pos, size_t last_pos, td::int32 height, td::int32 width,
+                                   std::string path) {
+  auto r = MarkupElement(first_pos, last_pos, Attr::Photo, height);
+  r.arg2 = width;
+  r.str_arg = path;
+  return r;
 }
 
 void MarkupElement::install(WindowOutputter &rb) const {
@@ -232,15 +241,21 @@ std::string TextEdit::export_data() {
 }
 
 td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, bool is_selected, bool is_password,
-                           td::int32 pad_width, std::string pad_char) {
-  return render(rb, width, text_, pos_, std::vector<MarkupElement>(), is_selected, is_password, pad_width, pad_char);
+                           SavedRenderedImagesDirectory *rendered_images, td::int32 pad_width, std::string pad_char) {
+  return render(rb, width, text_, pos_, std::vector<MarkupElement>(), is_selected, is_password, rendered_images,
+                pad_width, pad_char);
 }
 
 namespace {
 
 class Builder {
  public:
-  Builder(WindowOutputter &rb, td::int32 width, bool is_password) : rb_(rb), width_(width), is_password_(is_password) {
+  Builder(WindowOutputter &rb, td::int32 width, bool is_password, SavedRenderedImagesDirectory *images)
+      : rb_(rb), width_(width), is_password_(is_password) {
+    if (images) {
+      old_images_ = std::move(images->old_images);
+      images_ = std::move(images->new_images);
+    }
   }
   ~Builder() {
   }
@@ -340,7 +355,7 @@ class Builder {
     }
   }
 
-  void complete(bool has_cursor) {
+  void complete(bool has_cursor, SavedRenderedImagesDirectory *images) {
     if (!is_password_) {
       add_control('\n', has_cursor);
     } else {
@@ -353,11 +368,54 @@ class Builder {
       }
       start_new_line();
     }
+    if (images) {
+      images->old_images = std::move(old_images_);
+      images->new_images = std::move(images_);
+    } else {
+      CHECK(!images_.size());
+    }
   }
 
   void add_markup(const MarkupElement &me) {
     if (me.attr == MarkupElement::Attr::NoLB) {
       nolb_++;
+    } else if (me.attr == MarkupElement::Attr::Photo) {
+      if (!me.arg || !me.arg2 || !rb_.allow_render_image()) {
+        return;
+      }
+
+      if (rb_.is_real()) {
+        std::unique_ptr<RenderedImage> image;
+
+        auto it = old_images_.find(me.str_arg);
+        if (it != old_images_.end()) {
+          image = std::move(it->second.back());
+          it->second.pop_back();
+          if (it->second.size() == 0) {
+            old_images_.erase(it);
+          }
+        }
+
+        if (image && image->rendered_to_width() != width_) {
+          image = nullptr;
+        }
+
+        start_new_line();
+        if (!image) {
+          image = rb_.render_image(20, width_, me.str_arg);
+        }
+        if (image) {
+          rb_.transparent_rect(cur_line_, 0, image->height(), width_);
+          rb_.draw_rendered_image(cur_line_, 0, *image);
+          cur_line_ += image->height();
+          images_[me.str_arg].push_back(std::move(image));
+        }
+      } else {
+        auto h = rb_.rendered_image_height(20, width_, me.str_arg);
+        LOG(ERROR) << "h=" << h;
+        start_new_line();
+        cur_line_ += h;
+      }
     } else {
       me.install(rb_);
     }
@@ -397,13 +455,16 @@ class Builder {
   td::int32 cursor_y_{-1};
   bool is_password_{false};
   td::int32 nolb_{0};
+
+  std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> old_images_;
+  std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> images_;
 };
 
 }  // namespace
 
 td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text, size_t pos,
                            const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password,
-                           td::int32 pad_width, std::string pad_char) {
+                           SavedRenderedImagesDirectory *rendered_images, td::int32 pad_width, std::string pad_char) {
   struct Action {
     Action(size_t pos, bool enable, const MarkupElement *el) : pos(pos), enable(enable), el(el) {
     }
@@ -430,7 +491,7 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
   std::sort(actions.begin(), actions.end());
   size_t actions_pos = 0;
 
-  Builder builder(rb, width, is_password);
+  Builder builder(rb, width, is_password, rendered_images);
   builder.set_pad(pad_width, pad_char);
 
   size_t cur_pos = 0;
@@ -459,7 +520,7 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
     }
     cur_pos += x.data.size();
   }
-  builder.complete(pos == text.size());
+  builder.complete(pos == text.size(), rendered_images);
   while (actions_pos < actions.size()) {
     if (actions[actions_pos].enable) {
       builder.add_markup(*actions[actions_pos++].el);

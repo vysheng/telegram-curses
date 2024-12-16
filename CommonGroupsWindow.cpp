@@ -16,8 +16,9 @@ class Element : public windows::PadWindowElement {
  public:
   Element(std::shared_ptr<Chat> chat, size_t idx) : chat_(std::move(chat)), idx_(idx) {
   }
-  td::int32 render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
-    return render_plain_text(rb, chat_->title(), width(), 1, is_selected);
+  td::int32 render(windows::PadWindow &root, windows::WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
+                   bool is_selected) override {
+    return render_plain_text(rb, chat_->title(), width(), 1, is_selected, &dir);
   }
 
   bool is_less(const PadWindowElement &other) const override {

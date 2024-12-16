@@ -1,5 +1,6 @@
 #pragma once
 
+#include "td/utils/Slice-decl.h"
 #include "td/utils/Slice.h"
 #include <memory>
 
@@ -25,6 +26,14 @@ enum class Color : td::int32 {
   Fuchsia,
   Aqua,
   White
+};
+
+class RenderedImage {
+ public:
+  virtual ~RenderedImage() = default;
+  virtual td::int32 rendered_to_width() = 0;
+  virtual td::int32 width() = 0;
+  virtual td::int32 height() = 0;
 };
 
 class WindowOutputter {
@@ -88,6 +97,14 @@ class WindowOutputter {
       putstr_yx(y + i, x, value);
     }
   }
+  virtual void fill_rect(td::int32 y, td::int32 x, td::int32 height, td::int32 width, td::CSlice value) {
+    if (!is_real()) {
+      return;
+    }
+    for (td::int32 i = 0; i < height; i++) {
+      fill_yx(y + i, x, value, width);
+    }
+  }
   virtual void erase_rect(td::int32 y, td::int32 x, td::int32 height, td::int32 width) {
     if (!is_real()) {
       return;
@@ -95,6 +112,12 @@ class WindowOutputter {
     for (td::int32 i = 0; i < height; i++) {
       erase_yx(y + i, x, width);
     }
+  }
+  virtual void transparent_rect(td::int32 y, td::int32 x, td::int32 height, td::int32 width) {
+    if (!is_real()) {
+      return;
+    }
+    erase_rect(y, x, height, width);
   }
   virtual void cursor_move_yx(td::int32 y, td::int32 x, CursorShape cursor_shape) = 0;
   virtual void set_fg_color(Color color) = 0;
@@ -129,10 +152,28 @@ class WindowOutputter {
                                                                       bool is_active) = 0;
   virtual void update_cursor_position_from(WindowOutputter &from) = 0;
   virtual bool is_active() const = 0;
+  virtual bool allow_render_image() {
+    return false;
+  }
+  virtual td::int32 rendered_image_height(td::int32 max_height, td::int32 max_width, std::string path) {
+    return 0;
+  }
+  virtual std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, std::string path) {
+    return nullptr;
+  }
+  virtual void draw_rendered_image(td::int32 y, td::int32 x, RenderedImage &image) {
+  }
+  virtual void hide_rendered_image(RenderedImage &image) {
+  }
 };
+
+void create_empty_window_outputter_notcurses(void *notcurses, void *baseplane, void *renderplane);
+void create_empty_window_outputter_libtickit();
 
 WindowOutputter &empty_window_outputter();
 std::unique_ptr<WindowOutputter> tickit_window_outputter(void *rb, td::int32 height, td::int32 width);
-std::unique_ptr<WindowOutputter> notcurses_window_outputter(void *rb, td::int32 height, td::int32 width);
+std::unique_ptr<WindowOutputter> notcurses_window_outputter(void *notcurses, void *baseplane, void *renderplane,
+                                                            td::int32 height, td::int32 width);
 
+using SavedRenderedImages = std::vector<std::pair<std::string, std::vector<std::unique_ptr<RenderedImage>>>>;
 }  // namespace windows

@@ -93,7 +93,7 @@ const td::td_api::file *message_get_file(const td::td_api::message &message) {
           [&](const td::td_api::messageAudio &content) { res = content.audio_->audio_.get(); },
           [&](const td::td_api::messageDocument &content) { res = content.document_->document_.get(); },
           [&](const td::td_api::messagePaidMedia &content) {},
-          [&](const td::td_api::messagePhoto &content) { res = content.photo_->sizes_.front()->photo_.get(); },
+          [&](const td::td_api::messagePhoto &content) { res = content.photo_->sizes_.back()->photo_.get(); },
           [&](const td::td_api::messageSticker &content) { res = content.sticker_->sticker_.get(); },
           [&](const td::td_api::messageVideo &content) { res = content.video_->video_.get(); },
           [&](const td::td_api::messageVideoNote &content) { res = content.video_note_->video_.get(); },

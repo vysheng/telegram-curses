@@ -4,6 +4,7 @@
 #include "td/utils/format.h"
 #include "td/utils/format.h"
 #include "ChatWindow.hpp"
+#include "windows/Markup.hpp"
 #include "windows/unicode.h"
 
 namespace td {
@@ -118,6 +119,13 @@ Outputter &Outputter::operator<<(const RightPad &x) {
   char buf[6];
   utf8_code_to_str(code, buf);
   return *this << td::CSlice((char *)buf) << x.data;
+}
+
+Outputter &Outputter::operator<<(const Photo &obj) {
+  markup_.push_back(windows::MarkupElement::photo(sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.height,
+                                                  obj.width, obj.path.str()));
+  *this << " ";
+  return *this;
 }
 
 }  // namespace tdcurses

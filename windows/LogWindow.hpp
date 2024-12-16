@@ -37,8 +37,9 @@ class LogWindow : public windows::PadWindow {
         E(std::string text, td::int64 id) : text_(std::move(text)), id_(id) {
         }
 
-        td::int32 render(PadWindow &root, WindowOutputter &rb, bool is_selected) override {
-          return render_plain_text(rb, text_, width(), 1, is_selected);
+        td::int32 render(PadWindow &root, WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
+                         bool is_selected) override {
+          return render_plain_text(rb, text_, width(), 1, is_selected, &dir);
         }
 
         bool is_less(const PadWindowElement &el) const override {

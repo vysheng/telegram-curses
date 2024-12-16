@@ -153,15 +153,16 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
   }
 }
 
-td::int32 ChatWindow::Element::render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) {
+td::int32 ChatWindow::Element::render(windows::PadWindow &root, windows::WindowOutputter &rb,
+                                      windows::SavedRenderedImagesDirectory &dir, bool is_selected) {
   auto &chat_window = static_cast<ChatWindow &>(root);
   auto d = chat_window.multi_message_selection_mode() ? 1 : 0;
   Outputter out;
   out.set_chat(static_cast<ChatWindow *>(&root));
   out << message;
   bool s = chat_window.multi_message_selection_mode_is_selected(ChatWindow::build_message_id(*message));
-  auto r =
-      windows::TextEdit::render(rb, width() - d, out.as_str(), 0, out.markup(), is_selected, false, d, s ? "*" : " ");
+  auto r = windows::TextEdit::render(rb, width() - d, out.as_str(), 0, out.markup(), is_selected, false, &dir, d,
+                                     s ? "*" : " ");
   return r;
 }
 
@@ -650,8 +651,11 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
     return;
   } else if (info == "v") {
     auto file = message_get_file(*message);
-    if (file && file->local_ && file->size_ == file->local_->downloaded_size_) {
+    if (file && file->local_->is_downloading_completed_) {
       global_parameters().open_document(file->local_->path_);
+    } else if (file) {
+      chat_window.send_request(td::make_tl_object<td::td_api::downloadFile>(file->id_, 20, 0, 0, false),
+                               [](td::Result<td::tl_object_ptr<td::td_api::file>> R) {});
     }
   } else if (info == "r") {
     chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);

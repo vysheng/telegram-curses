@@ -73,7 +73,7 @@ class YesNoWindow
     }
 
     rb.translate(height() - 2, 0);
-    windows::TextEdit::render(rb, width(), text, 0, markup, false, false, 0, "");
+    windows::TextEdit::render(rb, width(), text, 0, markup, false, false);
     rb.untranslate(height() - 2, 0);
     rb.cursor_move_yx(0, 0, windows::WindowOutputter::CursorShape::None);
   }

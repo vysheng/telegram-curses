@@ -132,6 +132,14 @@ class Outputter {
     cur_chat_ = chat;
   }
 
+  struct Photo {
+    td::CSlice path;
+    td::int32 width;
+    td::int32 height;
+  };
+
+  Outputter &operator<<(const Photo &);
+
  private:
   std::vector<std::vector<std::pair<size_t, td::int32>>> args_;
   std::vector<windows::MarkupElement> markup_;

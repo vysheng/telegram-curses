@@ -85,7 +85,8 @@ class MenuWindowCommon : public MenuWindowPad {
     bool is_less(const PadWindowElement &other) const override {
       return idx_ < static_cast<const Element &>(other).idx_;
     }
-    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
+                     bool is_selected) override {
       auto markup = element_->markup;
       auto text = element_->name;
       while (text.size() < static_cast<MenuWindowCommon &>(root).pad_size()) {
@@ -102,8 +103,8 @@ class MenuWindowCommon : public MenuWindowPad {
       }
       markup.push_back(windows::MarkupElement::bold(0, size));
       markup.push_back(windows::MarkupElement::fg_color(0, size, windows::Color::White));
-      return Element::render_plain_text(rb, text, std::move(markup), width(), std::numeric_limits<td::int32>::max(),
-                                        is_selected);
+      return render_plain_text(rb, text, std::move(markup), width(), std::numeric_limits<td::int32>::max(), is_selected,
+                               &dir);
     }
 
     void update_element(std::shared_ptr<MenuWindowElement> element) {

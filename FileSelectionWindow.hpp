@@ -76,7 +76,8 @@ class FileSelectionWindow : public MenuWindowPad {
       }
     }
 
-    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, bool is_selected) override {
+    td::int32 render(PadWindow &root, windows::WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
+                     bool is_selected) override {
       std::string s;
       if (!info_.has_access) {
         s = "<INACCESSIBLE>";
@@ -87,7 +88,7 @@ class FileSelectionWindow : public MenuWindowPad {
       }
       Outputter out;
       out << display_name_ << Outputter::RightPad{s};
-      return render_plain_text(rb, out.as_cslice(), out.markup(), width(), 1, is_selected);
+      return render_plain_text(rb, out.as_cslice(), out.markup(), width(), 1, is_selected, &dir);
     }
 
    private:

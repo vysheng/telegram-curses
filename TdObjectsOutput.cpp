@@ -586,8 +586,19 @@ Outputter &operator<<(Outputter &out, const td::td_api::photo &content) {
   if (content.sizes_.size() == 0) {
     return out << "photo {no file}";
   } else {
-    return out << "photo " << (*content.sizes_.rbegin())->photo_;
+    return out << "photo " << *content.sizes_.rbegin();
   }
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::photoSize &content) {
+  if (!content.photo_->local_->is_downloading_completed_) {
+    return out << *content.photo_;
+  }
+  Outputter::Photo r;
+  r.path = content.photo_->local_->path_;
+  r.width = content.width_;
+  r.height = content.height_;
+  return out << r;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::sticker &content) {

@@ -16,7 +16,8 @@
 
 namespace tdcurses {
 
-td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::WindowOutputter &rb, bool is_selected) {
+td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::WindowOutputter &rb,
+                                            windows::SavedRenderedImagesDirectory &dir, bool is_selected) {
   auto &dialog_list_window = static_cast<DialogListWindow &>(root);
   Outputter out;
   std::string prefix;
@@ -63,7 +64,7 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::W
           }
         });
   }
-  return render_plain_text(rb, out.as_cslice(), out.markup(), width(), 1, is_selected);
+  return render_plain_text(rb, out.as_cslice(), out.markup(), width(), 1, is_selected, &dir);
 }
 
 bool DialogListWindow::Element::is_pinned(const DialogListWindow::Sublist &cur_sublist) {

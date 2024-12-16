@@ -6,10 +6,32 @@
 #include "td/utils/int_types.h"
 #include "td/utils/Slice.h"
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace windows {
+
+struct SavedRenderedImagesDirectory {
+  SavedRenderedImagesDirectory(SavedRenderedImages l) {
+    for (auto &x : l) {
+      old_images[x.first] = std::move(x.second);
+    }
+    l.clear();
+  }
+  SavedRenderedImages release() {
+    SavedRenderedImages r;
+    for (auto &x : new_images) {
+      r.emplace_back(x.first, std::move(x.second));
+    }
+    old_images.clear();
+    new_images.clear();
+    return r;
+  }
+  std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> old_images;
+  std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> new_images;
+};
 
 class TextEdit {
  public:
@@ -43,8 +65,10 @@ class TextEdit {
 
   static td::int32 render(WindowOutputter &rb, td::int32 width, td::Slice text, size_t pos,
                           const std::vector<MarkupElement> &markup, bool is_selected, bool is_password,
-                          td::int32 pad_width = 0, std::string pad_char = " ");
-  td::int32 render(WindowOutputter &rb, td::int32 width, bool is_selected, bool is_password, td::int32 pad_width = 0,
+                          SavedRenderedImagesDirectory *rendered_images = nullptr, td::int32 pad_width = 0,
+                          std::string pad_char = " ");
+  td::int32 render(WindowOutputter &rb, td::int32 width, bool is_selected, bool is_password,
+                   SavedRenderedImagesDirectory *rendered_images = nullptr, td::int32 pad_width = 0,
                    std::string pad_char = " ");
 
   bool is_empty() const {
