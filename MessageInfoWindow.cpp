@@ -123,7 +123,6 @@ void MessageInfoWindow::process_message() {
   };
 
   if (message_->content_) {
-    LOG(ERROR) << "content = " << message_->content_->get_id();
     td::td_api::downcast_call(
         *message_->content_,
         td::overloaded(
@@ -142,7 +141,6 @@ void MessageInfoWindow::process_message() {
             },
             [&](const td::td_api::messagePaidMedia &content) { process_formatted_text(*content.caption_); },
             [&](const td::td_api::messagePhoto &content) {
-              LOG(ERROR) << "photo";
               process_formatted_text(*content.caption_);
               add_action_open_file(*content.photo_->sizes_.back()->photo_);
             },

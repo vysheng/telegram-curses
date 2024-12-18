@@ -380,7 +380,7 @@ class Builder {
     if (me.attr == MarkupElement::Attr::NoLB) {
       nolb_++;
     } else if (me.attr == MarkupElement::Attr::Photo) {
-      if (!me.arg || !me.arg2 || !rb_.allow_render_image()) {
+      if (!me.arg || !me.arg2 || !rb_.allow_render_image() || nolb_) {
         return;
       }
 
@@ -412,7 +412,6 @@ class Builder {
         }
       } else {
         auto h = rb_.rendered_image_height(20, width_, me.str_arg);
-        LOG(ERROR) << "h=" << h;
         start_new_line();
         cur_line_ += h;
       }

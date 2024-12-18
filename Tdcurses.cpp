@@ -1401,6 +1401,10 @@ class TdcursesImpl : public Tdcurses {
       CHECK(update.value_->get_id() == td::td_api::optionValueInteger::ID);
       auto id = static_cast<const td::td_api::optionValueInteger &>(*update.value_).value_;
       global_parameters().update_my_user_id(id);
+    } else if (update.name_ == "version") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueString::ID);
+      auto id = static_cast<const td::td_api::optionValueString &>(*update.value_).value_;
+      global_parameters().update_tdlib_version(id);
     }
   }
 
@@ -1867,11 +1871,24 @@ class TdcursesImpl : public Tdcurses {
 
  private:
   std::map<td::uint64, td::Promise<td::tl_object_ptr<td::td_api::Object>>> handlers_;
-  td::uint64 last_query_id_;
+  td::uint64 last_query_id_{19};
   td::int32 unread_chats_{0};
 };
 
 void Tdcurses::start_curses(TdcursesParameters &params) {
+  auto backend_type_str = global_parameters().backend_type();
+  windows::Screen::BackendType backend_type = windows::Screen::BackendType::Auto;
+  if (backend_type_str == "Tickit") {
+    backend_type = windows::Screen::BackendType::Tickit;
+  } else if (backend_type_str == "Notcurses") {
+    backend_type = windows::Screen::BackendType::Notcurses;
+  } else if (backend_type_str == "auto") {
+    backend_type = windows::Screen::BackendType::Auto;
+  } else {
+    LOG(ERROR) << "unknown backend type " << backend_type_str;
+    _Exit(1);
+  }
+
   class Cb : public windows::Screen::Callback {
    public:
     Cb(td::ActorId<Tdcurses> self) : self_(self) {
@@ -1885,7 +1902,7 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
     td::ActorId<Tdcurses> self_;
   };
   auto cb = std::make_unique<Cb>(self_);
-  screen_ = std::make_unique<windows::Screen>(std::move(cb));
+  screen_ = std::make_unique<windows::Screen>(std::move(cb), backend_type);
   screen_->init();
   auto poll_fd = screen_->poll_fd();
   poll_fd_.set_native_fd(td::NativeFd{poll_fd});
@@ -2219,6 +2236,8 @@ int main(int argc, char **argv) {
     config_file_name = tdcurses::detect_config_name();
   }
 
+  std::string backend_type_str = "Notcurses";
+
   std::string db_root;
   bool enable_storage_optimizer = true;
   td::int32 api_id = 2899;
@@ -2267,6 +2286,7 @@ int main(int argc, char **argv) {
     td.add("use_message_database", libconfig::Setting::TypeBoolean) = use_message_database;
     td.add("use_secret_chats", libconfig::Setting::TypeBoolean) = use_secret_chats;
     td.add("use_test_dc", libconfig::Setting::TypeBoolean) = use_test_dc;
+    td.add("backend_type_str", libconfig::Setting::TypeString) = backend_type_str;
     auto &iface = root.add("iface", libconfig::Setting::Type::TypeGroup);
     iface.add("log_window_enabled", libconfig::Setting::TypeBoolean) = log_window_enabled;
     iface.add("dialog_list_window_width", libconfig::Setting::TypeInt) = dialog_list_window_width;
@@ -2315,6 +2335,7 @@ int main(int argc, char **argv) {
   config.lookupValue("use_secret_chats", use_secret_chats);
   config.lookupValue("use_test_dc", use_test_dc);
   config.lookupValue("utf8.vs16_makes_wide", vs16_makes_wide);
+  config.lookupValue("backend_type_str", backend_type_str);
 
   config.lookupValue("iface.log_window_enabled", log_window_enabled);
   config.lookupValue("iface.dialog_list_window_width", dialog_list_window_width);
@@ -2422,6 +2443,7 @@ int main(int argc, char **argv) {
   tdcurses::global_parameters().set_copy_command(copy_command);
   tdcurses::global_parameters().set_link_open_command(link_open_command);
   tdcurses::global_parameters().set_file_open_command(file_open_command);
+  tdcurses::global_parameters().set_backend_type(backend_type_str);
 
   td::ActorOwn<tdcurses::TdcursesImpl> act;
   act = scheduler.create_actor_unsafe<tdcurses::TdcursesImpl>(1, "CliClient");

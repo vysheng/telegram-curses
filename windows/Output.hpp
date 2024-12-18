@@ -167,6 +167,7 @@ class WindowOutputter {
   }
 };
 
+void set_empty_window_outputter(std::unique_ptr<WindowOutputter> out);
 void create_empty_window_outputter_notcurses(void *notcurses, void *baseplane, void *renderplane);
 void create_empty_window_outputter_libtickit();
 

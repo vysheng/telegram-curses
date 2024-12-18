@@ -185,6 +185,21 @@ class GlobalParameters {
   void open_document(td::CSlice file_path);
   void open_link(td::CSlice url);
 
+  void update_tdlib_version(std::string version) {
+    tdlib_version_ = version;
+  }
+  td::CSlice tdlib_version() {
+    return tdlib_version_;
+  }
+
+  void set_backend_type(std::string backend_type) {
+    backend_type_ = backend_type;
+  }
+
+  td::CSlice backend_type() const {
+    return backend_type_;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -216,6 +231,9 @@ class GlobalParameters {
   std::string file_open_command_;
 
   td::int64 my_user_id_{0};
+
+  std::string tdlib_version_;
+  std::string backend_type_;
 };
 
 extern GlobalParameters &global_parameters();

@@ -18,6 +18,7 @@ class WindowLayout;
 
 class Screen {
  public:
+  enum class BackendType { Auto, Notcurses, Tickit };
   class Callback {
    public:
     virtual ~Callback() = default;
@@ -38,10 +39,9 @@ class Screen {
     virtual td::int32 poll_fd() = 0;
   };
 
-  Screen(std::unique_ptr<Callback> callback);
+  Screen(std::unique_ptr<Callback> callback, BackendType backend_type);
   ~Screen();
   void init();
-  void init_tickit();
   void init_notcurses();
   void stop();
   void handle_input(const InputEvent &info);
@@ -62,6 +62,10 @@ class Screen {
 
   td::int32 poll_fd();
 
+  void set_impl(std::unique_ptr<Impl> impl) {
+    impl_ = std::move(impl);
+  }
+
  private:
   void activate_window_in();
 
@@ -70,6 +74,8 @@ class Screen {
   std::shared_ptr<Window> base_window_;
   std::unique_ptr<Callback> callback_;
   bool finished_{false};
+
+  BackendType backend_type_;
 };
 
 }  // namespace windows

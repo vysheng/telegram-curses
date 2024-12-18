@@ -133,6 +133,11 @@ add_subdirectory(td)
 add_subdirectory(third-party/libtickit)
 
 add_executable(telegram-curses 
+  windows/BackendNotcurses.cpp
+  windows/BackendNotcurses.h
+  windows/BackendTickit.cpp
+  windows/BackendTickit.h  
+  windows/BorderedWindow.hpp
   windows/BorderedWindow.cpp
   windows/BorderedWindow.hpp
   windows/EditorWindow.cpp

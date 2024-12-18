@@ -69,7 +69,16 @@ void PadWindow::scroll_next_element() {
     return;
   }
   glued_to_ = adjust_glued_to_down(glued_to_);
-  adjust_cur_element(cur_element_->height - offset_in_cur_element_);
+  auto it = elements_.find(cur_element_->element.get());
+  it++;
+  if (it == elements_.end()) {
+    adjust_cur_element(cur_element_->height - offset_in_cur_element_);
+    return;
+  }
+  auto h = std::min(it->second->height, effective_height());
+  adjust_cur_element(cur_element_->height - offset_in_cur_element_ + h - 1);
+  adjust_cur_element(-(h - 1));
+  CHECK(cur_element_ == it->second.get());
 }
 
 void PadWindow::scroll_down(td::int32 lines) {

@@ -173,7 +173,7 @@ std::unique_ptr<InputEvent> parse_notcurses_input_event(td::int32 code, td::Muta
       return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Escape");
   }
 
-  LOG(ERROR) << "code=" << code << " utf8=" << utf8.data();
+  LOG(DEBUG) << "code=" << code << " utf8=" << utf8.data();
 
   if (!nckey_pua_p(code) && !nckey_supppuaa_p(code) && !nckey_supppuab_p(code) &&
       code <= 1114112 /* beyond plane 17 */) {
