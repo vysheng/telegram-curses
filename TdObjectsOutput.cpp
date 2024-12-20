@@ -571,10 +571,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::webPageInstantView &cont
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::animation &content) {
+  out << "animation ";
   if (!content.animation_->local_->is_downloading_completed_) {
     return out << *content.animation_;
   }
-  out << "animation ";
   Outputter::Photo r;
   r.path = content.animation_->local_->path_;
   r.width = content.width_;
