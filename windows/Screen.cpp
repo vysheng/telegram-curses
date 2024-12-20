@@ -177,47 +177,47 @@ void Screen::init() {
 }
 
 void Screen::stop() {
-  if (!finished_ && impl_ && impl_->stop()) {
+  if (!finished_ && backend_ && backend_->stop()) {
     callback_->on_close();
     finished_ = true;
-    impl_ = nullptr;
+    backend_ = nullptr;
   }
 }
 
 void Screen::on_resize(int width, int height) {
-  if (!impl_ || finished_) {
+  if (!backend_ || finished_) {
     return;
   }
 
-  impl_->on_resize();
+  backend_->on_resize();
   base_window_->resize(width, height);
   refresh(true);
   refresh(true);
 }
 
 td::int32 Screen::width() {
-  if (!impl_ || finished_) {
+  if (!backend_ || finished_) {
     return 0;
   }
-  return impl_->width();
+  return backend_->width();
 }
 
 td::int32 Screen::height() {
-  if (!impl_ || finished_) {
+  if (!backend_ || finished_) {
     return 0;
   }
-  return impl_->height();
+  return backend_->height();
 }
 
 bool Screen::has_popup_window(Window *window) const {
-  if (!impl_ || !base_window_ || finished_) {
+  if (!backend_ || !base_window_ || finished_) {
     return false;
   }
   return static_cast<BaseWindow &>(*base_window_).has_popup_window(window);
 }
 
 void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority) {
-  if (!impl_ || !base_window_ || finished_) {
+  if (!backend_ || !base_window_ || finished_) {
     return;
   }
   static_cast<BaseWindow &>(*base_window_).add_popup_window(window, priority);
@@ -225,7 +225,7 @@ void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority
 }
 
 void Screen::del_popup_window(Window *window) {
-  if (!impl_ || !base_window_ || finished_) {
+  if (!backend_ || !base_window_ || finished_) {
     return;
   }
   static_cast<BaseWindow &>(*base_window_).del_popup_window(window);
@@ -233,7 +233,7 @@ void Screen::del_popup_window(Window *window) {
 }
 
 void Screen::change_layout(std::shared_ptr<WindowLayout> window_layout) {
-  if (!impl_ || !base_window_ || finished_) {
+  if (!backend_ || !base_window_ || finished_) {
     return;
   }
   static_cast<BaseWindow &>(*base_window_).change_layout(window_layout);
@@ -241,16 +241,16 @@ void Screen::change_layout(std::shared_ptr<WindowLayout> window_layout) {
 }
 
 void Screen::loop() {
-  if (!impl_ || finished_) {
+  if (!backend_ || finished_) {
     return;
   }
 
-  impl_->tick();
+  backend_->tick();
   refresh(true);
 }
 
 void Screen::handle_input(const InputEvent &info) {
-  if (!impl_ || finished_) {
+  if (!backend_ || finished_) {
     return;
   }
 
@@ -265,14 +265,14 @@ void Screen::handle_input(const InputEvent &info) {
 }
 
 void Screen::refresh(bool force) {
-  if (!impl_ || finished_) {
+  if (!backend_ || finished_) {
     return;
   }
   /*if (force) {
-    impl_->on_resize();
+    backend_->on_resize();
   }*/
 
-  impl_->refresh(force, base_window_);
+  backend_->refresh(force, base_window_);
 }
 
 td::Timestamp Screen::need_refresh_at() {
@@ -281,8 +281,8 @@ td::Timestamp Screen::need_refresh_at() {
 }
 
 td::int32 Screen::poll_fd() {
-  if (impl_) {
-    return impl_->poll_fd();
+  if (backend_) {
+    return backend_->poll_fd();
   } else {
     return -1;
   }

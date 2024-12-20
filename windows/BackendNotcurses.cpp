@@ -677,7 +677,7 @@ std::unique_ptr<WindowOutputter> notcurses_window_outputter(void *notcurses, voi
                                                     height, width, 0xdddddd, 0x000000, true);
 }
 
-struct ImplNotcurses : public Screen::Impl {
+struct BackendNotcurses : public Backend {
   struct notcurses *nc_{nullptr};
   struct ncplane *baseplane_{nullptr};
   struct ncplane *renderplane_{nullptr};
@@ -788,7 +788,7 @@ struct ImplNotcurses : public Screen::Impl {
 };
 
 void init_notcurses_backend(Screen *screen) {
-  auto impl = std::make_unique<ImplNotcurses>();
+  auto backend = std::make_unique<BackendNotcurses>();
 
   struct notcurses_options curses_opts{.termtype = NULL,
                                        .loglevel = NCLOGLEVEL_WARNING,
@@ -798,14 +798,14 @@ void init_notcurses_backend(Screen *screen) {
                                        .margin_l = 0,
                                        .flags = 0};
 
-  impl->screen_ = screen;
-  impl->nc_ = notcurses_init(&curses_opts, NULL);
-  impl->baseplane_ = notcurses_stdplane(impl->nc_);
+  backend->screen_ = screen;
+  backend->nc_ = notcurses_init(&curses_opts, NULL);
+  backend->baseplane_ = notcurses_stdplane(backend->nc_);
 
   struct ncplane_options plane_opts{.y = 0,
                                     .x = 0,
-                                    .rows = (unsigned int)impl->height(),
-                                    .cols = (unsigned int)impl->width(),
+                                    .rows = (unsigned int)backend->height(),
+                                    .cols = (unsigned int)backend->width(),
                                     .userptr = nullptr,
                                     .name = nullptr,
                                     .resizecb = nullptr,
@@ -813,9 +813,9 @@ void init_notcurses_backend(Screen *screen) {
                                     .margin_b = 0,
                                     .margin_r = 0};
 
-  impl->renderplane_ = ncplane_create(impl->baseplane_, &plane_opts);
-  create_empty_window_outputter_notcurses(impl->nc_, impl->baseplane_, impl->renderplane_);
-  screen->set_impl(std::move(impl));
+  backend->renderplane_ = ncplane_create(backend->baseplane_, &plane_opts);
+  create_empty_window_outputter_notcurses(backend->nc_, backend->baseplane_, backend->renderplane_);
+  screen->set_backend(std::move(backend));
 }
 
 }  // namespace windows

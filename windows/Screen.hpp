@@ -16,6 +16,18 @@ namespace windows {
 class Window;
 class WindowLayout;
 
+class Backend {
+ public:
+  virtual ~Backend() = default;
+  virtual bool stop() = 0;
+  virtual void on_resize() = 0;
+  virtual td::int32 width() = 0;
+  virtual td::int32 height() = 0;
+  virtual void tick() = 0;
+  virtual void refresh(bool force, std::shared_ptr<Window> base_window) = 0;
+  virtual td::int32 poll_fd() = 0;
+};
+
 class Screen {
  public:
   enum class BackendType { Auto, Notcurses, Tickit };
@@ -25,18 +37,6 @@ class Screen {
     virtual void on_close() = 0;
     virtual void on_resize(td::int32 width, td::int32 height) {
     }
-  };
-
-  class Impl {
-   public:
-    virtual ~Impl() = default;
-    virtual bool stop() = 0;
-    virtual void on_resize() = 0;
-    virtual td::int32 width() = 0;
-    virtual td::int32 height() = 0;
-    virtual void tick() = 0;
-    virtual void refresh(bool force, std::shared_ptr<Window> base_window) = 0;
-    virtual td::int32 poll_fd() = 0;
   };
 
   Screen(std::unique_ptr<Callback> callback, BackendType backend_type);
@@ -62,14 +62,14 @@ class Screen {
 
   td::int32 poll_fd();
 
-  void set_impl(std::unique_ptr<Impl> impl) {
-    impl_ = std::move(impl);
+  void set_backend(std::unique_ptr<Backend> backend) {
+    backend_ = std::move(backend);
   }
 
  private:
   void activate_window_in();
 
-  std::unique_ptr<Impl> impl_;
+  std::unique_ptr<Backend> backend_;
 
   std::shared_ptr<Window> base_window_;
   std::unique_ptr<Callback> callback_;

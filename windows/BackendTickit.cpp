@@ -279,7 +279,7 @@ std::unique_ptr<WindowOutputter> tickit_window_outputter(void *rb, td::int32 hei
   return std::make_unique<WindowOutputterTickit>((TickitRenderBuffer *)rb, 0, 0, height, width, true);
 }
 
-struct ImplTickit : public Screen::Impl {
+struct BackendTickit : public Backend {
   Tickit *tickit_root_{nullptr};
   TickitTerm *tickit_term_{nullptr};
   TickitWindow *tickit_root_window_{nullptr};
@@ -366,25 +366,25 @@ struct ImplTickit : public Screen::Impl {
 void init_tickit_backend(Screen *screen) {
   set_tickit_wrap();
 
-  auto impl = std::make_unique<ImplTickit>();
+  auto backend = std::make_unique<BackendTickit>();
 
-  impl->tickit_root_ = tickit_new_stdtty();
-  CHECK(impl->tickit_root_);
-  impl->tickit_term_ = tickit_get_term(impl->tickit_root_);
-  CHECK(impl->tickit_term_);
+  backend->tickit_root_ = tickit_new_stdtty();
+  CHECK(backend->tickit_root_);
+  backend->tickit_term_ = tickit_get_term(backend->tickit_root_);
+  CHECK(backend->tickit_term_);
   td::int32 value;
-  CHECK(tickit_term_getctl_int(impl->tickit_term_, TickitTermCtl::TICKIT_TERMCTL_MOUSE, &value));
+  CHECK(tickit_term_getctl_int(backend->tickit_term_, TickitTermCtl::TICKIT_TERMCTL_MOUSE, &value));
   CHECK(value == TickitTermMouseMode::TICKIT_TERM_MOUSEMODE_OFF);
 
   int lines, cols;
-  tickit_term_get_size(impl->tickit_term_, &lines, &cols);
+  tickit_term_get_size(backend->tickit_term_, &lines, &cols);
 
   auto handle_resize = [](TickitTerm *tt, TickitEventFlags flags, void *_info, void *data) {
     TickitResizeEventInfo *info = (TickitResizeEventInfo *)_info;
     static_cast<Screen *>(data)->on_resize(info->cols, info->lines);
     return 1;
   };
-  tickit_term_bind_event(impl->tickit_term_, TICKIT_TERM_ON_RESIZE, (TickitBindFlags)0, handle_resize, screen);
+  tickit_term_bind_event(backend->tickit_term_, TICKIT_TERM_ON_RESIZE, (TickitBindFlags)0, handle_resize, screen);
 
   auto handle_input = [](TickitTerm *tt, TickitEventFlags flags, void *_info, void *data) {
     TickitKeyEventInfo *info = (TickitKeyEventInfo *)_info;
@@ -394,16 +394,16 @@ void init_tickit_backend(Screen *screen) {
     }
     return 1;
   };
-  tickit_term_bind_event(impl->tickit_term_, TICKIT_TERM_ON_KEY, (TickitBindFlags)0, handle_input, screen);
+  tickit_term_bind_event(backend->tickit_term_, TICKIT_TERM_ON_KEY, (TickitBindFlags)0, handle_input, screen);
 
-  impl->tickit_root_window_ = tickit_window_new_root(impl->tickit_term_);
-  tickit_window_take_focus(impl->tickit_root_window_);
+  backend->tickit_root_window_ = tickit_window_new_root(backend->tickit_term_);
+  tickit_window_take_focus(backend->tickit_root_window_);
 
-  tickit_term_observe_sigwinch(impl->tickit_term_, true);
+  tickit_term_observe_sigwinch(backend->tickit_term_, true);
 
   create_empty_window_outputter_libtickit();
 
-  screen->set_impl(std::move(impl));
+  screen->set_backend(std::move(backend));
 }
 
 }  // namespace windows
