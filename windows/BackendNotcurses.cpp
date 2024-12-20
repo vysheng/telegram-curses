@@ -53,7 +53,11 @@ class RenderedImageNotcurses : public RenderedImage {
     if (slice_height == 0) {
       return;
     }
-    double t = pix_height_ * 1.0 / height_;
+    struct ncvgeom geom;
+    memset(&geom, 0, sizeof(geom));
+    ncvisual_geom(nc, visual_, nullptr, &geom);
+    CHECK(geom.cdimy > 0 && geom.cdimx > 0);
+
     struct ncplane *tmp_plane = nullptr;
     if (false) {
       struct ncplane_options plane_opts{.y = 0,
@@ -68,12 +72,12 @@ class RenderedImageNotcurses : public RenderedImage {
                                         .margin_r = 0};
       tmp_plane = ncplane_create(baseplane, &plane_opts);
       struct ncvisual_options opts = {.n = tmp_plane,
-                                      .scaling = NCSCALE_NONE,
+                                      .scaling = NCSCALE_STRETCH,
                                       .y = 0,
                                       .x = 0,
-                                      .begy = (unsigned int)(offset * t),
+                                      .begy = (unsigned int)(offset * geom.cdimy),
                                       .begx = 0,
-                                      .leny = (unsigned int)(slice_height * t),
+                                      .leny = (unsigned int)(slice_height * geom.cdimy),
                                       .lenx = (unsigned int)pix_width_,
                                       .blitter = NCBLIT_PIXEL,
                                       .flags = 0,
@@ -81,14 +85,44 @@ class RenderedImageNotcurses : public RenderedImage {
                                       .pxoffy = 0,
                                       .pxoffx = 0};
       plane_ = ncvisual_blit(nc, visual_, &opts);
+    } else if (true) {
+      struct ncvisual_options opts = {.n = nullptr,
+                                      .scaling = NCSCALE_NONE_HIRES,
+                                      .y = 0,
+                                      .x = 0,
+                                      .begy = (unsigned int)(offset * geom.cdimy),
+                                      .begx = 0,
+                                      .leny = (unsigned int)(slice_height * geom.cdimy),
+                                      .lenx = (unsigned int)pix_width_,
+                                      .blitter = NCBLIT_PIXEL,
+                                      .flags = 0,
+                                      .transcolor = 0,
+                                      .pxoffy = 0,
+                                      .pxoffx = 0};
+      plane_ = ncvisual_blit(nc, visual_, &opts);
+      if (plane_) {
+        ncplane_reparent(plane_, baseplane);
+        unsigned int y, x;
+        ncplane_dim_yx(plane_, &y, &x);
+        if (y != (unsigned int)slice_height) {
+          memset(&geom, 0, sizeof(geom));
+          struct ncvgeom geom;
+          ncvisual_geom(nc, visual_, &opts, &geom);
+          LOG(ERROR) << "opts: origin=" << opts.begy << "x" << opts.begx << " size=" << opts.leny << "x" << opts.lenx;
+          LOG(ERROR) << "geom: origin=" << geom.begy << "x" << geom.begx << " size=" << geom.leny << "x" << geom.lenx
+                     << " rpix=" << geom.rpixy << "x" << geom.rpixx << " rcell=" << geom.rcelly << "x" << geom.rcellx;
+          LOG(ERROR) << "plane: size=" << y << "x" << x << " cellsize=" << geom.cdimy << "x" << geom.cdimx
+                     << " pixelsize=" << (y * geom.cdimy) << "x" << (x * geom.cdimx);
+        }
+      }
     } else if (slice_height == height_) {
       struct ncvisual_options opts = {.n = baseplane,
                                       .scaling = NCSCALE_NONE,
                                       .y = 0,
                                       .x = 0,
-                                      .begy = (unsigned int)(offset * t),
+                                      .begy = 0,
                                       .begx = 0,
-                                      .leny = (unsigned int)(slice_height * t),
+                                      .leny = (unsigned int)pix_height_,
                                       .lenx = (unsigned int)pix_width_,
                                       .blitter = NCBLIT_PIXEL,
                                       .flags = NCVISUAL_OPTION_CHILDPLANE,
@@ -220,16 +254,9 @@ class WindowOutputterNotcurses : public WindowOutputter {
   }
 
   void set_channels_transparent() {
-    auto fg = fg_channels_.back();
-    auto bg = bg_channels_.back();
-    if (is_reversed_) {
-      std::swap(fg, bg);
-    }
-    uint64_t chan = NCCHANNELS_INITIALIZER((fg >> 16) & 0xff, (fg >> 8) & 0xff, (fg) & 0xff, (bg >> 16) & 0xff,
-                                           (bg >> 8) & 0xff, (bg) & 0xff);
-    ncchannels_set_fg_alpha(&chan, NCALPHA_TRANSPARENT);
-    ncchannels_set_bg_alpha(&chan, NCALPHA_TRANSPARENT);
-    ncplane_set_channels(rb_, chan);
+    uint64_t chan = 0;
+    CHECK(ncchannels_set_fg_alpha(&chan, NCALPHA_TRANSPARENT) >= 0);
+    CHECK(ncchannels_set_bg_alpha(&chan, NCALPHA_TRANSPARENT) >= 0);
   }
 
   void set_fg_color(Color color) override {
@@ -612,7 +639,7 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
 
     ncvisual_geom(nc_, v, &opts, &geom);
 
-    if (!geom.pixx || !geom.pixy) {
+    if (!geom.pixx || !geom.pixy || !geom.scaley) {
       return 0;
     }
 

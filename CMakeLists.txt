@@ -131,6 +131,7 @@ endif (HAVE_PWD_H)
 
 add_subdirectory(td)
 add_subdirectory(third-party/libtickit)
+add_subdirectory(third-party/notcurses)
 
 add_executable(telegram-curses 
   windows/BackendNotcurses.cpp

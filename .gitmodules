@@ -4,3 +4,6 @@
 [submodule "third-party/libtickit"]
 	path = third-party/libtickit
 	url = git@github.com:vysheng/libtickit.git
+[submodule "third-party/notcurses"]
+	path = third-party/notcurses
+	url = https://github.com/vysheng/notcurses
