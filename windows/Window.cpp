@@ -22,7 +22,7 @@ void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, boo
                                               next->width(), is_active_rec);
   next->render_wrap(*tmp_rb, force);
   if (update_cursor_pos) {
-    rb.update_cursor_position_from(*tmp_rb, backend_window(), next->y_offset_, next->x_offset_);
+    rb.update_cursor_position_from(*tmp_rb, next->backend_window(), next->y_offset_, next->x_offset_);
   }
 }
 

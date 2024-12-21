@@ -399,8 +399,8 @@ class WindowOutputterNotcurses : public WindowOutputter {
       cursor_x_ = from.global_cursor_x();
       cursor_shape_ = from.cursor_shape();
     } else {
-      cursor_y_ = from.global_cursor_y() + y_offset;
-      cursor_x_ = from.global_cursor_x() + x_offset;
+      cursor_y_ = from.global_cursor_y() + y_offset + y_offset_;
+      cursor_x_ = from.global_cursor_x() + x_offset + x_offset_;
       cursor_shape_ = from.cursor_shape();
     }
   }
