@@ -10,6 +10,11 @@
 
 namespace windows {
 
+class BackendWindow {
+ public:
+  virtual ~BackendWindow() = default;
+};
+
 class Window {
  public:
   enum class Type { Normal, Popup, Fullscreen, ErrorPopup };
@@ -97,6 +102,16 @@ class Window {
 
   void render_subwindow(WindowOutputter &rb, Window *next, bool force, bool is_active, bool update_cursor_pos);
 
+  void set_backend_window(std::unique_ptr<BackendWindow> window) {
+    backend_window_ = std::move(window);
+  }
+  BackendWindow *backend_window() const {
+    return backend_window_.get();
+  }
+  std::unique_ptr<BackendWindow> release_backend_window() {
+    return std::move(backend_window_);
+  }
+
  private:
   td::int32 width_{10};
   td::int32 height_{10};
@@ -111,6 +126,7 @@ class Window {
 
   td::Timestamp refresh_at_;
   Window *parent_{nullptr};
+  std::unique_ptr<BackendWindow> backend_window_;
 };
 
 }  // namespace windows

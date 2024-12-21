@@ -3,6 +3,7 @@
 #include "Output.hpp"
 #include "unicode.h"
 
+#include <memory>
 #include <notcurses/notcurses.h>
 
 namespace windows {
@@ -44,8 +45,9 @@ class RenderedImageNotcurses : public RenderedImage {
     }
   }
 
-  void render_slice(struct notcurses *nc, struct ncplane *baseplane, td::int32 offset, td::int32 slice_height) {
-    if (plane_ && offset_ == offset && rendered_height_ == slice_height) {
+  void render_slice(struct notcurses *nc, struct ncplane *baseplane, td::int32 offset, td::int32 slice_height,
+                    bool is_active) {
+    if (plane_ && offset_ == offset && rendered_height_ == slice_height && is_active_ == is_active) {
       return;
     }
     hide();
@@ -59,7 +61,7 @@ class RenderedImageNotcurses : public RenderedImage {
     CHECK(geom.cdimy > 0 && geom.cdimx > 0);
 
     struct ncplane *tmp_plane = nullptr;
-    if (false) {
+    if (true) {
       struct ncplane_options plane_opts{.y = 0,
                                         .x = 0,
                                         .rows = (unsigned int)slice_height,
@@ -71,15 +73,16 @@ class RenderedImageNotcurses : public RenderedImage {
                                         .margin_b = 0,
                                         .margin_r = 0};
       tmp_plane = ncplane_create(baseplane, &plane_opts);
+      CHECK(tmp_plane);
       struct ncvisual_options opts = {.n = tmp_plane,
-                                      .scaling = NCSCALE_STRETCH,
+                                      .scaling = is_active ? NCSCALE_NONE_HIRES : NCSCALE_STRETCH,
                                       .y = 0,
                                       .x = 0,
                                       .begy = (unsigned int)(offset * geom.cdimy),
                                       .begx = 0,
                                       .leny = (unsigned int)(slice_height * geom.cdimy),
                                       .lenx = (unsigned int)pix_width_,
-                                      .blitter = NCBLIT_PIXEL,
+                                      .blitter = is_active ? NCBLIT_PIXEL : NCBLIT_DEFAULT,
                                       .flags = 0,
                                       .transcolor = 0,
                                       .pxoffy = 0,
@@ -87,7 +90,7 @@ class RenderedImageNotcurses : public RenderedImage {
       plane_ = ncvisual_blit(nc, visual_, &opts);
     } else if (true) {
       struct ncvisual_options opts = {.n = nullptr,
-                                      .scaling = NCSCALE_NONE_HIRES,
+                                      .scaling = is_active ? NCSCALE_NONE_HIRES : NCSCALE_SCALE,
                                       .y = 0,
                                       .x = 0,
                                       .begy = (unsigned int)(offset * geom.cdimy),
@@ -153,6 +156,7 @@ class RenderedImageNotcurses : public RenderedImage {
     }
     offset_ = offset;
     rendered_height_ = slice_height;
+    is_active_ = is_active;
   }
 
   td::int32 rendered_to_width() override {
@@ -177,12 +181,29 @@ class RenderedImageNotcurses : public RenderedImage {
   td::int32 pix_width_;
   td::int32 offset_{0};
   td::int32 rendered_height_{0};
+  bool is_active_{false};
   struct ncplane *plane_;
   struct ncvisual *visual_;
 };
 
 class WindowOutputterNotcurses : public WindowOutputter {
  public:
+  class BackendWindowNotcurses : public BackendWindow {
+   public:
+    BackendWindowNotcurses(struct ncplane *plane) : plane_(plane) {
+    }
+    ~BackendWindowNotcurses() {
+      ncplane_destroy(plane_);
+      plane_ = nullptr;
+    }
+
+    struct ncplane *plane() {
+      return plane_;
+    }
+
+   private:
+    struct ncplane *plane_;
+  };
   WindowOutputterNotcurses(struct notcurses *nc, struct ncplane *rb, int y_offset, int x_offset, int height, int width,
                            td::uint32 default_fg_channel, td::uint32 default_bg_channel, bool is_active)
       : nc_(nc)
@@ -352,19 +373,36 @@ class WindowOutputterNotcurses : public WindowOutputter {
     x_offset_ += delta_x;
   }
 
-  std::unique_ptr<WindowOutputter> create_subwindow_outputter(td::int32 y_offset, td::int32 x_offset, td::int32 height,
-                                                              td::int32 width, bool is_active) override {
-    //tickit_renderbuffer_setpen(rb_, pen_);
-    return std::make_unique<WindowOutputterNotcurses>(nc_, rb_, y_offset + y_offset_, x_offset + x_offset_, height,
-                                                      width,
-                                                      color_to_rgb[(td::int32)(is_active ? Color::White : Color::Grey)],
-                                                      color_to_rgb[(td::int32)Color::Black], is_active);
+  std::unique_ptr<WindowOutputter> create_subwindow_outputter(BackendWindow *bw, td::int32 y_offset, td::int32 x_offset,
+                                                              td::int32 height, td::int32 width,
+                                                              bool is_active) override {
+    if (!bw) {
+      return std::make_unique<WindowOutputterNotcurses>(
+          nc_, rb_, y_offset + y_offset_, x_offset + x_offset_, height, width,
+          color_to_rgb[(td::int32)(is_active ? Color::White : Color::Grey)], color_to_rgb[(td::int32)Color::Black],
+          is_active);
+    } else {
+      auto b = static_cast<BackendWindowNotcurses *>(bw);
+      ncplane_resize(b->plane(), 0, 0, 0, 0, 0, 0, height, width);
+      ncplane_move_yx(b->plane(), y_offset, x_offset);
+      ncplane_move_top(b->plane());
+      return std::make_unique<WindowOutputterNotcurses>(
+          nc_, b->plane(), 0, 0, height, width, color_to_rgb[(td::int32)(is_active ? Color::White : Color::Grey)],
+          color_to_rgb[(td::int32)Color::Black], is_active);
+    }
   }
 
-  void update_cursor_position_from(WindowOutputter &from) override {
-    cursor_y_ = from.global_cursor_y();
-    cursor_x_ = from.global_cursor_x();
-    cursor_shape_ = from.cursor_shape();
+  void update_cursor_position_from(WindowOutputter &from, BackendWindow *bw, td::int32 y_offset,
+                                   td::int32 x_offset) override {
+    if (!bw) {
+      cursor_y_ = from.global_cursor_y();
+      cursor_x_ = from.global_cursor_x();
+      cursor_shape_ = from.cursor_shape();
+    } else {
+      cursor_y_ = from.global_cursor_y() + y_offset;
+      cursor_x_ = from.global_cursor_x() + x_offset;
+      cursor_shape_ = from.cursor_shape();
+    }
   }
 
   bool is_active() const override {
@@ -488,7 +526,7 @@ class WindowOutputterNotcurses : public WindowOutputter {
     td::int32 height = y + y_offset_ + image.height() <= base_y_offset_ + height_
                            ? image.height()
                            : base_y_offset_ + height_ - y - y_offset_;
-    static_cast<RenderedImageNotcurses &>(image).render_slice(nc_, rb_, top_offset, height - top_offset);
+    static_cast<RenderedImageNotcurses &>(image).render_slice(nc_, rb_, top_offset, height - top_offset, is_active_);
     auto plane = static_cast<RenderedImageNotcurses &>(image).plane();
     if (plane) {
       ncplane_move_above(plane, rb_);
@@ -597,11 +635,13 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
   void translate(td::int32 delta_y, td::int32 delta_x) override {
   }
 
-  std::unique_ptr<WindowOutputter> create_subwindow_outputter(td::int32 y_offset, td::int32 x_offset, td::int32 height,
-                                                              td::int32 width, bool is_active) override {
+  std::unique_ptr<WindowOutputter> create_subwindow_outputter(BackendWindow *bw, td::int32 y_offset, td::int32 x_offset,
+                                                              td::int32 height, td::int32 width,
+                                                              bool is_active) override {
     return std::make_unique<WindowOutputterEmptyNotcurses>(nc_, rb_);
   }
-  void update_cursor_position_from(WindowOutputter &from) override {
+  void update_cursor_position_from(WindowOutputter &from, BackendWindow *bw, td::int32 y_offset,
+                                   td::int32 x_offset) override {
     cursor_y_ = from.global_cursor_y();
     cursor_x_ = from.global_cursor_x();
     cursor_shape_ = from.cursor_shape();
@@ -784,6 +824,26 @@ struct BackendNotcurses : public Backend {
 
   td::int32 poll_fd() override {
     return notcurses_inputready_fd(nc_);
+  }
+
+  void set_popup(std::shared_ptr<Window> window) override {
+    struct ncplane_options plane_opts{.y = 0,
+                                      .x = 0,
+                                      .rows = 1,
+                                      .cols = 1,
+                                      .userptr = nullptr,
+                                      .name = nullptr,
+                                      .resizecb = nullptr,
+                                      .flags = NCPLANE_OPTION_FIXED,
+                                      .margin_b = 0,
+                                      .margin_r = 0};
+    auto plane = ncplane_create(baseplane_, &plane_opts);
+    auto bw = std::make_unique<WindowOutputterNotcurses::BackendWindowNotcurses>(plane);
+    window->set_backend_window(std::move(bw));
+  }
+
+  void unset_popup(Window *window) override {
+    window->release_backend_window();
   }
 };
 

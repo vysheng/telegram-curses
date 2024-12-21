@@ -18,11 +18,11 @@ void Window::resize(td::int32 new_width, td::int32 new_height) {
 void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, bool is_active_rec,
                               bool update_cursor_pos) {
   is_active_rec &= rb.is_active();
-  auto tmp_rb =
-      rb.create_subwindow_outputter(next->y_offset_, next->x_offset_, next->height(), next->width(), is_active_rec);
+  auto tmp_rb = rb.create_subwindow_outputter(next->backend_window(), next->y_offset_, next->x_offset_, next->height(),
+                                              next->width(), is_active_rec);
   next->render_wrap(*tmp_rb, force);
   if (update_cursor_pos) {
-    rb.update_cursor_position_from(*tmp_rb);
+    rb.update_cursor_position_from(*tmp_rb, backend_window(), next->y_offset_, next->x_offset_);
   }
 }
 

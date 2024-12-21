@@ -26,6 +26,10 @@ class Backend {
   virtual void tick() = 0;
   virtual void refresh(bool force, std::shared_ptr<Window> base_window) = 0;
   virtual td::int32 poll_fd() = 0;
+  virtual void set_popup(std::shared_ptr<Window> window) {
+  }
+  virtual void unset_popup(Window *window) {
+  }
 };
 
 class Screen {

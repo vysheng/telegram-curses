@@ -7,6 +7,7 @@
 namespace windows {
 
 class Window;
+class BackendWindow;
 
 enum class Color : td::int32 {
   Revert = -1,
@@ -147,10 +148,11 @@ class WindowOutputter {
     translate(-delta_y, -delta_x);
   }
 
-  virtual std::unique_ptr<WindowOutputter> create_subwindow_outputter(td::int32 y_offset, td::int32 x_offset,
-                                                                      td::int32 height, td::int32 width,
-                                                                      bool is_active) = 0;
-  virtual void update_cursor_position_from(WindowOutputter &from) = 0;
+  virtual std::unique_ptr<WindowOutputter> create_subwindow_outputter(BackendWindow *bw, td::int32 y_offset,
+                                                                      td::int32 x_offset, td::int32 height,
+                                                                      td::int32 width, bool is_active) = 0;
+  virtual void update_cursor_position_from(WindowOutputter &from, BackendWindow *bw, td::int32 y_offset,
+                                           td::int32 x_offset) = 0;
   virtual bool is_active() const = 0;
   virtual bool allow_render_image() {
     return false;

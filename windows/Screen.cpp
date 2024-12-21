@@ -221,6 +221,7 @@ void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority
     return;
   }
   static_cast<BaseWindow &>(*base_window_).add_popup_window(window, priority);
+  backend_->set_popup(window);
   refresh(true);
 }
 
@@ -228,6 +229,7 @@ void Screen::del_popup_window(Window *window) {
   if (!backend_ || !base_window_ || finished_) {
     return;
   }
+  backend_->unset_popup(window);
   static_cast<BaseWindow &>(*base_window_).del_popup_window(window);
   refresh(true);
 }

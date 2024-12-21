@@ -152,14 +152,16 @@ class WindowOutputterTickit : public WindowOutputter {
     x_offset_ += delta_x;
   }
 
-  std::unique_ptr<WindowOutputter> create_subwindow_outputter(td::int32 y_offset, td::int32 x_offset, td::int32 height,
-                                                              td::int32 width, bool is_active) override {
+  std::unique_ptr<WindowOutputter> create_subwindow_outputter(BackendWindow *bw, td::int32 y_offset, td::int32 x_offset,
+                                                              td::int32 height, td::int32 width,
+                                                              bool is_active) override {
     tickit_renderbuffer_setpen(rb_, pen_);
     return std::make_unique<WindowOutputterTickit>(rb_, y_offset + y_offset_, x_offset + x_offset_, height, width,
                                                    is_active);
   }
 
-  void update_cursor_position_from(WindowOutputter &from) override {
+  void update_cursor_position_from(WindowOutputter &from, BackendWindow *bw, td::int32 y_offset,
+                                   td::int32 x_offset) override {
     cursor_y_ = from.global_cursor_y();
     cursor_x_ = from.global_cursor_x();
     cursor_shape_ = from.cursor_shape();
@@ -252,11 +254,13 @@ class WindowOutputterEmptyTickit : public WindowOutputter {
   void translate(td::int32 delta_y, td::int32 delta_x) override {
   }
 
-  std::unique_ptr<WindowOutputter> create_subwindow_outputter(td::int32 y_offset, td::int32 x_offset, td::int32 height,
-                                                              td::int32 width, bool is_active) override {
+  std::unique_ptr<WindowOutputter> create_subwindow_outputter(BackendWindow *bw, td::int32 y_offset, td::int32 x_offset,
+                                                              td::int32 height, td::int32 width,
+                                                              bool is_active) override {
     return std::make_unique<WindowOutputterEmptyTickit>();
   }
-  void update_cursor_position_from(WindowOutputter &from) override {
+  void update_cursor_position_from(WindowOutputter &from, BackendWindow *bw, td::int32 y_offset,
+                                   td::int32 x_offset) override {
     cursor_y_ = from.global_cursor_y();
     cursor_x_ = from.global_cursor_x();
     cursor_shape_ = from.cursor_shape();
