@@ -23,7 +23,7 @@ enum NotificationScope : td::uint32 {
 class GlobalParameters {
  public:
   std::string version() const {
-    return "0.3";
+    return "0.4.0";
   }
 
   void process_update(td::td_api::updateScopeNotificationSettings &update) {

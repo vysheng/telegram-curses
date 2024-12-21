@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 
-project(telegram-curses)
+project(telegram-curses VERSION 0.4.0)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 
 find_program(CCACHE_FOUND ccache)
@@ -244,3 +244,6 @@ target_include_directories(telegram-curses PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/td/generate/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/>
   )
+set_target_properties(telegram-curses PROPERTIES
+  VERSION ${PROJECT_VERSION}
+)

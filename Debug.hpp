@@ -19,6 +19,7 @@ struct DebugCounters {
 
   std::string to_str() const {
     td::StringBuilder sb;
+    sb << td::tag("app_version", global_parameters().version()) << "\n";
     sb << td::tag("tdlib_version", global_parameters().tdlib_version()) << "\n";
     sb << td::tag("mtproto_layer", td::MTPROTO_LAYER) << "\n";
     sb << td::tag("notcurses_version", notcurses_version()) << "\n";

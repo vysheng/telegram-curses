@@ -2185,20 +2185,6 @@ int main(int argc, char **argv) {
 
   td::ConcurrentScheduler scheduler(4);
 
-  /*auto gpl_notice = PSTRING() << "Telegram-cli " << TELEGRAM_CLI_VERSION << " Copyright (C) 2022\n"
-                              << "This program comes with ABSOLUTELY NO WARRANTY; for details read GPL.\n"
-                              << "This is free software, and you are welcome to redistribute it\n"
-                              << "under certain conditions; read GPL for details.\n";
-
-  auto version_notice = PSTRING() << "Telegram-cli version " << TELEGRAM_CLI_VERSION << " uses tdlib "
-                                  << td::Td::TDLIB_VERSION << ", " << OPENSSL_VERSION_TEXT << ", libreadline "
-                                  << RL_VERSION_MAJOR << "." << RL_VERSION_MINOR << ", libconfig++ "
-                                  << LIBCONFIGXX_VER_MAJOR << "." << LIBCONFIGXX_VER_MINOR << "."
-                                  << LIBCONFIGXX_VER_REVISION << "\n";
-
-  std::cout << gpl_notice << std::flush;
-  std::cout << version_notice << std::flush; */
-
   std::string config_file_name;
   std::string profile_name;
 
