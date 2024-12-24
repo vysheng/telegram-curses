@@ -200,6 +200,14 @@ class GlobalParameters {
     return backend_type_;
   }
 
+  bool notifications_enabled() const {
+    return notifications_enabled_;
+  }
+
+  void set_notifications_enabled(bool value) {
+    notifications_enabled_ = value;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -231,6 +239,8 @@ class GlobalParameters {
   std::string file_open_command_;
 
   td::int64 my_user_id_{0};
+
+  bool notifications_enabled_{true};
 
   std::string tdlib_version_;
   std::string backend_type_;

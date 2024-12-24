@@ -115,6 +115,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak")
 
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLIB REQUIRED glib-2.0)
+pkg_search_module(GDKPIXBUF REQUIRED gdk-pixbuf-2.0)
+
 #Compilation database
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
@@ -208,6 +212,8 @@ add_executable(telegram-curses
   MessageInfoWindow.hpp
   MessageProcess.cpp
   MessageProcess.hpp
+  NotificationManager.cpp
+  NotificationManager.hpp
   Outputter.cpp
   Outputter.hpp
   ReactionSelectionWindow.cpp
@@ -232,8 +238,8 @@ add_executable(telegram-curses
 
   third-party/qrcodegen/qrcodegen.cpp 
 )
-target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc notcurses-core notcurses)
-target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS})
+target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc notcurses-core notcurses notify ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} )
+target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${GDKPIXBUF_INCLUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/>

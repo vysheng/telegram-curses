@@ -51,8 +51,11 @@ class NotificationsSettingsWindow : public MenuWindowCommon {
       : MenuWindowCommon(root, std::move(root_actor)) {
     build_menu();
   }
-  void build_menu() {
-  }
+  void build_menu();
+  void enabled_disable();
+
+ private:
+  std::shared_ptr<ElInfo> enabled_el_;
 };
 
 class PrivacyAndSecuritySettingsWindow : public MenuWindowCommon {

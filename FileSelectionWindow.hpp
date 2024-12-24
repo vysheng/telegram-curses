@@ -68,9 +68,9 @@ class FileSelectionWindow : public MenuWindowPad {
         }
       } else if (info == "T-Escape") {
         if (!w.sent_answer_) {
+          w.sent_answer_ = true;
           w.callback_->on_abort(w);
         }
-        w.sent_answer_ = true;
       } else if (info == "s") {
         w.set_sort_mode((SortMode)((w.sort_mode_ + 1) % SortMode::Count));
       }
@@ -107,9 +107,9 @@ class FileSelectionWindow : public MenuWindowPad {
 
   void on_result(std::string name) {
     if (!sent_answer_) {
+      sent_answer_ = true;
       callback_->on_answer(*this, std::move(name));
     }
-    sent_answer_ = true;
   }
   void change_folder(std::string name) {
     cur_folder_ = name;
@@ -157,11 +157,23 @@ class FileSelectionWindow : public MenuWindowPad {
     };
   }*/
 
-  ~FileSelectionWindow() {
+  void handle_rollback() override {
     if (!sent_answer_) {
+      sent_answer_ = true;
       callback_->on_abort(*this);
     }
+  }
+
+  void handle_exit() override {
     sent_answer_ = true;
+    exit();
+  }
+
+  ~FileSelectionWindow() {
+    if (!sent_answer_) {
+      sent_answer_ = true;
+      callback_->on_abort(*this);
+    }
   }
 
  private:

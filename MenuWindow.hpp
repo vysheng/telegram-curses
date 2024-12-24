@@ -85,19 +85,19 @@ class MenuWindow : public TdcursesWindowBase {
 
   bool menu_window_handle_input(const windows::InputEvent &info) {
     if (info == "T-Escape") {
-      rollback();
+      handle_rollback();
       return true;
     } else if (info == "C-q") {
-      rollback();
+      handle_rollback();
       return true;
     } else if (info == "C-Q") {
-      exit();
+      handle_exit();
       return true;
     } else if (info == "q") {
-      rollback();
+      handle_rollback();
       return true;
     } else if (info == "Q") {
-      exit();
+      handle_exit();
       return true;
     } else {
       return false;
@@ -117,6 +117,14 @@ class MenuWindow : public TdcursesWindowBase {
 
   void set_border_color(windows::BorderType border_type, td::int32 color) {
     bordered_->set_border_type(border_type, color);
+  }
+
+  virtual void handle_exit() {
+    exit();
+  }
+
+  virtual void handle_rollback() {
+    rollback();
   }
 
  private:

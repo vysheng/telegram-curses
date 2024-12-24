@@ -14,6 +14,7 @@
 #include "td/tdutils/td/utils/buffer.h"
 #include "td/tdutils/td/utils/Variant.h"
 #include "td/utils/Promise.h"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
@@ -52,6 +53,7 @@
 #include "GlobalParameters.hpp"
 #include "FileSelectionWindow.hpp"
 #include "YesNoWindow.hpp"
+#include "NotificationManager.hpp"
 
 #include "qrcodegen/qrcodegen.hpp"
 
@@ -200,6 +202,13 @@ class TdcursesImpl : public Tdcurses {
     start_curses(*tdcurses_params);
 
     td_ = td::create_actor<td::ClientActor>("ClientActor", make_td_callback());
+
+    send_request(td::make_tl_object<td::td_api::setOption>("notification_group_count_max",
+                                                           td::make_tl_object<td::td_api::optionValueInteger>(25)),
+                 [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) { R.ensure(); });
+    send_request(td::make_tl_object<td::td_api::setOption>("notification_group_size_max",
+                                                           td::make_tl_object<td::td_api::optionValueInteger>(25)),
+                 [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) { R.ensure(); });
   }
 
   void notify() override {
@@ -1102,6 +1111,10 @@ class TdcursesImpl : public Tdcurses {
   //@notification Changed notification
   //updateNotification notification_group_id:int32 notification:notification = Update;
   void process_update(td::td_api::updateNotification &update) {
+    if (!global_parameters().notifications_enabled()) {
+      return;
+    }
+    notification_manager().process_update(update);
   }
 
   //@description A list of active notifications in a notification group has changed
@@ -1115,6 +1128,10 @@ class TdcursesImpl : public Tdcurses {
   //@removed_notification_ids Identifiers of removed group notifications, sorted by notification identifier
   //updateNotificationGroup notification_group_id:int32 type:NotificationGroupType chat_id:int53 notification_settings_chat_id:int53 notification_sound_id:int64 total_count:int32 added_notifications:vector<notification> removed_notification_ids:vector<int32> = Update;
   void process_update(td::td_api::updateNotificationGroup &update) {
+    if (!global_parameters().notifications_enabled()) {
+      return;
+    }
+    notification_manager().process_update(update);
   }
 
   //@description Contains active notifications that were shown on previous application launches. This update is sent only if the message database is used. In that case it comes once before any updateNotification and updateNotificationGroup update
@@ -1405,6 +1422,10 @@ class TdcursesImpl : public Tdcurses {
       CHECK(update.value_->get_id() == td::td_api::optionValueString::ID);
       auto id = static_cast<const td::td_api::optionValueString &>(*update.value_).value_;
       global_parameters().update_tdlib_version(id);
+    } else if (update.name_ == "X-notifications-enabled") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
+      auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
+      global_parameters().set_notifications_enabled(value);
     }
   }
 
