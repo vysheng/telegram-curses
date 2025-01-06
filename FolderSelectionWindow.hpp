@@ -3,10 +3,13 @@
 #include "MenuWindowPad.hpp"
 #include "DialogListWindow.hpp"
 #include "GlobalParameters.hpp"
+#include "TdObjectsOutput.h"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
+#include "windows/Markup.hpp"
 #include "windows/Output.hpp"
 #include <memory>
+#include <vector>
 
 namespace tdcurses {
 
@@ -17,8 +20,9 @@ class FolderSelectionWindow : public MenuWindowPad {
   }
   class Element : public windows::PadWindowElement {
    public:
-    Element(std::string text, DialogListWindow::Sublist chat_list, size_t idx)
-        : text_(std::move(text)), chat_list_(std::move(chat_list)), idx_(idx) {
+    Element(std::string text, std::vector<windows::MarkupElement> markup, DialogListWindow::Sublist chat_list,
+            size_t idx)
+        : text_(std::move(text)), markup_(std::move(markup)), chat_list_(std::move(chat_list)), idx_(idx) {
     }
     bool is_less(const PadWindowElement &other) const override {
       return idx_ < static_cast<const Element &>(other).idx_;
@@ -34,25 +38,28 @@ class FolderSelectionWindow : public MenuWindowPad {
 
     td::int32 render(PadWindow &root, windows::WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
                      bool is_selected) override {
-      return render_plain_text(rb, text_, width(), 1, is_selected, &dir);
+      return render_plain_text(rb, text_, markup_, width(), 1, is_selected, &dir);
     }
 
    private:
     std::string text_;
+    std::vector<windows::MarkupElement> markup_;
     DialogListWindow::Sublist chat_list_;
     size_t idx_;
   };
 
-  void add_folder(std::string name, DialogListWindow::Sublist chat_list) {
-    auto e = std::make_shared<Element>(std::move(name), std::move(chat_list), ++last_id_);
+  void add_folder(std::string name, std::vector<windows::MarkupElement> markup, DialogListWindow::Sublist chat_list) {
+    auto e = std::make_shared<Element>(std::move(name), std::move(markup), std::move(chat_list), ++last_id_);
     add_element(std::move(e));
   }
 
   void build_folders() {
-    add_folder("main", DialogListWindow::SublistGlobal{});
-    add_folder("archive", DialogListWindow::SublistArchive{});
+    add_folder("main", {}, DialogListWindow::SublistGlobal{});
+    add_folder("archive", {}, DialogListWindow::SublistArchive{});
     for (auto &f : global_parameters().chat_folders()) {
-      add_folder(f->title_, DialogListWindow::SublistSublist{f->id_});
+      Outputter out;
+      out << *f->name_->text_;
+      add_folder(out.as_str(), out.markup(), DialogListWindow::SublistSublist{f->id_});
     }
     set_need_refresh();
   }

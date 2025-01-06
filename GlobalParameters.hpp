@@ -208,6 +208,10 @@ class GlobalParameters {
     notifications_enabled_ = value;
   }
 
+  const auto &scope_notification_settings(NotificationScope scope) const {
+    return scope_notification_settings_[(td::int32)scope];
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};

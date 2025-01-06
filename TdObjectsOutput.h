@@ -87,6 +87,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayCompleted
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayWinners &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiveawayPrizeStars &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGift &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGift &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageRefundedUpgradedGift &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUsersShared &content);

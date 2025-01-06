@@ -436,6 +436,14 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageGift &content) {
   return out << "[gift]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGift &content) {
+  return out << "[upgraded gift]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageRefundedUpgradedGift &content) {
+  return out << "[refunden upgraded gift]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {
   return out << "[gifted " << content.amount_ << " stars]";
 }

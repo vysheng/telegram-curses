@@ -6,6 +6,7 @@
 #include "FieldEditWindow.hpp"
 #include "GlobalParameters.hpp"
 #include "LoadingWindow.hpp"
+#include "StickerManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -123,6 +124,37 @@ void ChatInfoWindow::generate_info() {
   }
   add_element("id", PSTRING() << chat_->chat_id());
 
+  auto add_verification_status =
+      [&, self = this](Outputter &out, const td::tl_object_ptr<td::td_api::verificationStatus> &verification_status) {
+        if (!verification_status) {
+          return;
+        }
+        if (verification_status->is_verified_) {
+          out << " verified";
+        }
+        if (verification_status->is_scam_) {
+          out << " scam";
+        }
+        if (verification_status->is_fake_) {
+          out << " fake";
+        }
+        if (verification_status->bot_verification_icon_custom_emoji_id_) {
+          auto S = sticker_manager().get_custom_emoji(verification_status->bot_verification_icon_custom_emoji_id_);
+          if (S.size() > 0) {
+            out << " " << S;
+          } else {
+            self->send_request(td::make_tl_object<td::td_api::getCustomEmojiStickers>(
+                                   std::vector<td::int64>(verification_status->bot_verification_icon_custom_emoji_id_)),
+                               [self](td::Result<td::tl_object_ptr<td::td_api::stickers>> R) {
+                                 if (R.is_ok()) {
+                                   sticker_manager().process_custom_emoji_stickers(*R.move_as_ok());
+                                   self->set_need_refresh();
+                                 }
+                               });
+          }
+        }
+      };
+
   auto add_element_member_status = [&, self = this](const td::td_api::ChatMemberStatus &status) {
     Outputter out;
     std::function<bool(ChatInfoWindow &)> cb = [](ChatInfoWindow &) { return false; };
@@ -203,17 +235,9 @@ void ChatInfoWindow::generate_info() {
           out << "self [";
         }
         if (user) {
-          if (user->is_verified()) {
-            out << " verified";
-          }
-          if (user->is_scam()) {
-            out << " scam";
-          }
+          add_verification_status(out, user->verification_status());
           if (user->is_support()) {
             out << " support";
-          }
-          if (user->is_fake()) {
-            out << " fake";
           }
           if (user->is_mutual_contact()) {
             out << " mutual_contact";
@@ -299,7 +323,12 @@ void ChatInfoWindow::generate_info() {
     } break;
     case ChatType::Basicgroup: {
       auto group = chat_manager().get_basic_group(chat_->chat_base_id());
-      add_element("type", "group");
+      {
+        Outputter out;
+        out << "group [";
+        out << " ]";
+        add_element("type", out.as_str());
+      }
       if (group) {
         add_element("group_id", PSTRING() << group->group_id());
         add_element_member_status(*group->status());
@@ -327,18 +356,7 @@ void ChatInfoWindow::generate_info() {
         Outputter out;
         out << "supergroup [";
         if (supergroup) {
-          if (supergroup->is_verified()) {
-            out << " verified";
-          }
-          if (supergroup->is_scam()) {
-            out << " scam";
-          }
-          if (supergroup->is_fake()) {
-            out << " fake";
-          }
-          if (supergroup->has_sensitive_content()) {
-            out << " 18+";
-          }
+          add_verification_status(out, supergroup->verification_status());
         }
         out << " ]";
         add_element("type", out.as_str(), out.markup());
@@ -373,18 +391,7 @@ void ChatInfoWindow::generate_info() {
         Outputter out;
         out << "channel [";
         if (channel) {
-          if (channel->is_verified()) {
-            out << " verified";
-          }
-          if (channel->is_scam()) {
-            out << " scam";
-          }
-          if (channel->is_fake()) {
-            out << " fake";
-          }
-          if (channel->has_sensitive_content()) {
-            out << " 18+";
-          }
+          add_verification_status(out, channel->verification_status());
         }
         out << " ]";
         add_element("type", out.as_str(), out.markup());

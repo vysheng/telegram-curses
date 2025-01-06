@@ -535,20 +535,14 @@ class User {
   auto is_mutual_contact() const {
     return user_->is_mutual_contact_;
   }
-  auto is_verified() const {
-    return user_->is_verified_;
+  const auto &verification_status() const {
+    return user_->verification_status_;
   }
   auto is_support() const {
     return user_->is_support_;
   }
   const auto &restriction_reason() const {
     return user_->restriction_reason_;
-  }
-  auto is_scam() const {
-    return user_->is_scam_;
-  }
-  auto is_fake() const {
-    return user_->is_fake_;
   }
   auto have_access() const {
     return user_->have_access_;
@@ -573,7 +567,6 @@ class User {
   }
 
  private:
-  //user id:int53 first_name:string last_name:string username:string phone_number:string status:UserStatus profile_photo:profilePhoto is_contact:Bool is_mutual_contact:Bool is_verified:Bool is_support:Bool restriction_reason:string is_scam:Bool is_fake:Bool have_access:Bool type:UserType language_code:string = User;
   td::tl_object_ptr<td::td_api::user> user_;
 };
 
@@ -662,17 +655,11 @@ class Supergroup {
   auto is_forum() const {
     return group_->is_forum_;
   }
-  auto is_verified() const {
-    return group_->is_verified_;
+  const auto &verification_status() const {
+    return group_->verification_status_;
   }
   const auto &restriction_reason() const {
     return group_->restriction_reason_;
-  }
-  auto is_scam() const {
-    return group_->is_scam_;
-  }
-  auto is_fake() const {
-    return group_->is_fake_;
   }
   auto has_active_stories() const {
     return group_->has_active_stories_;

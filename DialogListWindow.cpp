@@ -255,11 +255,20 @@ void DialogListWindow::set_search_pattern(std::string pattern) {
 
 void DialogListWindow::update_sublist(Sublist new_sublist) {
   cur_sublist_ = std::move(new_sublist);
-  cur_sublist_.visit(
-      td::overloaded([&](const SublistGlobal &sublist) { set_title("global"); },
-                     [&](const SublistArchive &sublist) { set_title("archive"); },
-                     [&](const SublistSublist &sublist) { set_title(PSTRING() << "sublist " << sublist.sublist_id_); },
-                     [&](const SublistSearch &sublist) { set_title("search"); }));
+  cur_sublist_.visit(td::overloaded([&](const SublistGlobal &sublist) { set_title("global"); },
+                                    [&](const SublistArchive &sublist) { set_title("archive"); },
+                                    [&](const SublistSublist &sublist) {
+                                      auto &f = global_parameters().chat_folders();
+                                      for (auto &s : f) {
+                                        if (s->id_ == sublist.sublist_id_) {
+                                          auto name = s->name_->text_->text_;
+                                          set_title(PSTRING() << "sublist " << name);
+                                          return;
+                                        }
+                                      }
+                                      set_title(PSTRING() << "sublist ???");
+                                    },
+                                    [&](const SublistSearch &sublist) { set_title("search"); }));
   chat_manager().iterate_all_chats([&](std::shared_ptr<Chat> &chat) {
     auto el = std::static_pointer_cast<Element>(std::move(chat));
     change_element(el, [&]() {

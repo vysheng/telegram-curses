@@ -57,6 +57,8 @@
 
 #include "qrcodegen/qrcodegen.hpp"
 
+#include "td/utils/port/Stat.h"
+
 #include <atomic>
 #include <cstdio>
 #include <limits>
@@ -2058,6 +2060,10 @@ void Tdcurses::loop() {
   auto t = screen_->need_refresh_at();
   if (t) {
     set_timeout_at(t.at());
+  }
+  auto R = td::cpu_stat();
+  if (R.is_ok()) {
+    //update_cpu_stat(R.move_as_ok());
   }
 }
 

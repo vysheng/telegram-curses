@@ -233,6 +233,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     }
   } else if (cur_element_->element->is_less(*elem)) {
     lines_after_cur_element_ -= it->second->height;
+    CHECK(lines_after_cur_element_ >= 0);
     auto ptr = std::move(it->second);
     elements_.erase(it);
     change();
@@ -256,10 +257,31 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     next_el++;
     elements_.erase(it);
     change();
+    if (!elem->is_visible()) {
+      if (elements_.size() != 0) {
+        if (next_el != elements_.end()) {
+          lines_after_cur_element_ -= next_el->second->height;
+          CHECK(lines_after_cur_element_ >= 0);
+          offset_in_cur_element_ = 0;
+          cur_element_ = next_el->second.get();
+        } else {
+          CHECK(!lines_after_cur_element_);
+          next_el--;
+          lines_before_cur_element_ -= next_el->second->height;
+          CHECK(lines_before_cur_element_ >= 0);
+          offset_in_cur_element_ = 0;
+          cur_element_ = next_el->second.get();
+        }
+      } else {
+        clear();
+      }
+      adjust_cur_element(0);
+      return;
+    }
     it = elements_.emplace(elem.get(), std::move(ptr)).first;
     auto &el = *it->second;
     bool unchanged_pos = false;
-    if (next_el != elements_.begin()) {
+    if (next_el != elements_.begin() && el.element->is_visible()) {
       auto prev_el = next_el;
       prev_el--;
       if (prev_el == it) {
@@ -269,23 +291,6 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
     el.height = el.element->render_fake(*this, empty_window_outputter(), it->second.get() == cur_element_);
     auto new_height = it->second->height;
     offset_in_cur_element_ = (td::int32)(p * new_height);
-
-    if (!elem->is_visible()) {
-      if (next_el != elements_.end()) {
-        lines_after_cur_element_ -= next_el->second->height;
-        offset_in_cur_element_ = 0;
-        cur_element_ = next_el->second.get();
-        return delete_element(elem.get());
-      } else {
-        delete_element(elem.get());
-        if (glued_to_ == GluedTo::Top) {
-          scroll_first_line();
-        } else {
-          scroll_last_line();
-        }
-        return;
-      }
-    }
 
     if (!unchanged_pos) {
       lines_before_cur_element_ = 0;
@@ -314,13 +319,16 @@ void PadWindow::delete_element(PadWindowElement *elem) {
   auto old_height = el.height;
   auto old_it = it;
 
+  CHECK(lines_after_cur_element_ >= 0);
+
   if (cur_element_->element->is_less(*elem)) {
     lines_after_cur_element_ -= old_height;
-    CHECK(lines_before_cur_element_ >= 0);
+    CHECK(lines_after_cur_element_ >= 0);
   } else if (elem->is_less(*cur_element_->element)) {
     lines_before_cur_element_ -= old_height;
     CHECK(lines_before_cur_element_ >= 0);
   } else {
+    CHECK(cur_element_->element.get() == elem);
     if (it != elements_.begin()) {
       it--;
       cur_element_ = it->second.get();
@@ -334,11 +342,12 @@ void PadWindow::delete_element(PadWindowElement *elem) {
         cur_element_ = it->second.get();
         lines_after_cur_element_ -= it->second->height;
         offset_in_cur_element_ = 0;
+        CHECK(lines_after_cur_element_ >= 0);
       } else {
         cur_element_ = nullptr;
         offset_in_cur_element_ = 0;
         offset_from_window_top_ = 0;
-        CHECK(!lines_after_cur_element_);
+        LOG_CHECK(!lines_after_cur_element_) << "after=" << lines_after_cur_element_;
         CHECK(!lines_before_cur_element_);
       }
     }
@@ -439,6 +448,7 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
         lines--;
         lines_before_cur_element_ += old_height;
         lines_after_cur_element_ -= it->second->height;
+        CHECK(lines_after_cur_element_ >= 0);
       }
     }
     if (lines > 0) {
