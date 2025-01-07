@@ -262,7 +262,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageInvoice &content) {
-  return out << "[invoice]";
+  return out << "[invoice " << content.total_amount_ << content.currency_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageCall &content) {
