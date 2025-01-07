@@ -21,7 +21,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+    
+    - name: Install submodules
+      run: git submodule update --recursive --init
+ 
     - name: Install tools and libraries via APT
       run: |
         sudo apt update
