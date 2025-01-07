@@ -47,7 +47,8 @@ jobs:
           gperf \
           libssl-dev \
           libgdk-pixbuf-2.0-dev \
-          libglib2.0-dev 
+          libglib2.0-dev \
+          libtermkey-dev
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
