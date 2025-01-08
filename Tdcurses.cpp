@@ -71,7 +71,6 @@
 #include <libconfig.h++>
 #include <signal.h>
 #include <openssl/opensslv.h>
-#include <readline/readline.h>
 
 #if HAVE_PWD_H
 #include <pwd.h>
