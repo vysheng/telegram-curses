@@ -249,6 +249,7 @@ target_include_directories(telegram-curses PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tdutils/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/td/generate/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/notcurses/include/>
   )
 set_target_properties(telegram-curses PROPERTIES
   VERSION ${PROJECT_VERSION}
