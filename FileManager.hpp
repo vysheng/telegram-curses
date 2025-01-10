@@ -27,4 +27,6 @@ class FileManager {
 
 FileManager &file_manager();
 
+td::tl_object_ptr<td::td_api::file> clone_td_file(const td::td_api::file &file_in);
+
 }  // namespace tdcurses

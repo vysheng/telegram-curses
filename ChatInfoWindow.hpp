@@ -66,6 +66,27 @@ class ChatInfoWindow : public MenuWindowCommon {
   void updated_user_name(std::string first_name, std::string last_name);
 
  private:
+  void add_open_chat_option();
+  void add_rename_chat_option();
+  void add_chat_id_option();
+  void add_chat_type_option();
+  void add_user_name_option(td::CSlice first_name, td::CSlice last_name);
+  void add_username_option(const td::tl_object_ptr<td::td_api::usernames> &usernames);
+  void add_phone_number_option(td::CSlice phone_number);
+  void add_user_status_option(const td::tl_object_ptr<td::td_api::UserStatus> &status);
+  void add_bio_option(const td::tl_object_ptr<td::td_api::formattedText> &bio);
+  void add_bot_info_option(const td::tl_object_ptr<td::td_api::botInfo> &info);
+  void add_common_groups_option(td::int32 count);
+  void add_chat_photo_option(const td::tl_object_ptr<td::td_api::chatPhoto> &photo);
+  void add_personal_chat_option(td::int64 chat_id);
+  void add_birthdate_option(const td::tl_object_ptr<td::td_api::birthdate> &birthdate);
+  void add_chat_member_status_option(const td::tl_object_ptr<td::td_api::ChatMemberStatus> &status);
+  void add_chat_members_option(td::int32 count, bool can_get_members);
+  void add_chat_description_option(td::CSlice desc);
+  void add_chat_invite_link_option(const td::tl_object_ptr<td::td_api::chatInviteLink> &link);
+  void add_chat_ttl_option(td::int32 ttl);
+  void add_chat_online_members_option(td::int32 count);
+
   std::shared_ptr<Chat> chat_{nullptr};
   std::shared_ptr<User> user_{nullptr};
   td::tl_object_ptr<td::td_api::userFullInfo> user_full_;

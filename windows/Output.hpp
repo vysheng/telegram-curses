@@ -157,8 +157,10 @@ class WindowOutputter {
   virtual bool allow_render_image() {
     return false;
   }
-  virtual td::int32 rendered_image_height(td::int32 max_height, td::int32 max_width, std::string path) {
-    return 0;
+  virtual std::pair<td::int32, td::int32> rendered_image_height(td::int32 max_height, td::int32 max_width,
+                                                                td::int32 image_height, td::int32 image_width,
+                                                                std::string path) {
+    return {0, 0};
   }
   virtual std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, std::string path) {
     return nullptr;

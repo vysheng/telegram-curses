@@ -32,8 +32,10 @@ void ViewWindow::handle_input(const InputEvent &info) {
 }
 
 void ViewWindow::render(WindowOutputter &rb, bool force) {
+  auto dir = SavedRenderedImagesDirectory(std::move(saved_images_));
+
   auto &tmp_rb = empty_window_outputter();
-  auto h = TextEdit::render(tmp_rb, width(), text_, 0, markup_, false, false, nullptr);
+  auto h = TextEdit::render(tmp_rb, width(), text_, 0, markup_, false, false, &dir);
 
   if (offset_from_top_ >= h) {
     offset_from_top_ -= height();
@@ -41,8 +43,6 @@ void ViewWindow::render(WindowOutputter &rb, bool force) {
   if (offset_from_top_ < 0) {
     offset_from_top_ = 0;
   }
-
-  auto dir = SavedRenderedImagesDirectory(std::move(saved_images_));
 
   rb.erase_rect(0, 0, height(), width());
   rb.translate(-offset_from_top_, 0);

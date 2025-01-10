@@ -2,16 +2,19 @@
 #include "ErrorWindow.hpp"
 #include "ChatInfoWindow.hpp"
 #include "CommonGroupsWindow.hpp"
+#include "ChatPhotoWindow.hpp"
 #include "GroupMembersWindow.hpp"
 #include "FieldEditWindow.hpp"
 #include "GlobalParameters.hpp"
 #include "LoadingWindow.hpp"
 #include "StickerManager.hpp"
+#include "FileManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/Promise.h"
 #include "td/utils/Random.h"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
 #include "td/utils/common.h"
 #include "td/utils/overloaded.h"
@@ -104,26 +107,33 @@ static MenuWindowSpawnFunction spawn_rename_chat_window_func(std::shared_ptr<Cha
   };
 }
 
-void ChatInfoWindow::generate_info() {
-  clear();
-  if (is_empty() || !chat_ || chat_->chat_type() == ChatType::Unknown) {
-    return;
-  }
-  {
-    Outputter out;
-    out << chat_->title() << Outputter::RightPad{"<open>"};
-    title_el1_ = add_element("chat", out.as_str(), out.markup(), [root = root(), chat_id = chat_->chat_id()]() {
-      root->open_chat(chat_id);
-      return true;
-    });
-  }
-  {
+void ChatInfoWindow::add_open_chat_option() {
+  Outputter out;
+  out << chat_->title() << Outputter::RightPad{"<open>"};
+  title_el1_ = add_element("chat", out.as_str(), out.markup(), [root = root(), chat_id = chat_->chat_id()]() {
+    root->open_chat(chat_id);
+    return true;
+  });
+}
+
+void ChatInfoWindow::add_rename_chat_option() {
+  auto can_rename = chat_type_ == ChatType::User || chat_->permissions()->can_change_info_;
+  if (can_rename) {
     Outputter out;
     out << chat_->title() << Outputter::RightPad{"<rename>"};
     title_el2_ = add_element("title", out.as_str(), out.markup(), spawn_rename_chat_window_func(chat_));
+  } else {
+    Outputter out;
+    out << chat_->title();
+    title_el2_ = add_element("title", out.as_str(), out.markup());
   }
-  add_element("id", PSTRING() << chat_->chat_id());
+}
 
+void ChatInfoWindow::add_chat_id_option() {
+  add_element("id", PSTRING() << chat_->chat_base_id() << " / " << chat_->chat_id());
+}
+
+void ChatInfoWindow::add_chat_type_option() {
   auto add_verification_status =
       [&, self = this](Outputter &out, const td::tl_object_ptr<td::td_api::verificationStatus> &verification_status) {
         if (!verification_status) {
@@ -151,79 +161,11 @@ void ChatInfoWindow::generate_info() {
                                    self->set_need_refresh();
                                  }
                                });
+            out << "?";
           }
         }
       };
-
-  auto add_element_member_status = [&, self = this](const td::td_api::ChatMemberStatus &status) {
-    Outputter out;
-    std::function<bool(ChatInfoWindow &)> cb = [](ChatInfoWindow &) { return false; };
-    auto leave_cb = [chat_id = chat_->chat_id(), self](ChatInfoWindow &w) {
-      spawn_yes_no_window_and_loading_windows(
-          *self, PSTRING() << "Are you sure, you want to leave chat '" << self->chat_->title() << "'?", {}, true,
-          "leaving chat....", {}, td::make_tl_object<td::td_api::leaveChat>(chat_id),
-          [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
-            DROP_IF_DELETED(R);
-            if (R.is_error()) {
-              spawn_error_window(*self, PSTRING() << "leaving chat failed: " << R.move_as_error(), {});
-              return;
-            }
-          });
-      return false;
-    };
-    auto join_cb = [chat_id = chat_->chat_id(), self](ChatInfoWindow &w) {
-      spawn_yes_no_window_and_loading_windows(
-          *self, PSTRING() << "Are you sure, you want to join chat '" << self->chat_->title() << "'?", {}, true,
-          "joining chat....", {}, td::make_tl_object<td::td_api::joinChat>(chat_id),
-          [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
-            DROP_IF_DELETED(R);
-            if (R.is_error()) {
-              spawn_error_window(*self, PSTRING() << "joining chat failed: " << R.move_as_error(), {});
-              return;
-            }
-          });
-      return false;
-    };
-    td::td_api::downcast_call(const_cast<td::td_api::ChatMemberStatus &>(status),
-                              td::overloaded(
-                                  [&](td::td_api::chatMemberStatusLeft &status) {
-                                    out << "left" << Outputter::RightPad{"<join>"};
-                                    cb = join_cb;
-                                  },
-                                  [&](td::td_api::chatMemberStatusBanned &status) {
-                                    out << "banned until " << Outputter::Date{status.banned_until_date_}
-                                        << Outputter::RightPad{"<leave>"};
-                                    cb = leave_cb;
-                                  },
-                                  [&](td::td_api::chatMemberStatusMember &status) {
-                                    out << "member" << Outputter::RightPad{"<leave>"};
-                                    cb = leave_cb;
-                                  },
-                                  [&](td::td_api::chatMemberStatusCreator &status) {
-                                    if (status.is_anonymous_) {
-                                      out << "creator (anonymous)";
-                                    } else {
-                                      out << "creator (public)";
-                                    }
-                                  },
-                                  [&](td::td_api::chatMemberStatusRestricted &status) {
-                                    out << "restricted until " << Outputter::Date{status.restricted_until_date_}
-                                        << Outputter::RightPad{"<leave>"};
-                                    cb = leave_cb;
-                                  },
-                                  [&](td::td_api::chatMemberStatusAdministrator &status) {
-                                    if (status.custom_title_.size() > 0) {
-                                      out << "administrator (title " << status.custom_title_ << ")";
-                                    } else {
-                                      out << "administrator";
-                                    }
-                                  }));
-    add_element("status", out.as_str(), out.markup(),
-                [cb = std::move(cb)](MenuWindowCommon &w) { return cb(static_cast<ChatInfoWindow &>(w)); });
-  };
-
-  auto chat_type = chat_->chat_type();
-  switch (chat_type) {
+  switch (chat_type_) {
     case ChatType::User: {
       auto user = chat_ ? chat_manager().get_user(chat_->chat_base_id()) : user_;
       bool is_self = user && (user->user_id() == global_parameters().my_user_id());
@@ -253,173 +195,33 @@ void ChatInfoWindow::generate_info() {
         out << " ]";
         add_element("type", out.as_str(), out.markup());
       }
-      if (user) {
-        first_name_el_ = add_element("first name", user->first_name());
-        last_name_el_ = add_element("last name", user->last_name());
-        if (user->username().size()) {
-          add_element("username", "@" + user->username());
-        }
-        if (user->phone_number().size() > 0) {
-          add_element("phone", "+" + user->phone_number());
-        }
-        add_element("user_id", PSTRING() << user->user_id());
-
-        {
-          Outputter out;
-          const auto &status = user->status();
-          td::td_api::downcast_call(
-              const_cast<td::td_api::UserStatus &>(*status),
-              td::overloaded([&](td::td_api::userStatusEmpty &status) { out << "unknown"; },
-                             [&](td::td_api::userStatusRecently &status) { out << "last seen recently"; },
-                             [&](td::td_api::userStatusOnline &status) { out << "online"; },
-                             [&](td::td_api::userStatusOffline &status) {
-                               out << "last seen at " << Outputter::Date{status.was_online_};
-                             },
-                             [&](td::td_api::userStatusLastWeek &status) { out << "last seen last week"; },
-                             [&](td::td_api::userStatusLastMonth &status) { out << "last seen last month"; }));
-          add_element("status", out.as_str(), out.markup());
-        }
-      }
-      if (user_full_) {
-        if (user_full_->bio_) {
-          Outputter out;
-          out << *user_full_->bio_;
-          add_element("bio", out.as_str(), out.markup());
-        }
-        if (user_full_->bot_info_) {
-          add_element("botinfo", user_full_->bot_info_->description_);
-        }
-        {
-          Outputter out;
-          out << user_full_->group_in_common_count_ << " " << Outputter::RightPad{"<view>"};
-          add_element("commongroups", out.as_str(), out.markup(),
-                      create_menu_window_spawn_function<CommonGroupsWindow>(user));
-        }
-        if (user_full_->photo_) {
-          Outputter out;
-          out << user_full_->photo_;
-          add_element("photo", out.as_str(), out.markup());
-        }
-        if (user_full_->personal_chat_id_) {
-          auto C = chat_manager().get_chat(user_full_->personal_chat_id_);
-          if (C) {
-            Outputter out;
-            out << C->title() << Outputter::RightPad{"<open>"};
-            add_element("personalchat", out.as_str(), out.markup(), [root = root(), chat_id = C->chat_id()]() {
-              root->open_chat(chat_id);
-              return true;
-            });
-          }
-        }
-        if (user_full_->birthdate_) {
-          auto &b = *user_full_->birthdate_;
-          if (b.year_ || b.month_) {
-            Outputter out;
-            out << b;
-            add_element("birthday", out.as_str(), out.markup());
-          }
-        }
-      }
     } break;
     case ChatType::Basicgroup: {
       auto group = chat_manager().get_basic_group(chat_->chat_base_id());
-      {
-        Outputter out;
-        out << "group [";
-        out << " ]";
-        add_element("type", out.as_str());
-      }
-      if (group) {
-        add_element("group_id", PSTRING() << group->group_id());
-        add_element_member_status(*group->status());
-        {
-          Outputter out;
-          out << group->member_count() << " " << Outputter::RightPad{"<view>"};
-          add_element("members", out.as_str(), out.markup(),
-                      create_menu_window_spawn_function<GroupMembersWindow>(chat_));
-        }
-      }
-      if (basic_group_full_) {
-        if (basic_group_full_->description_.size() > 0) {
-          add_element("description", basic_group_full_->description_);
-        }
-        if (basic_group_full_->photo_) {
-          Outputter out;
-          out << basic_group_full_->photo_;
-          add_element("photo", out.as_str(), out.markup());
-        };
-      }
+      Outputter out;
+      out << "group [";
+      out << " ]";
+      add_element("type", out.as_str());
     } break;
     case ChatType::Supergroup: {
       auto supergroup = chat_manager().get_supergroup(chat_->chat_base_id());
-      {
-        Outputter out;
-        out << "supergroup [";
-        if (supergroup) {
-          add_verification_status(out, supergroup->verification_status());
-        }
-        out << " ]";
-        add_element("type", out.as_str(), out.markup());
-      }
-
+      Outputter out;
+      out << "supergroup [";
       if (supergroup) {
-        add_element_member_status(*supergroup->status());
-        {
-          Outputter out;
-          out << supergroup->member_count() << " " << Outputter::RightPad{"<view>"};
-          add_element("members", out.as_str(), out.markup(),
-                      create_menu_window_spawn_function<GroupMembersWindow>(chat_));
-        }
+        add_verification_status(out, supergroup->verification_status());
       }
-      if (supergroup_full_) {
-        if (supergroup_full_->description_.size() > 0) {
-          add_element("description", supergroup_full_->description_);
-        }
-        if (supergroup_full_->photo_) {
-          Outputter out;
-          out << supergroup_full_->photo_;
-          add_element("photo", out.as_str(), out.markup());
-        }
-        if (supergroup_full_->invite_link_) {
-          add_element("invite_link", supergroup_full_->invite_link_->name_);
-        }
-      }
+      out << " ]";
+      add_element("type", out.as_str(), out.markup());
     } break;
     case ChatType::Channel: {
       auto channel = chat_manager().get_channel(chat_->chat_base_id());
-      {
-        Outputter out;
-        out << "channel [";
-        if (channel) {
-          add_verification_status(out, channel->verification_status());
-        }
-        out << " ]";
-        add_element("type", out.as_str(), out.markup());
-      }
-
+      Outputter out;
+      out << "channel [";
       if (channel) {
-        add_element_member_status(*channel->status());
-        {
-          Outputter out;
-          out << channel->member_count() << " " << Outputter::RightPad{"<view>"};
-          add_element("members", out.as_str(), out.markup(),
-                      create_menu_window_spawn_function<GroupMembersWindow>(chat_));
-        }
+        add_verification_status(out, channel->verification_status());
       }
-      if (supergroup_full_) {
-        if (supergroup_full_->description_.size() > 0) {
-          add_element("description", supergroup_full_->description_);
-        }
-        if (supergroup_full_->photo_) {
-          Outputter out;
-          out << supergroup_full_->photo_;
-          add_element("photo", out.as_str(), out.markup());
-        }
-        if (supergroup_full_->invite_link_) {
-          add_element("invite_link", supergroup_full_->invite_link_->name_);
-        }
-      }
-
+      out << " ]";
+      add_element("type", out.as_str(), out.markup());
     } break;
     case ChatType::SecretChat: {
       add_element("type", "secret_chat");
@@ -427,11 +229,306 @@ void ChatInfoWindow::generate_info() {
     case ChatType::Unknown: {
     }; break;
   }
+}
 
-  if (chat_->message_ttl() > 0) {
-    add_element("ttl", PSTRING() << chat_->message_ttl());
+void ChatInfoWindow::add_user_name_option(td::CSlice first_name, td::CSlice last_name) {
+  first_name_el_ = add_element("first name", first_name.str());
+  last_name_el_ = add_element("last name", last_name.str());
+}
+
+void ChatInfoWindow::add_username_option(const td::tl_object_ptr<td::td_api::usernames> &usernames) {
+  if (!usernames) {
+    return;
   }
-  add_element("online", PSTRING() << chat_->online_count());
+  Outputter out;
+  bool is_first = true;
+  for (const auto &x : usernames->active_usernames_) {
+    if (!is_first) {
+      out << " aka ";
+    }
+    out << "@" << x;
+    is_first = false;
+  }
+
+  add_element("username", out.as_str());
+}
+
+void ChatInfoWindow::add_phone_number_option(td::CSlice phone_number) {
+  if (phone_number.size() == 0) {
+    return;
+  }
+  add_element("phone", PSTRING() << '+' << phone_number);
+}
+
+void ChatInfoWindow::add_bio_option(const td::tl_object_ptr<td::td_api::formattedText> &bio) {
+  if (!bio) {
+    return;
+  }
+  Outputter out;
+  out << *bio;
+  add_element("bio", out.as_str(), out.markup());
+}
+
+void ChatInfoWindow::add_user_status_option(const td::tl_object_ptr<td::td_api::UserStatus> &status) {
+  if (!status) {
+    return;
+  }
+  Outputter out;
+  td::td_api::downcast_call(
+      const_cast<td::td_api::UserStatus &>(*status),
+      td::overloaded([&](const td::td_api::userStatusEmpty &status) { out << "unknown"; },
+                     [&](const td::td_api::userStatusRecently &status) { out << "last seen recently"; },
+                     [&](const td::td_api::userStatusOnline &status) { out << "online"; },
+                     [&](const td::td_api::userStatusOffline &status) {
+                       out << "last seen at " << Outputter::Date{status.was_online_};
+                     },
+                     [&](const td::td_api::userStatusLastWeek &status) { out << "last seen last week"; },
+                     [&](const td::td_api::userStatusLastMonth &status) { out << "last seen last month"; }));
+  add_element("status", out.as_str(), out.markup());
+}
+
+void ChatInfoWindow::add_bot_info_option(const td::tl_object_ptr<td::td_api::botInfo> &info) {
+  if (!info) {
+    return;
+  }
+  add_element("botinfo", info->description_);
+}
+
+void ChatInfoWindow::add_common_groups_option(td::int32 count) {
+  auto user = chat_ ? chat_manager().get_user(chat_->chat_base_id()) : user_;
+  if (!count) {
+    Outputter out;
+    out << count;
+    add_element("commongroups", out.as_str(), out.markup());
+  } else {
+    CHECK(user);
+    Outputter out;
+    out << count << " " << Outputter::RightPad{"<view>"};
+    add_element("commongroups", out.as_str(), out.markup(),
+                create_menu_window_spawn_function<CommonGroupsWindow>(user));
+  }
+}
+
+void ChatInfoWindow::add_chat_photo_option(const td::tl_object_ptr<td::td_api::chatPhoto> &photo) {
+  if (!photo || !photo->sizes_.size()) {
+    add_element("photo", "<empty>");
+    return;
+  }
+  auto &photo_size = photo->sizes_.back();
+  Outputter out;
+  out << *photo << Outputter::RightPad{"<view>"};
+  add_element("photo", out.as_str(), out.markup(),
+              [photo = photo_size->photo_.get(), height = photo_size->height_,
+               width = photo_size->width_](MenuWindowCommon &w) -> bool {
+                w.spawn_submenu<ChatPhotoWindow>(clone_td_file(*photo), height, width);
+                return false;
+              });
+}
+
+void ChatInfoWindow::add_personal_chat_option(td::int64 chat_id) {
+  if (!chat_id) {
+    return;
+  }
+  auto C = chat_manager().get_chat(chat_id);
+  if (C) {
+    Outputter out;
+    out << C->title() << Outputter::RightPad{"<open>"};
+    add_element("personalchat", out.as_str(), out.markup(), [root = root(), chat_id = C->chat_id()]() {
+      root->open_chat(chat_id);
+      return true;
+    });
+  }
+}
+
+void ChatInfoWindow::add_birthdate_option(const td::tl_object_ptr<td::td_api::birthdate> &birthdate) {
+  if (!birthdate) {
+    return;
+  }
+  if (!birthdate->month_) {
+    return;
+  }
+  Outputter out;
+  out << *birthdate;
+  add_element("birthday", out.as_str(), out.markup());
+}
+
+void ChatInfoWindow::add_chat_member_status_option(const td::tl_object_ptr<td::td_api::ChatMemberStatus> &status) {
+  Outputter out;
+  std::function<bool(ChatInfoWindow &)> cb = [](ChatInfoWindow &) { return false; };
+  auto leave_cb = [chat_id = chat_->chat_id(), self = this](ChatInfoWindow &w) {
+    spawn_yes_no_window_and_loading_windows(
+        *self, PSTRING() << "Are you sure, you want to leave chat '" << self->chat_->title() << "'?", {}, true,
+        "leaving chat....", {}, td::make_tl_object<td::td_api::leaveChat>(chat_id),
+        [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+          DROP_IF_DELETED(R);
+          if (R.is_error()) {
+            spawn_error_window(*self, PSTRING() << "leaving chat failed: " << R.move_as_error(), {});
+            return;
+          }
+        });
+    return false;
+  };
+  auto join_cb = [chat_id = chat_->chat_id(), self = this](ChatInfoWindow &w) {
+    spawn_yes_no_window_and_loading_windows(
+        *self, PSTRING() << "Are you sure, you want to join chat '" << self->chat_->title() << "'?", {}, true,
+        "joining chat....", {}, td::make_tl_object<td::td_api::joinChat>(chat_id),
+        [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+          DROP_IF_DELETED(R);
+          if (R.is_error()) {
+            spawn_error_window(*self, PSTRING() << "joining chat failed: " << R.move_as_error(), {});
+            return;
+          }
+        });
+    return false;
+  };
+  td::td_api::downcast_call(const_cast<td::td_api::ChatMemberStatus &>(*status),
+                            td::overloaded(
+                                [&](td::td_api::chatMemberStatusLeft &status) {
+                                  out << "left" << Outputter::RightPad{"<join>"};
+                                  cb = join_cb;
+                                },
+                                [&](td::td_api::chatMemberStatusBanned &status) {
+                                  out << "banned until " << Outputter::Date{status.banned_until_date_}
+                                      << Outputter::RightPad{"<leave>"};
+                                  cb = leave_cb;
+                                },
+                                [&](td::td_api::chatMemberStatusMember &status) {
+                                  out << "member" << Outputter::RightPad{"<leave>"};
+                                  cb = leave_cb;
+                                },
+                                [&](td::td_api::chatMemberStatusCreator &status) {
+                                  if (status.is_anonymous_) {
+                                    out << "creator (anonymous)";
+                                  } else {
+                                    out << "creator (public)";
+                                  }
+                                },
+                                [&](td::td_api::chatMemberStatusRestricted &status) {
+                                  out << "restricted until " << Outputter::Date{status.restricted_until_date_}
+                                      << Outputter::RightPad{"<leave>"};
+                                  cb = leave_cb;
+                                },
+                                [&](td::td_api::chatMemberStatusAdministrator &status) {
+                                  if (status.custom_title_.size() > 0) {
+                                    out << "administrator (title " << status.custom_title_ << ")";
+                                  } else {
+                                    out << "administrator";
+                                  }
+                                }));
+  add_element("status", out.as_str(), out.markup(),
+              [cb = std::move(cb)](MenuWindowCommon &w) { return cb(static_cast<ChatInfoWindow &>(w)); });
+}
+
+void ChatInfoWindow::add_chat_members_option(td::int32 count, bool can_get_members) {
+  if (can_get_members) {
+    Outputter out;
+    out << count << " " << Outputter::RightPad{"<view>"};
+    add_element("members", out.as_str(), out.markup(), create_menu_window_spawn_function<GroupMembersWindow>(chat_));
+  } else {
+    Outputter out;
+    out << count;
+    add_element("members", out.as_str(), out.markup());
+  }
+}
+
+void ChatInfoWindow::add_chat_description_option(td::CSlice desc) {
+  if (desc.size() == 0) {
+    return;
+  }
+  add_element("description", desc.str());
+}
+
+void ChatInfoWindow::add_chat_invite_link_option(const td::tl_object_ptr<td::td_api::chatInviteLink> &link) {
+  if (!link) {
+    return;
+  }
+  add_element("invitelink", link->invite_link_);
+}
+
+void ChatInfoWindow::add_chat_ttl_option(td::int32 ttl) {
+  add_element("ttl", PSTRING() << chat_->message_ttl());
+}
+
+void ChatInfoWindow::add_chat_online_members_option(td::int32 count) {
+  add_element("online", PSTRING() << count);
+}
+
+void ChatInfoWindow::generate_info() {
+  clear();
+  if (is_empty() || !chat_ || chat_->chat_type() == ChatType::Unknown) {
+    return;
+  }
+  add_open_chat_option();
+  add_rename_chat_option();
+  add_chat_id_option();
+  add_chat_type_option();
+
+  switch (chat_type_) {
+    case ChatType::User: {
+      auto user = chat_ ? chat_manager().get_user(chat_->chat_base_id()) : user_;
+      if (user) {
+        add_user_name_option(user->first_name(), user->last_name());
+        add_username_option(user->usernames());
+        add_phone_number_option(user->phone_number());
+        add_user_status_option(user->status());
+      }
+      if (user && user_full_) {
+        add_bio_option(user_full_->bio_);
+        add_bot_info_option(user_full_->bot_info_);
+        add_common_groups_option(user_full_->group_in_common_count_);
+        add_chat_photo_option(user_full_->photo_);
+        add_personal_chat_option(user_full_->personal_chat_id_);
+        add_birthdate_option(user_full_->birthdate_);
+      }
+    } break;
+    case ChatType::Basicgroup: {
+      auto group = chat_manager().get_basic_group(chat_->chat_base_id());
+      if (group) {
+        add_chat_member_status_option(group->status());
+        add_chat_members_option(group->member_count(), true);
+      }
+      if (group && basic_group_full_) {
+        add_chat_description_option(basic_group_full_->description_);
+        add_chat_photo_option(basic_group_full_->photo_);
+        add_chat_invite_link_option(basic_group_full_->invite_link_);
+      }
+    } break;
+    case ChatType::Supergroup: {
+      auto supergroup = chat_manager().get_supergroup(chat_->chat_base_id());
+
+      if (supergroup) {
+        add_username_option(supergroup->usernames());
+        add_chat_member_status_option(supergroup->status());
+        add_chat_members_option(supergroup->member_count(), supergroup_full_ && supergroup_full_->can_get_members_);
+      }
+      if (supergroup && supergroup_full_) {
+        add_chat_description_option(supergroup_full_->description_);
+        add_chat_photo_option(supergroup_full_->photo_);
+        add_chat_invite_link_option(supergroup_full_->invite_link_);
+      }
+    } break;
+    case ChatType::Channel: {
+      auto channel = chat_manager().get_channel(chat_->chat_base_id());
+
+      if (channel) {
+        add_chat_member_status_option(channel->status());
+        add_chat_members_option(channel->member_count(), supergroup_full_ && supergroup_full_->can_get_members_);
+      }
+      if (channel && supergroup_full_) {
+        add_chat_description_option(supergroup_full_->description_);
+        add_chat_photo_option(supergroup_full_->photo_);
+        add_chat_invite_link_option(supergroup_full_->invite_link_);
+      }
+
+    } break;
+    case ChatType::SecretChat: {
+    } break;
+    case ChatType::Unknown: {
+    }; break;
+  }
+
+  add_chat_ttl_option(chat_->message_ttl());
+  add_chat_online_members_option(chat_->online_count());
   set_need_refresh();
 }
 

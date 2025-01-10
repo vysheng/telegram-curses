@@ -413,7 +413,9 @@ class WindowOutputterNotcurses : public WindowOutputter {
     return true;
   }
 
-  td::int32 rendered_image_height(td::int32 max_height, td::int32 max_width, std::string path) override {
+  std::pair<td::int32, td::int32> rendered_image_height(td::int32 max_height, td::int32 max_width,
+                                                        td::int32 image_height, td::int32 image_width,
+                                                        std::string path) override {
     struct ncvisual *v = nullptr;
     SCOPE_EXIT {
       if (v) {
@@ -438,22 +440,28 @@ class WindowOutputterNotcurses : public WindowOutputter {
 
     ncvisual_geom(nc_, v, &opts, &geom);
 
-    if (!geom.pixx || !geom.pixy) {
-      return 0;
+    if (!image_height && !image_width) {
+      if (!geom.pixx || !geom.pixy) {
+        return {0, 0};
+      }
+      image_height = geom.pixy;
+      image_width = geom.pixx;
     }
 
     max_height *= geom.scaley;
     max_width *= geom.scalex;
 
-    td::int32 real_height;
+    td::int32 real_height, real_width;
 
-    if (1ll * max_width * geom.pixy > 1ll * max_height * geom.pixx) {
+    if (1ll * max_width * image_height > 1ll * max_height * image_width) {
       real_height = max_height;
+      real_width = (int)(1ll * max_height * image_width / image_height);
     } else {
-      real_height = (int)(1ll * max_width * geom.pixy / geom.pixx);
+      real_height = (int)(1ll * max_width * image_height / image_width);
+      real_width = max_width;
     }
 
-    return (real_height + geom.scaley - 1) / geom.scaley;
+    return {(real_height + geom.scaley - 1) / geom.scaley, (real_width + geom.scalex - 1) / geom.scalex};
   }
 
   std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, std::string path) override {
@@ -654,7 +662,9 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
     return true;
   }
 
-  td::int32 rendered_image_height(td::int32 max_height, td::int32 max_width, std::string path) override {
+  std::pair<td::int32, td::int32> rendered_image_height(td::int32 max_height, td::int32 max_width,
+                                                        td::int32 image_height, td::int32 image_width,
+                                                        std::string path) override {
     struct ncvisual *v = nullptr;
     SCOPE_EXIT {
       if (v) {
@@ -679,22 +689,28 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
 
     ncvisual_geom(nc_, v, &opts, &geom);
 
-    if (!geom.pixx || !geom.pixy || !geom.scaley) {
-      return 0;
+    if (!image_height && !image_width) {
+      if (!geom.pixx || !geom.pixy) {
+        return {0, 0};
+      }
+      image_height = geom.pixy;
+      image_width = geom.pixx;
     }
 
     max_height *= geom.scaley;
     max_width *= geom.scalex;
 
-    td::int32 real_height;
+    td::int32 real_height, real_width;
 
-    if (1ll * max_width * geom.pixy > 1ll * max_height * geom.pixx) {
+    if (1ll * max_width * image_height > 1ll * max_height * image_width) {
       real_height = max_height;
+      real_width = (int)(1ll * max_height * image_width / image_height);
     } else {
-      real_height = (int)(1ll * max_width * geom.pixy / geom.pixx);
+      real_height = (int)(1ll * max_width * image_height / image_width);
+      real_width = max_width;
     }
 
-    return (real_height + geom.scaley - 1) / geom.scaley;
+    return {(real_height + geom.scaley - 1) / geom.scaley, (real_width + geom.scalex - 1) / geom.scalex};
   }
 
  private:

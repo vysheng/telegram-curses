@@ -23,7 +23,9 @@ NotificationManager::Notification::Notification(td::int64 chat_id, const td::td_
 
   if (!notify_notification_show(notification, &error)) {
     LOG(ERROR) << "failed to show notification";
-    g_error_free(error);
+    if (error) {
+      g_error_free(error);
+    }
     g_free(notification);
     return;
   }
@@ -72,7 +74,9 @@ void NotificationManager::Notification::delete_notification() {
   GError *error = nullptr;
   notify_notification_close(ptr, &error);
   g_free(ptr);
-  g_error_free(error);
+  if (error) {
+    g_error_free(error);
+  }
   notification_ = nullptr;
 }
 

@@ -520,6 +520,9 @@ class User {
     return user_->usernames_->editable_username_;
     //return user_->username_;
   }
+  const auto &usernames() const {
+    return user_->usernames_;
+  }
   const auto &phone_number() const {
     return user_->phone_number_;
   }
@@ -615,6 +618,9 @@ class Supergroup {
     }
     return group_->usernames_->editable_username_;
     //return user_->username_;
+  }
+  const auto &usernames() const {
+    return group_->usernames_;
   }
   auto date() const {
     return group_->date_;

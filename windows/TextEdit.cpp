@@ -259,6 +259,11 @@ class Builder {
   }
   ~Builder() {
   }
+  void cond_start_new_line() {
+    if (cur_line_pos_ != 0) {
+      start_new_line();
+    }
+  }
   void start_new_line() {
     rb_.erase_yx(cur_line_, cur_line_pos_, width_ - cur_line_pos_);
     for (int i = 0; i < pad_width_; i++) {
@@ -400,7 +405,7 @@ class Builder {
           image = nullptr;
         }
 
-        start_new_line();
+        cond_start_new_line();
         if (!image) {
           image = rb_.render_image(20, width_, me.str_arg);
         }
@@ -411,9 +416,9 @@ class Builder {
           images_[me.str_arg].push_back(std::move(image));
         }
       } else {
-        auto h = rb_.rendered_image_height(20, width_, me.str_arg);
-        start_new_line();
-        cur_line_ += h;
+        auto h = rb_.rendered_image_height(20, width_, me.arg, me.arg2, me.str_arg);
+        cond_start_new_line();
+        cur_line_ += h.first;
       }
     } else {
       me.install(rb_);

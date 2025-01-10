@@ -546,22 +546,7 @@ td::int32 ChatWindow::get_file_id(const td::td_api::message &message) {
 }
 
 void ChatWindow::update_message_file(td::td_api::message &message, const td::td_api::file &file_in) {
-  td::tl_object_ptr<td::td_api::localFile> l;
-  if (file_in.local_) {
-    l = td::make_tl_object<td::td_api::localFile>(
-        file_in.local_->path_, file_in.local_->can_be_downloaded_, file_in.local_->can_be_deleted_,
-        file_in.local_->is_downloading_active_, file_in.local_->is_downloading_completed_,
-        file_in.local_->download_offset_, file_in.local_->downloaded_prefix_size_, file_in.local_->downloaded_size_);
-  }
-  td::tl_object_ptr<td::td_api::remoteFile> r;
-  if (file_in.remote_) {
-    r = td::make_tl_object<td::td_api::remoteFile>(
-        file_in.remote_->id_, file_in.remote_->unique_id_, file_in.remote_->is_uploading_active_,
-        file_in.remote_->is_uploading_completed_, file_in.remote_->uploaded_size_);
-  }
-  auto file = td::make_tl_object<td::td_api::file>(file_in.id_, file_in.size_, file_in.expected_size_, std::move(l),
-                                                   std::move(r));
-  //file id:int32 size:int53 expected_size:int53 local:localFile remote:remoteFile = File;
+  auto file = clone_td_file(file_in);
   td::tl_object_ptr<td::td_api::file> *f = nullptr;
   td::td_api::downcast_call(
       *message.content_,

@@ -248,7 +248,7 @@ void Screen::loop() {
   }
 
   backend_->tick();
-  refresh(true);
+  refresh(false);
 }
 
 void Screen::handle_input(const InputEvent &info) {
