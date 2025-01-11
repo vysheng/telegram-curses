@@ -66,6 +66,11 @@ class BaseWindow : public Window {
     while (it != popup_windows_.end() && it->first <= priority) {
       it++;
     }
+    if (false && it != popup_windows_.end()) {
+      window->backend_window()->move_below(it->second->backend_window());
+    } else {
+      window->backend_window()->move_to_top();
+    }
     it = popup_windows_.emplace(it, priority, window);
     if (it == popup_windows_.begin()) {
       activate_subwindow(window);
@@ -101,6 +106,7 @@ class BaseWindow : public Window {
     }
     layout_ = std::move(window_layout);
     layout_->resize(height(), width());
+    layout_->backend_window()->move_above(backend_window());
     add_subwindow(layout_, 0, 0);
   }
 
@@ -134,6 +140,7 @@ void Screen::init() {
   }
 
   on_resize(height(), width());
+  backend_->create_backend_window(base_window_);
 }
 
 void Screen::stop() {
@@ -180,8 +187,8 @@ void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority
   if (!backend_ || !base_window_ || finished_) {
     return;
   }
+  backend_->create_backend_window(window);
   static_cast<BaseWindow &>(*base_window_).add_popup_window(window, priority);
-  backend_->set_popup(window);
   refresh(true);
 }
 
@@ -189,7 +196,6 @@ void Screen::del_popup_window(Window *window) {
   if (!backend_ || !base_window_ || finished_) {
     return;
   }
-  backend_->unset_popup(window);
   static_cast<BaseWindow &>(*base_window_).del_popup_window(window);
   refresh(true);
 }
@@ -198,6 +204,7 @@ void Screen::change_layout(std::shared_ptr<WindowLayout> window_layout) {
   if (!backend_ || !base_window_ || finished_) {
     return;
   }
+  backend_->create_backend_window(window_layout);
   static_cast<BaseWindow &>(*base_window_).change_layout(window_layout);
   refresh(true);
 }

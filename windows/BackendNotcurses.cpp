@@ -50,7 +50,6 @@ class RenderedImageNotcurses : public RenderedImage {
     if (plane_ && offset_ == offset && rendered_height_ == slice_height && is_active_ == is_active) {
       return;
     }
-    LOG(ERROR) << "RERENDERING SLICE\n";
     hide();
     CHECK(slice_height >= 0 && slice_height <= height_);
     if (slice_height == 0) {
@@ -200,6 +199,25 @@ class WindowOutputterNotcurses : public WindowOutputter {
 
     struct ncplane *plane() {
       return plane_;
+    }
+
+    void move_to_bottom() override {
+      ncplane_move_bottom(plane_);
+    }
+    void move_below(BackendWindow *other) override {
+      ncplane_move_below(plane_, static_cast<BackendWindowNotcurses *>(other)->plane_);
+    }
+    void move_above(BackendWindow *other) override {
+      ncplane_move_above(plane_, static_cast<BackendWindowNotcurses *>(other)->plane_);
+    }
+    void move_to_top() override {
+      ncplane_move_top(plane_);
+    }
+    void move_yx(td::int32 y_offset, td::int32 x_offset) override {
+      ncplane_move_yx(plane_, y_offset, x_offset);
+    }
+    void resize(td::int32 height, td::int32 width) override {
+      ncplane_resize(plane_, 0, 0, 0, 0, 0, 0, height, width);
     }
 
    private:
@@ -384,9 +402,6 @@ class WindowOutputterNotcurses : public WindowOutputter {
           is_active);
     } else {
       auto b = static_cast<BackendWindowNotcurses *>(bw);
-      ncplane_resize(b->plane(), 0, 0, 0, 0, 0, 0, height, width);
-      ncplane_move_yx(b->plane(), y_offset, x_offset);
-      ncplane_move_above(b->plane(), rb_);
       return std::make_unique<WindowOutputterNotcurses>(
           nc_, b->plane(), 0, 0, height, width, color_to_rgb[(td::int32)(is_active ? Color::White : Color::Grey)],
           color_to_rgb[(td::int32)Color::Black], is_active);
@@ -846,7 +861,7 @@ struct BackendNotcurses : public Backend {
     return notcurses_inputready_fd(nc_);
   }
 
-  void set_popup(std::shared_ptr<Window> window) override {
+  void create_backend_window(std::shared_ptr<Window> window) override {
     struct ncplane_options plane_opts{.y = 0,
                                       .x = 0,
                                       .rows = 1,
@@ -862,7 +877,7 @@ struct BackendNotcurses : public Backend {
     window->set_backend_window(std::move(bw));
   }
 
-  void unset_popup(Window *window) override {
+  void delete_backend_window(Window *window) override {
     window->release_backend_window();
   }
 };

@@ -27,9 +27,9 @@ class Backend {
   virtual void tick() = 0;
   virtual void refresh(bool force, std::shared_ptr<Window> base_window) = 0;
   virtual td::int32 poll_fd() = 0;
-  virtual void set_popup(std::shared_ptr<Window> window) {
+  virtual void create_backend_window(std::shared_ptr<Window> window) {
   }
-  virtual void unset_popup(Window *window) {
+  virtual void delete_backend_window(Window *window) {
   }
 };
 

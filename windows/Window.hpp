@@ -14,6 +14,18 @@ namespace windows {
 class BackendWindow {
  public:
   virtual ~BackendWindow() = default;
+  virtual void move_to_bottom() {
+  }
+  virtual void move_below(BackendWindow *other) {
+  }
+  virtual void move_above(BackendWindow *other) {
+  }
+  virtual void move_to_top() {
+  }
+  virtual void move_yx(td::int32 y, td::int32 x) {
+  }
+  virtual void resize(td::int32 height, td::int32 width) {
+  }
 };
 
 class Window {
@@ -131,6 +143,9 @@ class Window {
     y_offset_ = y_offset;
     x_offset_ = x_offset;
     set_need_refresh_force_rec();
+    if (backend_window_) {
+      backend_window_->move_yx(y_offset_, x_offset_);
+    }
   }
   void move_yx(td::int32 y_offset, td::int32 x_offset) {
     if (y_offset_ == y_offset && x_offset_ == x_offset) {
@@ -139,6 +154,9 @@ class Window {
     y_offset_ = y_offset;
     x_offset_ = x_offset;
     set_need_refresh_force_rec();
+    if (backend_window_) {
+      backend_window_->move_yx(y_offset_, x_offset_);
+    }
   }
   void add_subwindow(std::shared_ptr<Window> window, td::int32 y_offset, td::int32 x_offset) {
     window->set_parent_window(this, y_offset, x_offset);
@@ -200,6 +218,12 @@ class Window {
 
   void set_backend_window(std::unique_ptr<BackendWindow> window) {
     backend_window_ = std::move(window);
+    if (backend_window_) {
+      if (height() > 0 && width() > 0) {
+        backend_window_->resize(height(), width());
+      }
+      backend_window_->move_yx(y_offset_, x_offset_);
+    }
   }
   BackendWindow *backend_window() const {
     return backend_window_.get();

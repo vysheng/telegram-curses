@@ -2192,10 +2192,16 @@ void Tdcurses::spawn_popup_view_window(std::string text, std::vector<windows::Ma
     Callback(Tdcurses *ptr, std::shared_ptr<windows::Window> to_close) : ptr_(ptr), to_close_(std::move(to_close)) {
     }
     void on_answer(windows::ViewWindow *window) override {
-      ptr_->del_popup_window(to_close_.get());
+      if (to_close_) {
+        ptr_->del_popup_window(to_close_.get());
+        to_close_ = nullptr;
+      }
     }
     void on_abort(windows::ViewWindow *window) override {
-      ptr_->del_popup_window(to_close_.get());
+      if (to_close_) {
+        ptr_->del_popup_window(to_close_.get());
+        to_close_ = nullptr;
+      }
     }
 
    private:

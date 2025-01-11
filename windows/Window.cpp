@@ -13,6 +13,9 @@ void Window::resize(td::int32 new_height, td::int32 new_width) {
   width_ = new_width;
   height_ = new_height;
   on_resize(old_height, old_width, new_height, new_width);
+  if (backend_window_ && new_height > 0 && new_width > 0) {
+    backend_window_->resize(new_height, new_width);
+  }
 }
 
 void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, bool is_active_rec,
