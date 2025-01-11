@@ -55,8 +55,8 @@ class ChatSearchWindow
     return (td::int32)((mode_ == Mode::Both) ? 1 + 2 * max_results() : 1 + max_results());
   }
 
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
-    editor_window_->resize(new_width, 1);
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
+    editor_window_->resize(1, new_width);
   }
 
   auto found_chats() const {

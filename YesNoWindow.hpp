@@ -28,8 +28,8 @@ class YesNoWindow
       : MenuWindow(root, std::move(root_actor)), callback_(std::move(callback)), ok_(default_value) {
     view_window_ = std::make_shared<windows::ViewWindow>(std::move(text), std::move(markup), nullptr);
   }
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
-    view_window_->resize(new_width, new_height - 2);
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
+    view_window_->resize(new_height - 2, new_width);
   }
   std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow> self) override {
     return std::static_pointer_cast<YesNoWindow>(std::move(self));

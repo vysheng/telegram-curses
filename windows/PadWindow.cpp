@@ -138,8 +138,8 @@ void PadWindow::active_element_handle_input(const InputEvent &info) {
   }
 }
 
-void PadWindow::on_resize(td::int32, td::int32 old_height, td::int32 new_width, td::int32 new_height) {
-  pad_window_body_->resize(new_width, new_height - 2);
+void PadWindow::on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) {
+  pad_window_body_->resize(new_height - 2, new_width);
 
   if (elements_.size() == 0) {
     return;

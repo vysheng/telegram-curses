@@ -56,28 +56,28 @@ class TdcursesLayout
       activate_subwindow(log_window_);
     }
   }
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
     auto h = log_window_enabled_ ? (td::int32)(height() * dialog_list_window_height_) : height();
     auto w = (td::int32)(width() * dialog_list_window_width_);
     h -= 2;
-    dialog_list_window_->resize(w, h);
+    dialog_list_window_->resize(h, w);
     dialog_list_window_->move_yx(0, 0);
     if (!compose_window_) {
-      chat_window_->resize(width() - 1 - w, h);
+      chat_window_->resize(h, width() - 1 - w);
       chat_window_->move_yx(0, w + 1);
     } else {
       auto h2 = (td::int32)(height() * chat_window_height_);
-      chat_window_->resize(width() - 1 - w, h2);
+      chat_window_->resize(h2, width() - 1 - w);
       chat_window_->move_yx(0, w + 1);
-      compose_window_->resize(width() - 1 - w, h - 1 - h2);
+      compose_window_->resize(h - 1 - h2, width() - 1 - w);
       compose_window_->move_yx(h2 + 1, w + 1);
     }
-    status_line_->resize(width(), 1);
+    status_line_->resize(1, width());
     status_line_->move_yx(h, 0);
-    command_line_->resize(width(), 1);
+    command_line_->resize(1, width());
     command_line_->move_yx(h + 1, 0);
     if (log_window_enabled_) {
-      log_window_->resize(width(), height() - 1 - h - 2);
+      log_window_->resize(height() - 1 - h - 2, width());
       log_window_->move_yx(h + 3, 0);
     }
   }
@@ -112,7 +112,7 @@ class TdcursesLayout
       activate_subwindow(chat_window_);
     }
     replace_window_in(compose_window_, std::move(window), false);
-    on_resize(width(), height(), width(), height());
+    on_resize(height(), width(), height(), width());
   }
 
   void handle_input(const windows::InputEvent &info) override {
@@ -145,7 +145,7 @@ class TdcursesLayout
   void enable_log_window() {
     if (!log_window_enabled_) {
       log_window_enabled_ = true;
-      on_resize(width(), height(), width(), height());
+      on_resize(height(), width(), height(), width());
       set_need_refresh();
     }
   }
@@ -153,7 +153,7 @@ class TdcursesLayout
   void disable_log_window() {
     if (log_window_enabled_) {
       log_window_enabled_ = false;
-      on_resize(width(), height(), width(), height());
+      on_resize(height(), width(), height(), width());
       set_need_refresh();
     }
   }
@@ -164,7 +164,7 @@ class TdcursesLayout
     dialog_list_window_width_ = 0.01 * params.dialog_list_window_width;
     chat_window_height_ = 1.0 - 0.01 * params.compose_window_height;
 
-    on_resize(width(), height(), width(), height());
+    on_resize(height(), width(), height(), width());
     set_need_refresh();
   }
 
@@ -193,7 +193,7 @@ class TdcursesLayout
     if (window) {
       if (old) {
         add_subwindow(window, old->y_offset(), old->x_offset());
-        window->resize(old->width(), old->height());
+        window->resize(old->height(), old->width());
       } else {
         add_subwindow(window, 0, 0);
         window->resize(1, 1);

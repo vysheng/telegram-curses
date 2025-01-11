@@ -39,8 +39,8 @@ class ComposeWindow
   void set_draft(std::string message);
 
   void render(windows::WindowOutputter &rb, bool force) override;
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
-    editor_window_->resize(width(), reply_message_id_ ? height() - 1 : height());
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
+    editor_window_->resize(reply_message_id_ ? height() - 1 : height(), width());
   }
   bool need_refresh() override {
     return Window::need_refresh() || (editor_window_ && editor_window_->need_refresh());
@@ -57,7 +57,7 @@ class ComposeWindow
   }
   void set_reply_message_id(td::int64 reply_message_id) {
     reply_message_id_ = reply_message_id;
-    editor_window_->resize(width(), reply_message_id_ ? height() - 1 : height());
+    editor_window_->resize(reply_message_id_ ? height() - 1 : height(), width());
     editor_window_->move_yx(reply_message_id_ ? 1 : 0, 0);
     set_need_refresh();
   }

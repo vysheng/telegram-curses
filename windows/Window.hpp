@@ -34,8 +34,8 @@ class Window {
   auto x_offset() const {
     return x_offset_;
   }
-  void resize(td::int32 new_width, td::int32 new_height);
-  virtual void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) {
+  void resize(td::int32 new_height, td::int32 new_width);
+  virtual void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) {
     set_need_refresh();
   }
   virtual void handle_input(const InputEvent &info) {

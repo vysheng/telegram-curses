@@ -42,8 +42,8 @@ class BorderedWindow : public Window {
     t.relax(next_->need_refresh_at());
     return t;
   }
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
-    next_->resize(new_width - 2 * hor_border_thic_, new_height - 2 * vert_border_thic_);
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
+    next_->resize(new_height - 2 * vert_border_thic_, new_width - 2 * hor_border_thic_);
     next_->move_yx(vert_border_thic_, hor_border_thic_);
   }
 
@@ -77,7 +77,7 @@ class BorderedWindow : public Window {
         vert_border_thic_ = 1;
         break;
     }
-    next_->resize(width() - 2 * hor_border_thic_, height() - 2 * vert_border_thic_);
+    next_->resize(height() - 2 * vert_border_thic_, width() - 2 * hor_border_thic_);
     next_->move_yx(vert_border_thic_, hor_border_thic_);
     set_need_refresh();
   }

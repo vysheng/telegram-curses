@@ -40,7 +40,7 @@ class Screen {
    public:
     virtual ~Callback() = default;
     virtual void on_close() = 0;
-    virtual void on_resize(td::int32 width, td::int32 height) {
+    virtual void on_resize(td::int32 height, td::int32 width) {
     }
   };
 
@@ -51,7 +51,7 @@ class Screen {
   void stop();
   void handle_input(const InputEvent &info);
   td::Timestamp loop();
-  void on_resize(int width, int height);
+  void on_resize(int height, int width);
   void refresh(bool force = false);
   void render(Window &root, WindowOutputter &rb, bool force);
 

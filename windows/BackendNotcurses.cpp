@@ -783,7 +783,7 @@ struct BackendNotcurses : public Backend {
 
       if (ni.id == NCKEY_RESIZE) {
         notcurses_refresh(nc_, nullptr, nullptr);
-        screen_->on_resize(width(), height());
+        screen_->on_resize(height(), width());
         continue;
       }
 

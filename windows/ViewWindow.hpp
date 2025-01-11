@@ -27,7 +27,7 @@ class ViewWindow : public Window {
   void handle_input(const InputEvent &info) override;
   void render(WindowOutputter &rb, bool force) override;
 
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
     offset_from_top_ = 0;
   }
 

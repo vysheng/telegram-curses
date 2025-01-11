@@ -16,7 +16,8 @@ namespace tdcurses {
 
 void ChatSearchWindow::build_subwindows() {
   editor_window_ = std::make_shared<windows::OneLineInputWindow>(">", false, nullptr);
-  editor_window_->resize(width(), 1);
+  editor_window_->resize(1, width());
+  add_subwindow(editor_window_, 0, 0);
 }
 
 void ChatSearchWindow::handle_input(const windows::InputEvent &info) {

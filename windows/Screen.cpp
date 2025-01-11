@@ -33,15 +33,15 @@ class BaseWindow : public Window {
 
       auto w_off = (width() - w) / 2;
       auto h_off = (height() - h) / 2;
-      window->resize(w, h);
+      window->resize(h, w);
       window->move_yx(h_off, w_off);
     }
   }
 
-  void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
+  void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
     set_need_refresh();
     if (layout_) {
-      layout_->resize(new_width, new_height);
+      layout_->resize(new_height, new_width);
     }
     resize_all_popup_windows();
   }
@@ -100,7 +100,7 @@ class BaseWindow : public Window {
       del_subwindow(layout_.get());
     }
     layout_ = std::move(window_layout);
-    layout_->resize(width(), height());
+    layout_->resize(height(), width());
     add_subwindow(layout_, 0, 0);
   }
 
@@ -133,7 +133,7 @@ void Screen::init() {
     init_notcurses_backend(this);
   }
 
-  on_resize(width(), height());
+  on_resize(height(), width());
 }
 
 void Screen::stop() {
@@ -144,13 +144,13 @@ void Screen::stop() {
   }
 }
 
-void Screen::on_resize(int width, int height) {
+void Screen::on_resize(int height, int width) {
   if (!backend_ || finished_) {
     return;
   }
 
   backend_->on_resize();
-  base_window_->resize(width, height);
+  base_window_->resize(height, width);
   refresh(true);
   refresh(true);
 }

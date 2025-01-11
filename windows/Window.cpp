@@ -3,7 +3,7 @@
 
 namespace windows {
 
-void Window::resize(td::int32 new_width, td::int32 new_height) {
+void Window::resize(td::int32 new_height, td::int32 new_width) {
   if (new_width == width_ && new_height == height_) {
     return;
   }
@@ -12,7 +12,7 @@ void Window::resize(td::int32 new_width, td::int32 new_height) {
   auto old_height = height_;
   width_ = new_width;
   height_ = new_height;
-  on_resize(old_width, old_height, new_width, new_height);
+  on_resize(old_height, old_width, new_height, new_width);
 }
 
 void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, bool is_active_rec,

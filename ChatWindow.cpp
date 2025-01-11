@@ -620,7 +620,7 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
   } else if (info == " ") {
     if (!chat_window.multi_message_selection_mode_) {
       chat_window.multi_message_selection_mode_ = true;
-      chat_window.on_resize(chat_window.width(), chat_window.height(), chat_window.width(), chat_window.height());
+      chat_window.on_resize(chat_window.height(), chat_window.width(), chat_window.height(), chat_window.width());
       chat_window.selected_messages_.clear();
     }
     auto msg_id = message_id();
@@ -628,7 +628,7 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
       chat_window.selected_messages_.erase(msg_id);
       if (chat_window.selected_messages_.size() == 0) {
         chat_window.multi_message_selection_mode_ = false;
-        chat_window.on_resize(chat_window.width(), chat_window.height(), chat_window.width(), chat_window.height());
+        chat_window.on_resize(chat_window.height(), chat_window.width(), chat_window.height(), chat_window.width());
       }
     } else {
       chat_window.selected_messages_.insert(msg_id);

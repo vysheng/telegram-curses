@@ -172,7 +172,6 @@ add_executable(telegram-curses
   windows/Window.hpp
   windows/WindowLayout.cpp
   windows/WindowLayout.hpp
-  windows/WindowLayoutSplit.hpp
 
   ChatInfoWindow.cpp
   ChatInfoWindow.hpp

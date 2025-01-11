@@ -385,7 +385,7 @@ void init_tickit_backend(Screen *screen) {
 
   auto handle_resize = [](TickitTerm *tt, TickitEventFlags flags, void *_info, void *data) {
     TickitResizeEventInfo *info = (TickitResizeEventInfo *)_info;
-    static_cast<Screen *>(data)->on_resize(info->cols, info->lines);
+    static_cast<Screen *>(data)->on_resize(info->lines, info->cols);
     return 1;
   };
   tickit_term_bind_event(backend->tickit_term_, TICKIT_TERM_ON_RESIZE, (TickitBindFlags)0, handle_resize, screen);
