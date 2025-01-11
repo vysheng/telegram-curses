@@ -84,8 +84,6 @@ void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
       windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
     }
   }
-
-  render_subwindow(rb, editor_window_.get(), force, true, true);
 }
 
 }  // namespace tdcurses

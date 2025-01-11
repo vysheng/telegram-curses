@@ -27,8 +27,6 @@ const std::vector<std::string> &get_border_type_info(BorderType border_type, boo
 }
 
 void BorderedWindow::render(WindowOutputter &rb, bool force) {
-  render_subwindow(rb, next_.get(), force, true, true);
-
   if (vert_border_thic_ != 0) {
     if (color_ != -1) {
       rb.set_fg_color((Color)color_);

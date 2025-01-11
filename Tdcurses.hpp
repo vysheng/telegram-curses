@@ -1,6 +1,7 @@
 #pragma once
 
 #include "td/utils/Promise.h"
+#include "td/utils/port/Stat.h"
 #include "windows/Screen.hpp"
 #include "windows/LogWindow.hpp"
 #include "windows/Window.hpp"
@@ -111,6 +112,7 @@ class Tdcurses : public TdcursesInterface {
   };
 
   void initialize_options(TdcursesParameters &params);
+  void update_cpu_stat(td::CpuStat stat);
 
  private:
   td::ActorId<Tdcurses> self_;
@@ -127,6 +129,10 @@ class Tdcurses : public TdcursesInterface {
   std::map<td::int64, TdcursesWindowBase *> all_active_windows_;
 
   std::vector<Option> options_;
+
+  td::CpuStat last_cpu_stat_;
+  td::CpuStat relaxed_cpu_stat_;
+  double last_cpu_stat_at_{0};
 
  public:
   Tdcurses() {
@@ -211,6 +217,10 @@ class Tdcurses : public TdcursesInterface {
 
   virtual void update_status_line() = 0;
   td::PollableFdInfo poll_fd_;
+
+  const auto &relaxed_cpu_stat() const {
+    return relaxed_cpu_stat_;
+  }
 };
 
 }  // namespace tdcurses

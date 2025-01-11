@@ -16,6 +16,7 @@
 #include "td/utils/Promise.h"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
+#include "td/utils/Time.h"
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
 #include "td/utils/misc.h"
@@ -61,6 +62,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <ostream>
@@ -2056,13 +2058,32 @@ void Tdcurses::close_compose_window() {
 void Tdcurses::loop() {
   poll_fd_.sync_with_poll();
   auto t = screen_->loop();
+  t.relax(td::Timestamp::in(0.5));
   if (t) {
     set_timeout_at(t.at());
   }
   auto R = td::cpu_stat();
   if (R.is_ok()) {
-    //update_cpu_stat(R.move_as_ok());
+    update_cpu_stat(R.move_as_ok());
   }
+}
+
+void Tdcurses::update_cpu_stat(td::CpuStat stat) {
+  auto ts = td::Time::now();
+
+  auto delta_tot = stat.total_ticks_ - last_cpu_stat_.total_ticks_;
+  auto delta_usr = stat.process_user_ticks_ - last_cpu_stat_.process_user_ticks_;
+  auto delta_sys = stat.process_system_ticks_ - last_cpu_stat_.process_system_ticks_;
+
+  auto coef = exp(-(ts - last_cpu_stat_at_));
+  relaxed_cpu_stat_.total_ticks_ = (td::int64)(coef * (double)relaxed_cpu_stat_.total_ticks_ + (double)delta_tot * 100);
+  relaxed_cpu_stat_.process_user_ticks_ =
+      (td::int64)(coef * (double)relaxed_cpu_stat_.process_user_ticks_ + (double)delta_usr * 100);
+  relaxed_cpu_stat_.process_system_ticks_ =
+      (td::int64)(coef * (double)relaxed_cpu_stat_.process_system_ticks_ + (double)delta_sys * 100);
+  last_cpu_stat_ = stat;
+  last_cpu_stat_at_ = ts;
+  update_status_line();
 }
 
 void Tdcurses::refresh() {
@@ -2119,6 +2140,14 @@ void TdcursesImpl::update_status_line() {
       out << ch->search_pattern() << " ";
     }
     out << Outputter::Reverse(Outputter::ChangeBool::Revert) << " ";
+    {
+      auto r = sysconf(_SC_CLK_TCK);
+      auto usr = (int)((double)relaxed_cpu_stat().process_user_ticks_ / (double)r);
+      auto sys = (int)((double)relaxed_cpu_stat().process_system_ticks_ / (double)r);
+
+      out << usr << "% " << sys << "%";
+    }
+    out << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
     out << "\n";
     auto markup = out.markup();
     auto str = out.as_str();
