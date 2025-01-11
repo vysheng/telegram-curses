@@ -530,35 +530,13 @@ void ChatWindow::process_update(td::td_api::updateChatAction &update) {
 }
 
 td::int32 ChatWindow::get_file_id(const td::td_api::message &message) {
-  td::int32 res = 0;
-  td::td_api::downcast_call(
-      const_cast<td::td_api::MessageContent &>(*message.content_),
-      td::overloaded([&](const td::td_api::messageAnimation &content) { res = content.animation_->animation_->id_; },
-                     [&](const td::td_api::messageAudio &content) { res = content.audio_->audio_->id_; },
-                     [&](const td::td_api::messageDocument &content) { res = content.document_->document_->id_; },
-                     [&](const td::td_api::messagePhoto &content) { res = content.photo_->sizes_.back()->photo_->id_; },
-                     [&](const td::td_api::messageSticker &content) { res = content.sticker_->sticker_->id_; },
-                     [&](const td::td_api::messageVideo &content) { res = content.video_->video_->id_; },
-                     [&](const td::td_api::messageVideoNote &content) { res = content.video_note_->video_->id_; },
-                     [&](const td::td_api::messageVoiceNote &content) { res = content.voice_note_->voice_->id_; },
-                     [&](const auto &x) {}));
-  return res;
+  auto f = message_get_file(message);
+  return f ? f->id_ : 0;
 }
 
 void ChatWindow::update_message_file(td::td_api::message &message, const td::td_api::file &file_in) {
   auto file = clone_td_file(file_in);
-  td::tl_object_ptr<td::td_api::file> *f = nullptr;
-  td::td_api::downcast_call(
-      *message.content_,
-      td::overloaded([&](td::td_api::messageAnimation &content) { f = &content.animation_->animation_; },
-                     [&](td::td_api::messageAudio &content) { f = &content.audio_->audio_; },
-                     [&](td::td_api::messageDocument &content) { f = &content.document_->document_; },
-                     [&](td::td_api::messagePhoto &content) { f = &content.photo_->sizes_.back()->photo_; },
-                     [&](td::td_api::messageSticker &content) { f = &content.sticker_->sticker_; },
-                     [&](td::td_api::messageVideo &content) { f = &content.video_->video_; },
-                     [&](td::td_api::messageVideoNote &content) { f = &content.video_note_->video_; },
-                     [&](td::td_api::messageVoiceNote &content) { f = &content.voice_note_->voice_; },
-                     [&](auto &x) {}));
+  auto f = message_get_file_object_ref(message);
   if (f && (*f)->id_ == file->id_) {
     *f = std::move(file);
   }

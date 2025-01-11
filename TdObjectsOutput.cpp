@@ -299,7 +299,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatChangeTitle &
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatChangePhoto &content) {
-  return out << "[changed photo]";
+  return out << "[changed photo to " << *content.photo_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatDeletePhoto &content) {
@@ -602,7 +602,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::photo &content) {
   if (content.sizes_.size() == 0) {
     return out << "photo {no file}";
   } else {
-    return out << "photo " << *content.sizes_.rbegin();
+    return out << "photo " << content.sizes_.back();
   }
 }
 
@@ -732,7 +732,12 @@ Outputter &operator<<(Outputter &out, const td::td_api::reactionTypePaid &e) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::chatPhoto &file) {
-  return out << "chat photo";
+  out << "chat ";
+  if (file.sizes_.size() == 0) {
+    return out << "photo {no file}";
+  } else {
+    return out << "photo " << file.sizes_.back();
+  }
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::birthdate &b) {

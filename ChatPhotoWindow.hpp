@@ -62,6 +62,7 @@ class ChatPhotoWindow
   }
 
   void render(windows::WindowOutputter &rb, bool force) override {
+    rb.erase_rect(0, 0, height(), width());
     auto dir = windows::SavedRenderedImagesDirectory(std::move(saved_images_));
     Outputter out;
     if (photo_->local_->is_downloading_completed_) {
@@ -70,10 +71,8 @@ class ChatPhotoWindow
       p.height = height_;
       p.width = width_;
       out << p;
-      rb.erase_rect(0, 0, height(), width());
     } else {
       out << "LOADING ";
-      rb.erase_rect(0, 0, height(), width());
       download();
     }
     windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false, &dir);
@@ -82,6 +81,7 @@ class ChatPhotoWindow
 
   void handle_input(const windows::InputEvent &info) override {
     menu_window_handle_input(info);
+    set_need_refresh();
   }
 
   std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow> w) override {

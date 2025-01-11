@@ -50,6 +50,7 @@ class RenderedImageNotcurses : public RenderedImage {
     if (plane_ && offset_ == offset && rendered_height_ == slice_height && is_active_ == is_active) {
       return;
     }
+    LOG(ERROR) << "RERENDERING SLICE\n";
     hide();
     CHECK(slice_height >= 0 && slice_height <= height_);
     if (slice_height == 0) {
@@ -385,7 +386,7 @@ class WindowOutputterNotcurses : public WindowOutputter {
       auto b = static_cast<BackendWindowNotcurses *>(bw);
       ncplane_resize(b->plane(), 0, 0, 0, 0, 0, 0, height, width);
       ncplane_move_yx(b->plane(), y_offset, x_offset);
-      ncplane_move_top(b->plane());
+      ncplane_move_above(b->plane(), rb_);
       return std::make_unique<WindowOutputterNotcurses>(
           nc_, b->plane(), 0, 0, height, width, color_to_rgb[(td::int32)(is_active ? Color::White : Color::Grey)],
           color_to_rgb[(td::int32)Color::Black], is_active);
@@ -833,7 +834,11 @@ struct BackendNotcurses : public Backend {
       notcurses_cursor_enable(nc_, cursor_y, cursor_x);
       cursor_enabled_ = true;
     } else {
-      notcurses_cursor_enable(nc_, -1, -1);
+      if (cursor_enabled_) {
+        notcurses_cursor_enable(nc_, 0, 0);
+        notcurses_cursor_disable(nc_);
+        cursor_enabled_ = false;
+      }
     }
   }
 

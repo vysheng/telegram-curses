@@ -64,6 +64,19 @@ class FolderSelectionWindow : public MenuWindowPad {
     set_need_refresh();
   }
 
+  td::int32 best_width() override {
+    size_t min = 7; /*archive*/
+    for (auto &f : global_parameters().chat_folders()) {
+      if (f->name_->text_->text_.size() > min) {
+        min = f->name_->text_->text_.size();
+      }
+    }
+    return (td::int32)min + 2;
+  }
+  td::int32 best_height() override {
+    return 4 + (td::int32)global_parameters().chat_folders().size();
+  }
+
  private:
   size_t last_id_{0};
 };

@@ -30,7 +30,6 @@ NotificationManager::Notification::Notification(td::int64 chat_id, const td::td_
     return;
   }
 
-  LOG(ERROR) << "ok notification";
   notification_ = notification;
 }
 
@@ -81,7 +80,6 @@ void NotificationManager::Notification::delete_notification() {
 }
 
 void NotificationManager::process_update(td::td_api::updateNotification &update) {
-  LOG(ERROR) << "UPDATE0";
   if (!global_parameters().notifications_enabled()) {
     return;
   }
@@ -96,17 +94,13 @@ void NotificationManager::process_update(td::td_api::updateNotification &update)
 }
 
 void NotificationManager::process_update(td::td_api::updateNotificationGroup &update) {
-  LOG(ERROR) << "UPDATE";
   if (!global_parameters().notifications_enabled()) {
     return;
   }
-  LOG(ERROR) << "UPDATE2";
   if (update.type_->get_id() != td::td_api::notificationGroupTypeMessages::ID) {
     return;
   }
-  LOG(ERROR) << "UPDATE3";
   for (auto &u : update.added_notifications_) {
-    LOG(ERROR) << "UPDATE4";
     NotificationId id;
     id.group_id = update.notification_group_id_;
     id.notification_id = u->id_;
@@ -114,7 +108,6 @@ void NotificationManager::process_update(td::td_api::updateNotificationGroup &up
     if (it != notifications_.end()) {
       return;
     }
-    LOG(ERROR) << "UPDATE5";
     auto n = std::make_unique<Notification>(update.chat_id_, *u);
     notifications_.emplace(id, std::move(n));
   }
