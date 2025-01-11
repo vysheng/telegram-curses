@@ -3,49 +3,6 @@
 
 namespace windows {
 
-void WindowLayout::activate_window(std::shared_ptr<Window> active_window) {
-  if (active_window_.get() == active_window.get()) {
-    return;
-  }
-  if (active_window_) {
-    active_window_->set_active(false);
-    active_window_->set_need_refresh();
-  }
-  active_window_ = active_window;
-  if (active_window_) {
-    active_window_->set_active(true);
-    active_window_->set_need_refresh();
-  }
-}
-
-void WindowLayout::activate_next_window() {
-  for (auto it = windows_.begin(); it != windows_.end(); it++) {
-    if ((*it)->window.get() == active_window_.get()) {
-      it++;
-      if (it == windows_.end()) {
-        it = windows_.begin();
-      }
-      activate_window((*it)->window);
-      return;
-    }
-  }
-  UNREACHABLE();
-}
-
-void WindowLayout::activate_prev_window() {
-  for (auto it = windows_.begin(); it != windows_.end(); it++) {
-    if ((*it)->window.get() == active_window_.get()) {
-      if (it == windows_.begin()) {
-        it = windows_.end();
-      }
-      it--;
-      activate_window((*it)->window);
-      return;
-    }
-  }
-  UNREACHABLE();
-}
-
 void WindowLayout::handle_input(const InputEvent &info) {
   if (info == "C-w") {
     window_edit_mode_ = !window_edit_mode_;
@@ -74,24 +31,9 @@ void WindowLayout::handle_input(const InputEvent &info) {
     }
   }
 
-  if (active_window_) {
-    auto saved_window = active_window_;
-    active_window_->handle_input(info);
-  }
-}
-
-void WindowLayout::set_subwindow_list(std::list<std::unique_ptr<WindowInfo>> windows) {
-  windows_ = std::move(windows);
-}
-
-void WindowLayout::render(WindowOutputter &rb, bool force) {
-  render_borders(rb);
-  for (auto &w : windows_) {
-    bool is_active = w->window.get() == active_window_.get();
-    if (force || (w->window->need_refresh() && w->window->need_refresh_at().is_in_past())) {
-      w->window->set_refreshed();
-      render_subwindow(rb, w->window.get(), force, is_active, is_active);
-    }
+  auto w = active_subwindow();
+  if (w) {
+    w->handle_input(info);
   }
 }
 

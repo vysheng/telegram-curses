@@ -13,7 +13,7 @@ class CommandLineWindow : public windows::OneLineInputWindow {
     virtual void on_command(std::string command) = 0;
   };
 
-  bool force_active() override {
+  bool force_active() const override {
     return !is_empty();
   }
 

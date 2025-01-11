@@ -1,5 +1,6 @@
 #pragma once
 
+#include "td/actor/Timeout.h"
 #include "td/utils/Time.h"
 #include "td/utils/int_types.h"
 #include "td/utils/Status.h"
@@ -49,7 +50,7 @@ class Screen {
   void init_notcurses();
   void stop();
   void handle_input(const InputEvent &info);
-  void loop();
+  td::Timestamp loop();
   void on_resize(int width, int height);
   void refresh(bool force = false);
   void render(Window &root, WindowOutputter &rb, bool force);
@@ -61,8 +62,6 @@ class Screen {
   void add_popup_window(std::shared_ptr<Window> window, td::int32 priority);
   void del_popup_window(Window *window);
   void change_layout(std::shared_ptr<WindowLayout> window_layout);
-
-  td::Timestamp need_refresh_at();
 
   td::int32 poll_fd();
 

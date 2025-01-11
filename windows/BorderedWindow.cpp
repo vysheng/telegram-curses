@@ -27,17 +27,13 @@ const std::vector<std::string> &get_border_type_info(BorderType border_type, boo
 }
 
 void BorderedWindow::render(WindowOutputter &rb, bool force) {
-  if (!force && !next_->need_refresh() && !need_refresh()) {
-    return;
-  }
-
   render_subwindow(rb, next_.get(), force, true, true);
 
   if (vert_border_thic_ != 0) {
     if (color_ != -1) {
       rb.set_fg_color((Color)color_);
     }
-    const auto &border = get_border_type_info(border_type_, is_active());
+    const auto &border = get_border_type_info(border_type_, rb.is_active());
     rb.fill_yx(0, 0, border[7], 1);
     rb.fill_yx(0, 1, border[10], width() - 2);
     rb.fill_yx(0, width() - 1, border[9], 1);

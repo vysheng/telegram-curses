@@ -9,8 +9,7 @@ namespace windows {
 
 PadWindow::PadWindow() {
   pad_window_body_ = std::make_shared<PadWindowBody>(this);
-  pad_window_body_->set_parent(this);
-  pad_window_body_->set_parent_offset(1, 0);
+  add_subwindow(pad_window_body_, 1, 0);
 }
 
 static PadWindow::GluedTo adjust_glued_to_up(PadWindow::GluedTo from) {
@@ -98,6 +97,7 @@ void PadWindow::scroll_last_line() {
 
 void PadWindow::handle_input(const InputEvent &info) {
   set_need_refresh();
+  pad_window_body_->set_need_refresh();
   if (info == "T-PageUp") {
     scroll_up(effective_height() / 2);
   } else if (info == "T-Up") {
@@ -175,6 +175,7 @@ void PadWindow::on_resize(td::int32, td::int32 old_height, td::int32 new_width, 
 
 void PadWindow::change_element(PadWindowElement *elem) {
   set_need_refresh();
+  pad_window_body_->set_need_refresh();
   auto it = elements_.find(elem);
   if (it == elements_.end()) {
     return;
@@ -204,6 +205,7 @@ void PadWindow::change_element(PadWindowElement *elem) {
 
 void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::function<void()> change) {
   set_need_refresh();
+  pad_window_body_->set_need_refresh();
   auto it = elements_.find(elem.get());
   if (it == elements_.end()) {
     change();
@@ -307,6 +309,7 @@ void PadWindow::change_element(std::shared_ptr<PadWindowElement> elem, std::func
 
 void PadWindow::delete_element(PadWindowElement *elem) {
   set_need_refresh();
+  pad_window_body_->set_need_refresh();
   auto it = elements_.find(elem);
   if (it == elements_.end()) {
     return;
@@ -361,6 +364,7 @@ void PadWindow::delete_element(PadWindowElement *elem) {
 void PadWindow::add_element(std::shared_ptr<PadWindowElement> element) {
   CHECK(element);
   set_need_refresh();
+  pad_window_body_->set_need_refresh();
   auto elem = element.get();
   auto it = elements_.find(elem);
   if (it != elements_.end()) {
@@ -567,6 +571,7 @@ void PadWindow::scroll_to_element(PadWindowElement *elptr, ScrollMode scroll_mod
 
   adjust_cur_element(0);
   set_need_refresh();
+  pad_window_body_->set_need_refresh();
 
   if (lines_before_cur_element_ < 100) {
     request_top_elements();
@@ -647,7 +652,7 @@ void PadWindow::render(WindowOutputter &rb, bool force) {
     text = sb.as_cslice();
     TextEdit::render(rb, width(), text, 0,
                      {MarkupElement::fg_color(0, text.size() + 1, Color::Grey), MarkupElement::nolb(0, text.size())},
-                     is_active(), false);
+                     rb.is_active(), false);
     sb.clear();
 
     rb.translate(height() - 1, 0);
@@ -662,7 +667,7 @@ void PadWindow::render(WindowOutputter &rb, bool force) {
     text = sb.as_cslice();
     TextEdit::render(rb, width(), text, 0,
                      {MarkupElement::fg_color(0, text.size() + 1, Color::Grey), MarkupElement::nolb(0, text.size())},
-                     is_active(), false);
+                     rb.is_active(), false);
     rb.untranslate(height() - 1, 0);
   }
 
@@ -715,6 +720,7 @@ void PadWindow::render_body(WindowOutputter &rb, bool force) {
       it->second->height = x;
 
       set_need_refresh();
+      pad_window_body_->set_need_refresh();
     }
 
     it++;

@@ -26,10 +26,10 @@ class RenderedImageNotcurses : public RenderedImage {
   }
 
   ~RenderedImageNotcurses() {
-    ncvisual_destroy(visual_);
     if (plane_) {
       ncplane_destroy(plane_);
     }
+    ncvisual_destroy(visual_);
   }
 
   void hide() {
@@ -772,6 +772,7 @@ struct BackendNotcurses : public Backend {
   }
 
   void tick() override {
+    bool had_keys = false;
     while (true) {
       struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
       struct ncinput ni;
@@ -810,8 +811,9 @@ struct BackendNotcurses : public Backend {
         continue;
       }
       screen_->handle_input(*r);
+      had_keys = true;
     }
-    screen_->refresh(true);
+    screen_->refresh(had_keys);
   }
 
   void refresh(bool force, std::shared_ptr<Window> base_window) override {
@@ -819,7 +821,7 @@ struct BackendNotcurses : public Backend {
     WindowOutputter::CursorShape cursor_shape = WindowOutputter::CursorShape::None;
     {
       auto rb = notcurses_window_outputter(nc_, baseplane_, renderplane_, height(), width());
-      base_window->render(*rb, force);
+      base_window->render_wrap(*rb, force);
       cursor_y = rb->global_cursor_y();
       cursor_x = rb->global_cursor_x();
       cursor_shape = rb->cursor_shape();
@@ -831,10 +833,7 @@ struct BackendNotcurses : public Backend {
       notcurses_cursor_enable(nc_, cursor_y, cursor_x);
       cursor_enabled_ = true;
     } else {
-      if (cursor_enabled_) {
-        notcurses_cursor_disable(nc_);
-        cursor_enabled_ = false;
-      }
+      notcurses_cursor_enable(nc_, -1, -1);
     }
   }
 

@@ -32,6 +32,7 @@ void ViewWindow::handle_input(const InputEvent &info) {
 }
 
 void ViewWindow::render(WindowOutputter &rb, bool force) {
+  LOG(ERROR) << "render!!!";
   auto dir = SavedRenderedImagesDirectory(std::move(saved_images_));
 
   auto &tmp_rb = empty_window_outputter();

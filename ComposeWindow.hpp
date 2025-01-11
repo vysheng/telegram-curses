@@ -2,6 +2,7 @@
 
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
+#include "td/utils/Time.h"
 #include "windows/EditorWindow.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "windows/Output.hpp"
@@ -18,6 +19,7 @@ class ComposeWindow
                 ChatWindow *chat_window)
       : TdcursesWindowBase(root, std::move(root_actor)), chat_id_(chat_id), chat_window_(chat_window) {
     editor_window_ = std::make_shared<windows::EditorWindow>(std::move(text), nullptr);
+    add_subwindow(editor_window_, 0, 0);
     install_callback();
   }
   ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text,
@@ -27,6 +29,7 @@ class ComposeWindow
       , reply_message_id_(reply_message_id)
       , chat_window_(chat_window) {
     editor_window_ = std::make_shared<windows::EditorWindow>(std::move(text), nullptr);
+    add_subwindow(editor_window_, 0, 0);
     install_callback();
   }
 
@@ -42,19 +45,21 @@ class ComposeWindow
   bool need_refresh() override {
     return Window::need_refresh() || (editor_window_ && editor_window_->need_refresh());
   }
+  td::Timestamp need_refresh_at() override {
+    auto t = Window::need_refresh_at();
+    if (editor_window_) {
+      t.relax(editor_window_->need_refresh_at());
+    }
+    return t;
+  }
   void handle_input(const windows::InputEvent &info) override {
     editor_window_->handle_input(info);
   }
   void set_reply_message_id(td::int64 reply_message_id) {
     reply_message_id_ = reply_message_id;
     editor_window_->resize(width(), reply_message_id_ ? height() - 1 : height());
+    editor_window_->move_yx(reply_message_id_ ? 1 : 0, 0);
     set_need_refresh();
-  }
-  void set_refreshed() override {
-    Window::set_refreshed();
-    if (editor_window_) {
-      editor_window_->set_refreshed();
-    }
   }
 
  private:

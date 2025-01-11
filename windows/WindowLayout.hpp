@@ -19,36 +19,11 @@ class WindowLayout : public Window {
   };
   virtual ~WindowLayout() = default;
 
-  /*void set_refreshed() override {
-    for (auto &w : windows_) {
-      if (w->window) {
-        w->window->set_refreshed();
-      }
-    }
-  }*/
-
-  bool need_refresh() override {
-    for (auto &w : windows_) {
-      if (w->window->need_refresh()) {
-        return true;
-      }
-    }
-    return Window::need_refresh();
-  }
-
-  td::Timestamp need_refresh_at() override {
-    td::Timestamp t = Window::need_refresh_at();
-    for (auto &w : windows_) {
-      if (w->window->need_refresh()) {
-        t.relax(w->window->need_refresh_at());
-      }
-    }
-    return t;
-  }
-
   void handle_input(const InputEvent &info) override;
-  virtual void activate_next_window();
-  virtual void activate_prev_window();
+  virtual void activate_next_window() {
+  }
+  virtual void activate_prev_window() {
+  }
   virtual void activate_left_window() {
   }
   virtual void activate_right_window() {
@@ -58,21 +33,14 @@ class WindowLayout : public Window {
   virtual void activate_lower_window() {
   }
 
-  void activate_window(std::shared_ptr<Window> active_window);
-  void set_subwindow_list(std::list<std::unique_ptr<WindowInfo>> windows);
-
-  const auto &active_window() {
-    return active_window_;
+  void render(WindowOutputter &rb, bool force) override {
+    render_borders(rb);
   }
-
-  void render(WindowOutputter &rb, bool force) override;
 
   virtual void render_borders(WindowOutputter &rb) {
   }
 
  private:
-  std::list<std::unique_ptr<WindowInfo>> windows_;
-  std::shared_ptr<Window> active_window_;
   bool window_edit_mode_{false};
 };
 

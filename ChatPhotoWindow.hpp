@@ -7,7 +7,6 @@
 #include "windows/Input.hpp"
 #include "windows/Output.hpp"
 #include "windows/TextEdit.hpp"
-#include "windows/ViewWindow.hpp"
 #include "windows/Window.hpp"
 #include <memory>
 

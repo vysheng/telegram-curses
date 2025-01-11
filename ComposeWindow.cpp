@@ -72,25 +72,20 @@ void ComposeWindow::set_draft(std::string message) {
 }
 
 void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
-  if (!reply_message_id_) {
-    editor_window_->render(rb, force);
-    return;
+  if (reply_message_id_) {
+    auto msg = chat_window_->get_message_as_message(chat_id_, reply_message_id_);
+    if (!msg) {
+      rb.erase_yx(0, 0, width());
+      rb.putstr_yx(0, 0, "reply to: ", 10);
+    } else {
+      Outputter out;
+      out << Outputter::NoLb(true) << "reply to: " << Color::Red << msg->sender_id_ << Color::Revert << " "
+          << msg->content_;
+      windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
+    }
   }
 
-  auto msg = chat_window_->get_message_as_message(chat_id_, reply_message_id_);
-  if (!msg) {
-    rb.erase_yx(0, 0, width());
-    rb.putstr_yx(0, 0, "reply to: ", 10);
-  } else {
-    Outputter out;
-    out << Outputter::NoLb(true) << "reply to: " << Color::Red << msg->sender_id_ << Color::Revert << " "
-        << msg->content_;
-    windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
-  }
-
-  rb.translate(1, 0);
-  editor_window_->render(rb, true);
-  rb.untranslate(1, 0);
+  render_subwindow(rb, editor_window_.get(), force, true, true);
 }
 
 }  // namespace tdcurses

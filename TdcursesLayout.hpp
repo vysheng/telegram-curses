@@ -24,37 +24,36 @@ class TdcursesLayout
     command_line_ = std::make_shared<windows::EmptyWindow>();
     status_line_ = std::make_shared<windows::EmptyWindow>();
 
-    log_window_->set_parent(this);
-    dialog_list_window_->set_parent(this);
-    chat_window_->set_parent(this);
-    command_line_->set_parent(this);
-    status_line_->set_parent(this);
+    add_subwindow(log_window_, 0, 0);
+    add_subwindow(dialog_list_window_, 0, 0);
+    add_subwindow(chat_window_, 0, 0);
+    add_subwindow(command_line_, 0, 0);
+    add_subwindow(status_line_, 0, 0);
 
-    update_windows_list();
-    activate_window(dialog_list_window_);
+    activate_subwindow(dialog_list_window_);
   }
   void activate_left_window() override {
-    if (active_window().get() != log_window_.get()) {
-      activate_window(dialog_list_window_);
+    if (active_subwindow().get() != log_window_.get()) {
+      activate_subwindow(dialog_list_window_);
     }
   }
   void activate_right_window() override {
-    if (active_window().get() == dialog_list_window_.get()) {
-      activate_window(chat_window_);
+    if (active_subwindow().get() == dialog_list_window_.get()) {
+      activate_subwindow(chat_window_);
     }
   }
   void activate_upper_window() override {
-    if (active_window().get() == log_window_.get()) {
-      activate_window(dialog_list_window_);
-    } else if (active_window().get() == compose_window_.get()) {
-      activate_window(chat_window_);
+    if (active_subwindow().get() == log_window_.get()) {
+      activate_subwindow(dialog_list_window_);
+    } else if (active_subwindow().get() == compose_window_.get()) {
+      activate_subwindow(chat_window_);
     }
   }
   void activate_lower_window() override {
-    if (active_window().get() == chat_window_.get() && compose_window_) {
-      activate_window(compose_window_);
+    if (active_subwindow().get() == chat_window_.get() && compose_window_) {
+      activate_subwindow(compose_window_);
     } else if (log_window_enabled_) {
-      activate_window(log_window_);
+      activate_subwindow(log_window_);
     }
   }
   void on_resize(td::int32 old_width, td::int32 old_height, td::int32 new_width, td::int32 new_height) override {
@@ -62,43 +61,25 @@ class TdcursesLayout
     auto w = (td::int32)(width() * dialog_list_window_width_);
     h -= 2;
     dialog_list_window_->resize(w, h);
-    dialog_list_window_->set_parent_offset(0, 0);
+    dialog_list_window_->move_yx(0, 0);
     if (!compose_window_) {
       chat_window_->resize(width() - 1 - w, h);
-      chat_window_->set_parent_offset(0, w + 1);
+      chat_window_->move_yx(0, w + 1);
     } else {
       auto h2 = (td::int32)(height() * chat_window_height_);
       chat_window_->resize(width() - 1 - w, h2);
-      chat_window_->set_parent_offset(0, w + 1);
+      chat_window_->move_yx(0, w + 1);
       compose_window_->resize(width() - 1 - w, h - 1 - h2);
-      compose_window_->set_parent_offset(h2 + 1, w + 1);
+      compose_window_->move_yx(h2 + 1, w + 1);
     }
     status_line_->resize(width(), 1);
-    status_line_->set_parent_offset(h, 0);
+    status_line_->move_yx(h, 0);
     command_line_->resize(width(), 1);
-    command_line_->set_parent_offset(h + 1, 0);
+    command_line_->move_yx(h + 1, 0);
     if (log_window_enabled_) {
       log_window_->resize(width(), height() - 1 - h - 2);
-      log_window_->set_parent_offset(h + 3, 0);
+      log_window_->move_yx(h + 3, 0);
     }
-    update_windows_list();
-  }
-
-  void update_windows_list() {
-    std::list<std::unique_ptr<WindowInfo>> windows;
-
-    windows.emplace_back(std::make_unique<WindowInfo>(0, 0, dialog_list_window_));
-    windows.emplace_back(std::make_unique<WindowInfo>(dialog_list_window_->width() + 1, 0, chat_window_));
-    if (compose_window_) {
-      windows.emplace_back(
-          std::make_unique<WindowInfo>(dialog_list_window_->width() + 1, chat_window_->height() + 1, compose_window_));
-    }
-    if (log_window_enabled_) {
-      windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 3, log_window_));
-    }
-    windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height(), status_line_));
-    windows.emplace_back(std::make_unique<WindowInfo>(0, dialog_list_window_->height() + 1, command_line_));
-    set_subwindow_list(std::move(windows));
   }
 
   void render_borders(windows::WindowOutputter &rb) override {
@@ -127,8 +108,8 @@ class TdcursesLayout
     replace_window_in(chat_window_, std::move(window));
   }
   void replace_compose_window(std::shared_ptr<windows::Window> window) {
-    if (compose_window_ && active_window().get() == compose_window_.get()) {
-      activate_window(chat_window_);
+    if (compose_window_ && active_subwindow().get() == compose_window_.get()) {
+      activate_subwindow(chat_window_);
     }
     replace_window_in(compose_window_, std::move(window), false);
     on_resize(width(), height(), width(), height());
@@ -203,27 +184,31 @@ class TdcursesLayout
 
   void replace_window_in(std::shared_ptr<windows::Window> &old, std::shared_ptr<windows::Window> window,
                          bool need_empty = true) {
-    if (window) {
-      window->set_parent(this);
+    if (old && old.get() == window.get()) {
+      return;
     }
-    auto cur_active = active_window();
     if (!window && need_empty) {
       window = std::make_shared<windows::EmptyWindow>();
     }
     if (window) {
       if (old) {
+        add_subwindow(window, old->y_offset(), old->x_offset());
         window->resize(old->width(), old->height());
-      }
-    }
-    if (cur_active.get() == old.get()) {
-      if (window) {
-        activate_window(window);
       } else {
-        activate_window(dialog_list_window_);
+        add_subwindow(window, 0, 0);
+        window->resize(1, 1);
       }
     }
+    auto cur_active = active_subwindow();
+    if (active_subwindow().get() == old.get()) {
+      if (window) {
+        activate_subwindow(window);
+      } else {
+        activate_subwindow(dialog_list_window_);
+      }
+    }
+    del_subwindow(old.get());
     old = std::move(window);
-    update_windows_list();
     set_need_refresh();
   }
 };

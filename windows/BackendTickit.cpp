@@ -329,7 +329,7 @@ struct BackendTickit : public Backend {
     WindowOutputter::CursorShape cursor_shape = WindowOutputter::CursorShape::None;
     {
       auto rb = tickit_window_outputter(tickit_rb, height(), width());
-      base_window->render(*rb, force);
+      base_window->render_wrap(*rb, force);
       cursor_y = rb->global_cursor_y();
       cursor_x = rb->global_cursor_x();
       cursor_shape = rb->cursor_shape();

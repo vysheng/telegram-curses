@@ -1968,13 +1968,13 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
       }
       if (command[0] == '/') {
         auto c = curses_->chat_window();
-        if (c && c->is_active()) {
+        if (c) {
           c->set_search_pattern(command.substr(1));
         }
-        auto d = curses_->dialog_list_window();
+        /*auto d = curses_->dialog_list_window();
         if (d && d->is_active()) {
           d->set_search_pattern(command.substr(1));
-        }
+        }*/
       }
     }
 
@@ -2007,7 +2007,7 @@ void Tdcurses::open_chat(td::int64 chat_id) {
   chat_window_ = std::make_shared<ChatWindow>(this, actor_id(this), chat_id);
   compose_window_ = nullptr;
   layout_->replace_chat_window(chat_window_);
-  layout_->activate_window(chat_window_);
+  layout_->activate_subwindow(chat_window_);
   layout_->replace_compose_window(nullptr);
   update_status_line();
 
@@ -2039,7 +2039,7 @@ void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 reply_message_id
       std::make_shared<ComposeWindow>(this, actor_id(this), chat_window_->main_chat_id(),
                                       chat_window_->draft_message_text(), reply_message_id, chat_window_.get());
   layout_->replace_compose_window(compose_window_);
-  layout_->activate_window(compose_window_);
+  layout_->activate_subwindow(compose_window_);
 }
 
 void Tdcurses::show_config_window() {
@@ -2055,8 +2055,7 @@ void Tdcurses::close_compose_window() {
 
 void Tdcurses::loop() {
   poll_fd_.sync_with_poll();
-  screen_->loop();
-  auto t = screen_->need_refresh_at();
+  auto t = screen_->loop();
   if (t) {
     set_timeout_at(t.at());
   }
@@ -2067,11 +2066,7 @@ void Tdcurses::loop() {
 }
 
 void Tdcurses::refresh() {
-  screen_->refresh();
-  auto t = screen_->need_refresh_at();
-  if (t) {
-    set_timeout_at(t.at());
-  }
+  loop();
 }
 
 void Tdcurses::tear_down() {

@@ -27,13 +27,14 @@ void Window::render_subwindow(WindowOutputter &rb, Window *next, bool force, boo
 }
 
 void Window::render_wrap(WindowOutputter &rb, bool force) {
-  if (!force && (!need_refresh() || !need_refresh_at().is_in_past())) {
+  if (!need_refresh() || (!force && !need_refresh_at().is_in_past())) {
     rb.cursor_move_yx(saved_cursor_y_, saved_cursor_x_, saved_cursor_shape_);
     return;
   }
 
   set_refreshed();
   render(rb, force);
+  render_subwindows(rb, force);
 
   saved_cursor_y_ = rb.local_cursor_y();
   saved_cursor_x_ = rb.local_cursor_x();

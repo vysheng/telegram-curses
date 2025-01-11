@@ -170,6 +170,19 @@ class PadWindow : public Window {
     return title_;
   }
 
+  void set_need_refresh() override {
+    Window::set_need_refresh();
+    if (pad_window_body_) {
+      pad_window_body_->set_need_refresh();
+    }
+  }
+  void set_need_refresh_force() override {
+    Window::set_need_refresh_force();
+    if (pad_window_body_) {
+      pad_window_body_->set_need_refresh_force();
+    }
+  }
+
  private:
   class PadWindowBody : public Window {
    public:
