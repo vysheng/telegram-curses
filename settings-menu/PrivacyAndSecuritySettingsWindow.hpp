@@ -10,8 +10,7 @@ class PrivacyAndSecuritySettingsWindow : public MenuWindowCommon {
       : MenuWindowCommon(root, std::move(root_actor)) {
     build_menu();
   }
-  void build_menu() {
-  }
+  void build_menu();
 };
 
 }  // namespace tdcurses

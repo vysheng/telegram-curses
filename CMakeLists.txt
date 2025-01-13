@@ -232,6 +232,8 @@ add_executable(telegram-curses
   
   settings-menu/AccountSettingsWindow.cpp
   settings-menu/AccountSettingsWindow.hpp
+  settings-menu/ActiveSessionsWindow.cpp
+  settings-menu/ActiveSessionsWindow.hpp
   settings-menu/AdvancedSettingsWindow.cpp
   settings-menu/AdvancedSettingsWindow.hpp
   settings-menu/ChatSettingsWindow.cpp
