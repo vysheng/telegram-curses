@@ -61,8 +61,9 @@ class SelectionWindow : public PadWindow {
     Element(std::string text, std::vector<MarkupElement> markup, size_t idx, std::function<void()> callback)
         : text_(std::move(text)), markup_(std::move(markup)), idx_(idx), callback_(std::move(callback)) {
     }
-    td::int32 render(PadWindow &root, WindowOutputter &rb, bool is_selected) override {
-      return render_plain_text(rb, text_, markup_, width(), 1, is_selected);
+    td::int32 render(PadWindow &root, WindowOutputter &rb, SavedRenderedImagesDirectory &dir,
+                     bool is_selected) override {
+      return render_plain_text(rb, text_, markup_, width(), 1, is_selected, &dir);
     }
 
     bool is_less(const PadWindowElement &other) const override {

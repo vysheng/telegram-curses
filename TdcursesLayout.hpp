@@ -6,7 +6,7 @@
 #include "TdcursesWindowBase.hpp"
 #include "ConfigWindow.hpp"
 #include "Debug.hpp"
-#include "SettingsWindow.hpp"
+#include "settings-menu/MainSettingsWindow.hpp"
 #include "ChatInfoWindow.hpp"
 #include "GlobalParameters.hpp"
 #include <memory>

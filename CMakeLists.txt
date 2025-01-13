@@ -217,8 +217,6 @@ add_executable(telegram-curses
   Outputter.hpp
   ReactionSelectionWindow.cpp
   ReactionSelectionWindow.hpp
-  SettingsWindow.cpp
-  SettingsWindow.hpp
   StatusLineWindow.hpp
   StickerManager.cpp
   StickerManager.hpp
@@ -231,6 +229,23 @@ add_executable(telegram-curses
   TdObjectsOutput.cpp
   TdObjectsOutput.h
   YesNoWindow.hpp
+  
+  settings-menu/AccountSettingsWindow.cpp
+  settings-menu/AccountSettingsWindow.hpp
+  settings-menu/AdvancedSettingsWindow.cpp
+  settings-menu/AdvancedSettingsWindow.hpp
+  settings-menu/ChatSettingsWindow.cpp
+  settings-menu/ChatSettingsWindow.hpp
+  settings-menu/FoldersSettingsWindow.cpp
+  settings-menu/FoldersSettingsWindow.hpp
+  settings-menu/MainSettingsWindow.cpp
+  settings-menu/MainSettingsWindow.hpp
+  settings-menu/NotificationsSettingsWindow.cpp
+  settings-menu/NotificationsSettingsWindow.hpp
+  settings-menu/PrivacyAndSecuritySettingsWindow.cpp
+  settings-menu/PrivacyAndSecuritySettingsWindow.hpp
+  settings-menu/ScopeNotificationsSettingsWindow.cpp
+  settings-menu/ScopeNotificationsSettingsWindow.hpp
 
   port/dirlist.cpp
   port/dirlist.h
@@ -241,6 +256,7 @@ target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuu
 target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${GDKPIXBUF_INCLUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tddb/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/td/tdnet/>
