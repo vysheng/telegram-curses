@@ -205,6 +205,9 @@ void DialogListWindow::handle_input(const windows::InputEvent &info) {
       root()->open_chat(el->chat_id());
     }
     return;
+  } else if (info == "T-Escape") {
+    root()->run_exit();
+    return;
   } else if (info == "I") {
     auto a = get_active_element();
     if (a) {

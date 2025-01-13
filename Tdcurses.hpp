@@ -114,6 +114,10 @@ class Tdcurses : public TdcursesInterface {
   void initialize_options(TdcursesParameters &params);
   void update_cpu_stat(td::CpuStat stat);
 
+  auto self_id() const {
+    return self_;
+  }
+
  private:
   td::ActorId<Tdcurses> self_;
   std::unique_ptr<windows::Screen> screen_;
@@ -133,6 +137,8 @@ class Tdcurses : public TdcursesInterface {
   td::CpuStat last_cpu_stat_;
   td::CpuStat relaxed_cpu_stat_;
   double last_cpu_stat_at_{0};
+
+  bool exiting_{false};
 
  public:
   Tdcurses() {
@@ -221,6 +227,8 @@ class Tdcurses : public TdcursesInterface {
   const auto &relaxed_cpu_stat() const {
     return relaxed_cpu_stat_;
   }
+
+  void run_exit();
 };
 
 }  // namespace tdcurses

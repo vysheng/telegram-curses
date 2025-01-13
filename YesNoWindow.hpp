@@ -181,4 +181,28 @@ spawn_yes_no_window(T &cur_window, std::string text, std::vector<windows::Markup
                                          std::move(markup), std::move(callback), default_value);
 }
 
+template <typename F>
+std::shared_ptr<YesNoWindow> spawn_yes_no_window(Tdcurses &root, std::string text,
+                                                 std::vector<windows::MarkupElement> markup, F &&cb,
+                                                 bool default_value = true) {
+  class Cb : public YesNoWindow::Callback {
+   public:
+    Cb(F &&cb) : cb_(std::move(cb)) {
+    }
+    void on_abort(YesNoWindow &w) override {
+      cb_(td::Status::Error("abort"));
+    }
+    void on_answer(YesNoWindow &w, bool answer) override {
+      w.rollback();
+      cb_(std::move(answer));
+    }
+
+   private:
+    F cb_;
+  };
+  auto callback = std::make_unique<Cb>(std::move(cb));
+  return create_menu_window<YesNoWindow>(&root, root.self_id(), std::move(text), std::move(markup), std::move(callback),
+                                         default_value);
+}
+
 }  // namespace tdcurses

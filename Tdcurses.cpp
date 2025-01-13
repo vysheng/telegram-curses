@@ -83,6 +83,7 @@
 #endif
 
 td::int32 total_updates;
+bool db_closed{false};
 
 namespace tdcurses {
 
@@ -596,6 +597,9 @@ class TdcursesImpl : public Tdcurses {
   }
 
   void process_auth_state(td::td_api::authorizationStateClosed &state) {
+    screen()->stop();
+    _Exit(0);
+    db_closed = true;
   }
 
   //@description The user authorization state has changed
@@ -2214,6 +2218,26 @@ void Tdcurses::spawn_popup_view_window(std::string text, std::vector<windows::Ma
   add_popup_window(box, priority);
 }
 
+void Tdcurses::run_exit() {
+  if (exiting_) {
+    return;
+  }
+  spawn_yes_no_window(
+      *this, "Are you sure you want to exit?", {},
+      [self = this](td::Result<bool> R) {
+        if (R.is_error() || !R.move_as_ok()) {
+          return;
+        }
+        self->send_request(td::make_tl_object<td::td_api::close>(),
+                           [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                             if (R.is_error()) {
+                               LOG(ERROR) << "failed to close " << R.move_as_error();
+                             }
+                           });
+      },
+      true);
+}
+
 }  // namespace tdcurses
 
 void termination_signal_handler(int signum) {
@@ -2496,6 +2520,9 @@ int main(int argc, char **argv) {
                            std::move(tdcurses_params));
   }
   while (scheduler.run_main(100)) {
+    if (db_closed) {
+      break;
+    }
   }
   scheduler.finish();
 
