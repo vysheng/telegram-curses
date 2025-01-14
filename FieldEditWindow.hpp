@@ -52,7 +52,7 @@ class FieldEditWindow
   }
 
   void handle_input(const windows::InputEvent &info) override {
-    if (info.is_text_key()) {
+    if (!info.is_text_key()) {
       if (menu_window_handle_input(info)) {
         return;
       }
