@@ -891,7 +891,7 @@ void init_notcurses_backend(Screen *screen) {
                                        .margin_r = 0,
                                        .margin_b = 0,
                                        .margin_l = 0,
-                                       .flags = 0};
+                                       .flags = NCOPTION_NO_QUIT_SIGHANDLERS};
 
   backend->screen_ = screen;
   backend->nc_ = notcurses_init(&curses_opts, NULL);

@@ -84,6 +84,8 @@
 
 td::int32 total_updates;
 bool db_closed{false};
+bool received_stop_signal{false};
+bool forwarded_stop_signal{false};
 
 namespace tdcurses {
 
@@ -2222,10 +2224,14 @@ void Tdcurses::run_exit() {
   if (exiting_) {
     return;
   }
+  exiting_ = true;
   spawn_yes_no_window(
       *this, "Are you sure you want to exit?", {},
       [self = this](td::Result<bool> R) {
         if (R.is_error() || !R.move_as_ok()) {
+          self->exiting_ = false;
+          received_stop_signal = false;
+          forwarded_stop_signal = false;
           return;
         }
         self->send_request(td::make_tl_object<td::td_api::close>(),
@@ -2254,10 +2260,19 @@ void termination_signal_handler(int signum) {
   _exit(EXIT_FAILURE);
 }
 
+void stop_signal_handler(int signum) {
+  if (received_stop_signal) {
+    termination_signal_handler(signum);
+    return;
+  }
+  received_stop_signal = true;
+}
+
 int main(int argc, char **argv) {
   td::setup_signals_alt_stack().ensure();
   td::set_signal_handler(td::SignalType::Abort, termination_signal_handler).ensure();
   td::set_signal_handler(td::SignalType::Error, termination_signal_handler).ensure();
+  td::set_signal_handler(td::SignalType::Quit, stop_signal_handler).ensure();
   ::signal(SIGCHLD, SIG_IGN);
   td::ignore_signal(td::SignalType::Pipe).ensure();
 
@@ -2522,6 +2537,11 @@ int main(int argc, char **argv) {
   while (scheduler.run_main(100)) {
     if (db_closed) {
       break;
+    }
+    if (received_stop_signal && !forwarded_stop_signal) {
+      forwarded_stop_signal = true;
+      auto guard = scheduler.get_main_guard();
+      td::send_closure_later(act.get(), &tdcurses::TdcursesImpl::run_exit);
     }
   }
   scheduler.finish();
