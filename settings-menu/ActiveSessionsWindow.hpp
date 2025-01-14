@@ -4,6 +4,7 @@
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
 #include "windows/PadWindow.hpp"
+#include "ActiveSessionWindow.hpp"
 
 namespace tdcurses {
 
@@ -32,6 +33,13 @@ class ActiveSessionsWindow : public MenuWindowPad {
 
     bool is_less(const PadWindowElement &other) const override {
       return idx_ < static_cast<const Element &>(other).idx_;
+    }
+
+    void handle_input(PadWindow &root, const windows::InputEvent &info) override {
+      if (info == "T-Enter") {
+        static_cast<ActiveSessionsWindow &>(root).spawn_submenu<ActiveSessionWindow>(session_.get());
+        return;
+      }
     }
 
    private:
