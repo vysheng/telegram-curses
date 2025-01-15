@@ -189,7 +189,6 @@ void Screen::add_popup_window(std::shared_ptr<Window> window, td::int32 priority
   }
   backend_->create_backend_window(window);
   static_cast<BaseWindow &>(*base_window_).add_popup_window(window, priority);
-  refresh(true);
 }
 
 void Screen::del_popup_window(Window *window) {
@@ -197,7 +196,6 @@ void Screen::del_popup_window(Window *window) {
     return;
   }
   static_cast<BaseWindow &>(*base_window_).del_popup_window(window);
-  refresh(true);
 }
 
 void Screen::change_layout(std::shared_ptr<WindowLayout> window_layout) {
@@ -206,7 +204,6 @@ void Screen::change_layout(std::shared_ptr<WindowLayout> window_layout) {
   }
   backend_->create_backend_window(window_layout);
   static_cast<BaseWindow &>(*base_window_).change_layout(window_layout);
-  refresh(true);
 }
 
 td::Timestamp Screen::loop() {
