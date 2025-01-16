@@ -266,7 +266,24 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageInvoice &content)
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageCall &content) {
-  return out << "[call " << td::format::as_time(content.duration_) << "]";
+  td::td_api::downcast_call(const_cast<td::td_api::CallDiscardReason &>(*content.discard_reason_),
+                            td::overloaded(
+                                [&](const td::td_api::callDiscardReasonEmpty &) {
+                                  out << "[call " << td::format::as_time(content.duration_) << "]";
+                                },
+                                [&](const td::td_api::callDiscardReasonMissed &) { out << "[missed call]"; },
+                                [&](const td::td_api::callDiscardReasonDeclined &) { out << "[declined call]"; },
+                                [&](const td::td_api::callDiscardReasonDisconnected &) {
+                                  out << "[call " << td::format::as_time(content.duration_) << ", failed]";
+                                },
+                                [&](const td::td_api::callDiscardReasonHungUp &) {
+                                  out << "[call " << td::format::as_time(content.duration_) << "]";
+                                },
+                                [&](const td::td_api::callDiscardReasonAllowGroupCall &) {
+                                  out << "[call " << td::format::as_time(content.duration_)
+                                      << ", converted to group call]";
+                                }));
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageVideoChatScheduled &content) {
