@@ -833,6 +833,9 @@ struct BackendNotcurses : public Backend {
   }
 
   void refresh(bool force, std::shared_ptr<Window> base_window) override {
+    if (!force && (!base_window->need_refresh() || !base_window->need_refresh_at().is_in_past())) {
+      return;
+    }
     td::int32 cursor_y = 0, cursor_x = 0;
     WindowOutputter::CursorShape cursor_shape = WindowOutputter::CursorShape::None;
     {
