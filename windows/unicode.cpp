@@ -347,3 +347,18 @@ td::uint32 utf8_code_to_str(td::int32 code, char buf[6]) {
   buf[p++] = 0;
   return p - 1;
 }
+
+td::int32 utf8_string_width(td::Slice data) {
+  td::int32 res = 0;
+  while (data.size() > 0) {
+    auto x = next_graphem(data, 0);
+    if (x.width >= 0) {
+      res += x.width;
+    }
+    if (x.data.size() == 0) {
+      break;
+    }
+    data.remove_prefix(x.data.size());
+  }
+  return res;
+}

@@ -238,6 +238,8 @@ add_executable(telegram-curses
   settings-menu/ActiveSessionWindow.hpp
   settings-menu/AdvancedSettingsWindow.cpp
   settings-menu/AdvancedSettingsWindow.hpp
+  settings-menu/ChangeScopeNotificationsSettingsWindow.cpp
+  settings-menu/ChangeScopeNotificationsSettingsWindow.hpp
   settings-menu/ChatSettingsWindow.cpp
   settings-menu/ChatSettingsWindow.hpp
   settings-menu/FoldersSettingsWindow.cpp

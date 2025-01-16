@@ -1,6 +1,7 @@
 #pragma once
 #include "MenuWindowPad.hpp"
 #include "windows/Output.hpp"
+#include "windows/unicode.h"
 #include <functional>
 #include <memory>
 #include <utility>
@@ -89,8 +90,12 @@ class MenuWindowCommon : public MenuWindowPad {
                      bool is_selected) override {
       auto markup = element_->markup;
       auto text = element_->name;
-      while (text.size() < static_cast<MenuWindowCommon &>(root).pad_size()) {
-        text += " ";
+      auto s = (td::uint32)utf8_string_width(text);
+      if (s < static_cast<MenuWindowCommon &>(root).pad_size()) {
+        auto l = static_cast<MenuWindowCommon &>(root).pad_size() - s;
+        for (td::uint32 i = 0; i < l; i++) {
+          text += " ";
+        }
       }
       if (element_->data.size() != 0) {
         text += ": ";
@@ -121,8 +126,9 @@ class MenuWindowCommon : public MenuWindowPad {
   };
 
   std::shared_ptr<Element> add_element(std::shared_ptr<MenuWindowElement> element) {
-    if (element->name.size() > max_size_) {
-      max_size_ = element->name.size();
+    auto w = (td::uint32)utf8_string_width(element->name);
+    if (w > max_size_) {
+      max_size_ = w;
     }
     auto el = std::make_shared<Element>(last_idx_++, std::move(element));
     PadWindow::add_element(el);
