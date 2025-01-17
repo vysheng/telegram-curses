@@ -114,7 +114,10 @@ class PadWindow : public Window {
     return 10000;
   }
   td::int32 best_height() override {
-    return 10000;
+    if (!elements_.size()) {
+      return 2;
+    }
+    return 2 + lines_before_cur_element_ + lines_after_cur_element_ + (cur_element_ ? cur_element_->height : 0);
   }
 
   std::shared_ptr<PadWindowElement> get_active_element() {

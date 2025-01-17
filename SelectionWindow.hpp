@@ -50,9 +50,6 @@ class SelectionWindow : public MenuWindowCommon {
   td::int32 best_width() override {
     return 40;
   }
-  td::int32 best_height() override {
-    return 6;
-  }
 
   ~SelectionWindow() {
     if (!sent_answer_) {
@@ -64,7 +61,6 @@ class SelectionWindow : public MenuWindowCommon {
  private:
   std::unique_ptr<Callback> callback_;
   bool sent_answer_ = false;
-  std::shared_ptr<windows::ViewWindow> view_window_;
 };
 
 template <typename T, typename F>

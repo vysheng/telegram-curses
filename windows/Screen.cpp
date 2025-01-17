@@ -95,6 +95,10 @@ class BaseWindow : public Window {
         activate_subwindow(layout_);
       }
     }
+    auto b = window->backend_window();
+    if (b) {
+      b->move_to_bottom();
+    }
     del_subwindow(window);
     set_need_refresh_force_rec();
   }

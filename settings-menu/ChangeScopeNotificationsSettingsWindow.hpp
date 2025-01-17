@@ -2,8 +2,11 @@
 
 #include "MenuWindowCommon.hpp"
 #include "td/telegram/td_api.h"
+#include "td/tl/TlObject.h"
 #include <functional>
+#include <limits>
 #include <memory>
+#include <vector>
 
 namespace tdcurses {
 
@@ -40,6 +43,18 @@ class ChangeScopeNotificationsSettingsWindow : public MenuWindowCommon {
     out << "UNKNOWN";
   }
 
+  virtual std::vector<std::string> values(bool add_default) {
+    return {"TEST"};
+  }
+
+  virtual void set_scope_value(td::td_api::scopeNotificationSettings &settings, size_t value) {
+  }
+  virtual void set_chat_value(td::td_api::chatNotificationSettings &settings, size_t value) {
+  }
+
+  static td::tl_object_ptr<td::td_api::chatNotificationSettings> clone_chat_notification_settings(
+      const td::td_api::chatNotificationSettings &tl);
+
  private:
   NotificationScope scope_;
   td::tl_object_ptr<td::td_api::scopeNotificationSettings> settings_;
@@ -48,58 +63,65 @@ class ChangeScopeNotificationsSettingsWindow : public MenuWindowCommon {
 
 class ChangeScopeNotificationsSettingsWindowBool : public ChangeScopeNotificationsSettingsWindow {
  public:
-  ChangeScopeNotificationsSettingsWindowBool(
-      Tdcurses *root, td::ActorId<Tdcurses> root_actor, NotificationScope scope,
-      std::function<bool(const td::td_api::chatNotificationSettings &)> is_default,
-      std::function<bool(const td::td_api::chatNotificationSettings &)> get_chat_value,
-      std::function<bool(const td::td_api::scopeNotificationSettings &)> get_scope_value,
-      std::function<void(td::td_api::chatNotificationSettings &, bool)> set_chat_value,
-      std::function<void(td::td_api::scopeNotificationSettings &, bool)> set_scope_value)
+  ChangeScopeNotificationsSettingsWindowBool(Tdcurses *root, td::ActorId<Tdcurses> root_actor, NotificationScope scope,
+                                             bool td::td_api::scopeNotificationSettings::*scope_value,
+                                             bool td::td_api::chatNotificationSettings::*is_default,
+                                             bool td::td_api::chatNotificationSettings::*chat_value)
       : ChangeScopeNotificationsSettingsWindow(root, root_actor, scope)
+      , scope_value_(scope_value)
       , is_default_(std::move(is_default))
-      , get_chat_value_(std::move(get_chat_value))
-      , get_scope_value_(std::move(get_scope_value))
-      , set_chat_value_(std::move(set_chat_value))
-      , set_scope_value_(std::move(set_scope_value)) {
+      , chat_value_(chat_value) {
   }
 
-  bool is_default(const td::td_api::chatNotificationSettings &settings) override {
-    return is_default_(settings);
+  bool is_default(const td::td_api::chatNotificationSettings &tl) override {
+    return tl.*is_default_;
   }
-  void output_chat_value(Outputter &out, const td::td_api::chatNotificationSettings &settings) override {
-    out << (get_chat_value_(settings) ? "YES" : "NO");
+  void output_chat_value(Outputter &out, const td::td_api::chatNotificationSettings &tl) override {
+    out << (tl.*chat_value_ ? "YES" : "NO");
   }
-  void output_scope_value(Outputter &out, const td::td_api::scopeNotificationSettings &settings) override {
-    out << (get_scope_value_(settings) ? "YES" : "NO");
+  void output_scope_value(Outputter &out, const td::td_api::scopeNotificationSettings &tl) override {
+    out << (tl.*scope_value_ ? "YES" : "NO");
+  }
+
+  std::vector<std::string> values(bool add_default) override {
+    if (add_default) {
+      return {"enabled", "disabled", "default"};
+    } else {
+      return {"enabled", "disabled"};
+    }
+  }
+
+  void set_scope_value(td::td_api::scopeNotificationSettings &tl, size_t value) override {
+    tl.*scope_value_ = (value == 0 ? true : false);
+  }
+  void set_chat_value(td::td_api::chatNotificationSettings &tl, size_t value) override {
+    if (value == 2) {
+      tl.*is_default_ = true;
+    } else {
+      tl.*chat_value_ = (value == 0 ? true : false);
+    }
   }
 
  private:
-  std::function<bool(const td::td_api::chatNotificationSettings &)> is_default_;
-  std::function<bool(const td::td_api::chatNotificationSettings &)> get_chat_value_;
-  std::function<bool(const td::td_api::scopeNotificationSettings &)> get_scope_value_;
-  std::function<void(td::td_api::chatNotificationSettings &, bool)> set_chat_value_;
-  std::function<void(td::td_api::scopeNotificationSettings &, bool)> set_scope_value_;
+  bool td::td_api::scopeNotificationSettings::*scope_value_;
+  bool td::td_api::chatNotificationSettings::*is_default_;
+  bool td::td_api::chatNotificationSettings::*chat_value_;
 };
 
 class ChangeScopeNotificationsSettingsWindowMute : public ChangeScopeNotificationsSettingsWindow {
  public:
-  ChangeScopeNotificationsSettingsWindowMute(
-      Tdcurses *root, td::ActorId<Tdcurses> root_actor, NotificationScope scope,
-      std::function<bool(const td::td_api::chatNotificationSettings &)> is_default,
-      std::function<td::int32(const td::td_api::chatNotificationSettings &)> get_chat_value,
-      std::function<td::int32(const td::td_api::scopeNotificationSettings &)> get_scope_value,
-      std::function<void(td::td_api::chatNotificationSettings &, td::int32)> set_chat_value,
-      std::function<void(td::td_api::scopeNotificationSettings &, td::int32)> set_scope_value)
+  ChangeScopeNotificationsSettingsWindowMute(Tdcurses *root, td::ActorId<Tdcurses> root_actor, NotificationScope scope,
+                                             td::int32 td::td_api::scopeNotificationSettings::*scope_value,
+                                             bool td::td_api::chatNotificationSettings::*is_default,
+                                             td::int32 td::td_api::chatNotificationSettings::*chat_value)
       : ChangeScopeNotificationsSettingsWindow(root, root_actor, scope)
+      , scope_value_(scope_value)
       , is_default_(std::move(is_default))
-      , get_chat_value_(std::move(get_chat_value))
-      , get_scope_value_(std::move(get_scope_value))
-      , set_chat_value_(std::move(set_chat_value))
-      , set_scope_value_(std::move(set_scope_value)) {
+      , chat_value_(chat_value) {
   }
 
-  bool is_default(const td::td_api::chatNotificationSettings &settings) override {
-    return is_default_(settings);
+  bool is_default(const td::td_api::chatNotificationSettings &tl) override {
+    return tl.*is_default_;
   }
   void output(Outputter &out, td::int32 date) {
     if (date <= 0) {
@@ -122,19 +144,46 @@ class ChangeScopeNotificationsSettingsWindowMute : public ChangeScopeNotificatio
       }
     }
   }
-  void output_chat_value(Outputter &out, const td::td_api::chatNotificationSettings &settings) override {
-    output(out, get_chat_value_(settings));
+  void output_chat_value(Outputter &out, const td::td_api::chatNotificationSettings &tl) override {
+    output(out, tl.*chat_value_);
   }
-  void output_scope_value(Outputter &out, const td::td_api::scopeNotificationSettings &settings) override {
-    output(out, get_scope_value_(settings));
+  void output_scope_value(Outputter &out, const td::td_api::scopeNotificationSettings &tl) override {
+    output(out, tl.*scope_value_);
+  }
+
+  std::vector<std::string> values(bool add_default) override {
+    auto v = std::vector<std::string>{"unmute",  "forever", "1 minute", "10 minutes", "1 hour",
+                                      "8 hours", "1 day",   "1 week",   "1 month",    "1 year"};
+    if (add_default) {
+      v.push_back("default");
+    }
+    return v;
+  }
+
+  td::int32 value_idx_to_int(size_t idx) {
+    static const std::vector<td::int32> P{
+        0, std::numeric_limits<td::int32>::max(), 60, 600, 3600, 3600 * 8, 86400, 7 * 86400, 30 * 86400, 365 * 86400,
+        -1};
+    return P[idx];
+  }
+
+  void set_scope_value(td::td_api::scopeNotificationSettings &tl, size_t value) override {
+    tl.*scope_value_ = value_idx_to_int(value);
+  }
+
+  void set_chat_value(td::td_api::chatNotificationSettings &tl, size_t value) override {
+    auto v = value_idx_to_int(value);
+    if (v < 0) {
+      tl.*is_default_ = true;
+    } else {
+      tl.*chat_value_ = v;
+    }
   }
 
  private:
-  std::function<bool(const td::td_api::chatNotificationSettings &)> is_default_;
-  std::function<bool(const td::td_api::chatNotificationSettings &)> get_chat_value_;
-  std::function<bool(const td::td_api::scopeNotificationSettings &)> get_scope_value_;
-  std::function<void(td::td_api::chatNotificationSettings &, bool)> set_chat_value_;
-  std::function<void(td::td_api::scopeNotificationSettings &, bool)> set_scope_value_;
+  td::int32 td::td_api::scopeNotificationSettings::*scope_value_;
+  bool td::td_api::chatNotificationSettings::*is_default_;
+  td::int32 td::td_api::chatNotificationSettings::*chat_value_;
 };
 
 }  // namespace tdcurses
