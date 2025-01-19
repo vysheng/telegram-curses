@@ -203,6 +203,10 @@ class Chat {
     return chat_->notification_settings_->mute_for_ > 0;
   }
 
+  auto accent_color_id() const {
+    return chat_->accent_color_id_;
+  }
+
  private:
   td::tl_object_ptr<td::td_api::chat> chat_;
   td::int32 online_{0};
@@ -567,6 +571,10 @@ class User {
 
   const auto &emoji_status() const {
     return user_->emoji_status_;
+  }
+
+  auto accent_color_id() const {
+    return user_->accent_color_id_;
   }
 
  private:

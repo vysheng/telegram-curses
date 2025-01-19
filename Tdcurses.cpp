@@ -590,6 +590,11 @@ class TdcursesImpl : public Tdcurses {
     LOG(INFO) << "ready";
     // do nothing
     dialog_list_window()->request_bottom_elements();
+    send_request(td::make_tl_object<td::td_api::getSavedNotificationSounds>(),
+                 [](td::Result<td::tl_object_ptr<td::td_api::notificationSounds>> R) {
+                   R.ensure();
+                   global_parameters().update_notification_sounds(R.move_as_ok());
+                 });
   }
 
   void process_auth_state(td::td_api::authorizationStateLoggingOut &state) {
@@ -1484,7 +1489,11 @@ class TdcursesImpl : public Tdcurses {
   //@notification_sound_ids The new list of identifiers of saved notification sounds
   //updateSavedNotificationSounds notification_sound_ids:vector<int64> = Update;
   void process_update(td::td_api::updateSavedNotificationSounds &update) {
-    global_parameters().process_update(update);
+    send_request(td::make_tl_object<td::td_api::getSavedNotificationSounds>(),
+                 [](td::Result<td::tl_object_ptr<td::td_api::notificationSounds>> R) {
+                   R.ensure();
+                   global_parameters().update_notification_sounds(R.move_as_ok());
+                 });
   }
 
   //@description The default background has changed

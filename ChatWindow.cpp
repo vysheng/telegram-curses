@@ -97,12 +97,22 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
     show_message_actions();
     return;
   } else if (info == "C-q" || info == "C-Q") {
+    if (multi_message_selection_mode_) {
+      multi_message_selection_mode_ = false;
+      selected_messages_.clear();
+      return;
+    }
     set_search_pattern("");
     return;
   } else if (info == "i") {
     root()->open_compose_window(main_chat_id_, 0);
     return;
   } else if (info == "q" || info == "Q") {
+    if (multi_message_selection_mode_) {
+      multi_message_selection_mode_ = false;
+      selected_messages_.clear();
+      return;
+    }
     set_search_pattern("");
     return;
   } else if (info == "/" || info == ":") {

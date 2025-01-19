@@ -52,6 +52,11 @@ class WindowOutputterTickit : public WindowOutputter {
       tickit_pen_set_colour_attr(pen_, TickitPenAttr::TICKIT_PEN_FG, color_to_tickit(color));
     }
   }
+  void set_fg_color_rgb(td::uint32 color) override {
+    if (pen_) {
+      tickit_pen_set_colour_attr(pen_, TickitPenAttr::TICKIT_PEN_FG, color_to_tickit(Color::White));
+    }
+  }
   void unset_fg_color() override {
     if (pen_) {
       tickit_pen_clear_attr(pen_, TickitPenAttr::TICKIT_PEN_FG);
@@ -202,6 +207,8 @@ class WindowOutputterEmptyTickit : public WindowOutputter {
     cursor_shape_ = cursor_shape;
   }
   void set_fg_color(Color color) override {
+  }
+  void set_fg_color_rgb(td::uint32 color) override {
   }
   void unset_fg_color() override {
   }

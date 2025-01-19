@@ -7,6 +7,8 @@
 #include "td/utils/common.h"
 #include "td/utils/overloaded.h"
 #include "td/utils/port/Stat.h"
+#include "windows/Markup.hpp"
+#include "windows/Output.hpp"
 #include <map>
 #include <array>
 #include <vector>
@@ -57,10 +59,6 @@ class GlobalParameters {
     saved_animations_ = std::move(update.animation_ids_);
   }
 
-  void process_update(td::td_api::updateSavedNotificationSounds &update) {
-    saved_notification_sounds_ = std::move(update.notification_sound_ids_);
-  }
-
   void process_update(td::td_api::updateDefaultBackground &update) {
     (update.for_dark_theme_ ? default_dark_background_ : default_light_background_) = std::move(update.background_);
   }
@@ -70,7 +68,14 @@ class GlobalParameters {
   }
 
   void process_update(td::td_api::updateAccentColors &update) {
-    accent_colors_ = std::move(update.colors_);
+    LOG(ERROR) << "UPDATE ACCENT COLORS";
+    std::map<td::int32, td::tl_object_ptr<td::td_api::accentColor>> n;
+    for (auto &x : update.colors_) {
+      auto id = x->id_;
+      LOG(ERROR) << "ACCENT COLOR " << id;
+      n[id] = std::move(x);
+    }
+    accent_colors_ = std::move(n);
     available_accent_color_ids_ = std::move(update.available_accent_color_ids_);
   }
 
@@ -212,17 +217,45 @@ class GlobalParameters {
     return scope_notification_settings_[(td::int32)scope];
   }
 
+  void update_notification_sounds(td::tl_object_ptr<td::td_api::notificationSounds> s) {
+    notification_sounds_.clear();
+    for (auto &e : s->notification_sounds_) {
+      auto id = e->id_;
+      notification_sounds_[id] = std::move(e);
+    }
+  }
+
+  const auto &notification_sounds() const {
+    return notification_sounds_;
+  }
+
+  const td::td_api::accentColor *get_accent_color(td::int32 color_id) const {
+    auto it = accent_colors_.find(color_id);
+    if (it == accent_colors_.end()) {
+      return nullptr;
+    } else {
+      return it->second.get();
+    }
+  }
+
+  windows::Color builtin_color(td::int32 id) {
+    CHECK(id >= 0 && id <= 6);
+    static const std::vector<windows::Color> colors{
+        windows::Color::Red,  windows::Color::Yellow, windows::Color::Purple, windows::Color::Green,
+        windows::Color::Navy, windows::Color::Blue,   windows::Color::Fuchsia};
+    return colors[id];
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
   std::vector<td::tl_object_ptr<td::td_api::chatFolderInfo>> chat_folders_;
   td::int64 download_list_bytes_{0}, download_list_files_{0}, downloaded_bytes_{0};
   std::vector<td::int32> saved_animations_;
-  std::vector<td::int64> saved_notification_sounds_;
   td::tl_object_ptr<td::td_api::background> default_dark_background_;
   td::tl_object_ptr<td::td_api::background> default_light_background_;
   std::vector<td::tl_object_ptr<td::td_api::chatTheme>> chat_themes_;
-  std::vector<td::tl_object_ptr<td::td_api::accentColor>> accent_colors_;
+  std::map<td::int32, td::tl_object_ptr<td::td_api::accentColor>> accent_colors_;
   std::vector<td::int32> available_accent_color_ids_;
   std::vector<td::tl_object_ptr<td::td_api::profileAccentColor>> profile_accent_colors_;
   std::vector<td::int32> profile_available_accent_color_ids_;
@@ -237,6 +270,7 @@ class GlobalParameters {
   std::vector<std::string> dice_emojis_;
   std::string animation_search_provider_;
   std::vector<std::string> animation_search_suggested_emojis_;
+  std::map<td::int64, td::tl_object_ptr<td::td_api::notificationSound>> notification_sounds_;
 
   std::string copy_command_;
   std::string link_open_command_;

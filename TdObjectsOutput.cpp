@@ -2,6 +2,7 @@
 #include "td/generate/auto/td/telegram/td_api.hpp"
 
 #include "td/telegram/DownloadManager.h"
+#include "td/tl/TlObject.h"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
@@ -11,6 +12,7 @@
 
 #include "TdObjectsOutput.h"
 #include "StickerManager.hpp"
+#include "GlobalParameters.hpp"
 
 #include "utf8proc.h"
 
@@ -25,13 +27,64 @@ static const std::vector<std::string> month_names{"???",     "January",  "Februa
                                                   "May",     "June",     "July",     "August", "September",
                                                   "October", "November", "December"};
 
+void add_color(Outputter &out, td::int32 accent_color) {
+  if (accent_color < 0) {
+    out << Color::Lime;
+  } else if (accent_color <= 6) {
+    out << global_parameters().builtin_color(accent_color);
+  } else {
+    auto a = global_parameters().get_accent_color(accent_color);
+    if (a) {
+      out << global_parameters().builtin_color(a->built_in_accent_color_id_);
+    } else {
+      out << Color::Lime;
+    }
+  }
+}
+
+void add_color(Outputter &out, const td::td_api::MessageSender &x) {
+  td::td_api::downcast_call(const_cast<td::td_api::MessageSender &>(x),
+                            td::overloaded(
+                                [&](const td::td_api::messageSenderUser &u) {
+                                  auto user = chat_manager().get_user(u.user_id_);
+                                  add_color(out, user ? user->accent_color_id() : -1);
+                                },
+                                [&](const td::td_api::messageSenderChat &u) {
+                                  auto chat = chat_manager().get_chat(u.chat_id_);
+                                  add_color(out, chat ? chat->accent_color_id() : -1);
+                                }));
+}
+
+bool supported_image(td::CSlice path) {
+  auto p = path.rfind('.');
+  if (p == td::Slice::npos) {
+    return false;
+  }
+  auto ext = path.remove_prefix(p);
+  return ext == ".jpg" || ext == ".webp" || ext == ".png";
+}
+
+bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {
+  if (!f) {
+    return false;
+  }
+  if (!f->local_->is_downloading_completed_) {
+    return false;
+  }
+  return supported_image(f->local_->path_);
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
   auto start_pos = out.as_cslice().size();
   auto C = chat_manager().get_chat(message.chat_id_);
-  if (message.is_outgoing_) {
-    out << Color::Blue;
+  if (C->chat_type() == ChatType::SecretChat || C->chat_type() == ChatType::User) {
+    if (message.is_outgoing_) {
+      out << Color::Blue;
+    } else {
+      out << Color::Green;
+    }
   } else {
-    out << Color::Green;
+    add_color(out, *message.sender_id_);
   }
   out << Outputter::Date{message.date_} << " ";
 
@@ -57,7 +110,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
   }
 
   if (message.forward_info_) {
-    out << "fwd " << message.forward_info_ << "\n";
+    out << Color::Aqua << "fwd " << message.forward_info_ << Color::Revert << "\n";
   }
 
   if (message.via_bot_user_id_) {
@@ -71,13 +124,16 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     td::td_api::downcast_call(const_cast<td::td_api::MessageReplyTo &>(*message.reply_to_),
                               td::overloaded(
                                   [&](const td::td_api::messageReplyToMessage &r) {
-                                    out << "reply " << Outputter::NoLb{true};
                                     auto reply_msg = out.get_message(r.chat_id_, r.message_id_);
                                     if (reply_msg) {
-                                      out << Color::Red << reply_msg->sender_id_ << Color::Revert << " "
-                                          << reply_msg->content_;
+                                      add_color(out, *reply_msg->sender_id_);
+                                      out << "reply " << Outputter::NoLb{true};
+                                      out << reply_msg->sender_id_ << " " << reply_msg->content_;
+                                      out << Color::Revert;
+                                      out << Outputter::NoLb{false} << "\n";
+                                    } else {
+                                      out << "reply ?\n";
                                     }
-                                    out << Outputter::NoLb{false} << "\n";
                                   },
                                   [&](const td::td_api::messageReplyToStory &r) {}));
   }
@@ -118,8 +174,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageForwardInfo &fwd_info) {
-  return out << Outputter::FgColor{Color::Red} << fwd_info.origin_ << Outputter::FgColor{Color::Revert} << " "
-             << Outputter::Date{fwd_info.date_};
+  return out << fwd_info.origin_ << " " << Outputter::Date{fwd_info.date_};
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageOriginUser &fwd_info) {
@@ -138,7 +193,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageOriginChat &fwd_i
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageOriginHiddenUser &fwd_info) {
-  return out << Color::Red << fwd_info.sender_name_ << Color::Revert;
+  return out << fwd_info.sender_name_;
 }
 
 /*Outputter &operator<<(Outputter &out, const td::td_api::messageForwardOriginMessageImport &fwd_info) {
@@ -328,12 +383,14 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatAddMembers &c
   for (auto member : content.member_user_ids_) {
     auto user = chat_manager().get_user(member);
     if (user) {
-      out << " " << Color::Red << user << Color::Revert;
+      out << " ";
+      add_color(out, user->accent_color_id());
+      out << user << Color::Revert;
     } else {
       out << " ???";
     }
   }
-  out << " ]";
+  out << "]";
   return out;
 }
 
@@ -612,6 +669,14 @@ Outputter &operator<<(Outputter &out, const td::td_api::audio &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::document &content) {
+  if (show_image(content.document_)) {
+    out << "document";
+    Outputter::Photo r;
+    r.path = content.document_->local_->path_;
+    r.width = 0;
+    r.height = 0;
+    return out << r;
+  }
   return out << "document " << content.document_;
 }
 
@@ -635,6 +700,14 @@ Outputter &operator<<(Outputter &out, const td::td_api::photoSize &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::sticker &content) {
+  if (content.format_->get_id() == td::td_api::stickerFormatWebp::ID && show_image(content.sticker_)) {
+    out << "sticker";
+    Outputter::Photo r;
+    r.path = content.sticker_->local_->path_;
+    r.width = content.width_;
+    r.height = content.height_;
+    return out << r;
+  }
   return out << "sticker " << content.emoji_ << " " << content.sticker_;
 }
 
@@ -706,7 +779,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageSenderUser &sende
 
 Outputter &operator<<(Outputter &out, const std::shared_ptr<Chat> &chat) {
   if (chat) {
-    return out << chat->title();
+    out << chat->title();
+    return out;
   } else {
     return out << "(unknown)";
   }
@@ -717,15 +791,14 @@ Outputter &operator<<(Outputter &out, const std::shared_ptr<User> &chat) {
     if (chat->first_name().size() > 0) {
       out << chat->first_name();
       if (chat->last_name().size() > 0) {
-        return out << " " << chat->last_name();
-      } else {
-        return out;
+        out << " " << chat->last_name();
       }
     } else if (chat->last_name().size() > 0) {
-      return out << chat->last_name();
+      out << chat->last_name();
     } else {
-      return out << "(empty)";
+      out << "(empty)";
     }
+    return out;
   } else {
     return out << "(unknown)";
   }

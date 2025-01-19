@@ -40,6 +40,11 @@ class Outputter {
     }
     Color color;
   };
+  struct FgColorRgb {
+    FgColorRgb(td::uint32 color) : color(color) {
+    }
+    td::uint32 color;
+  };
 
   enum class ChangeBool { Enable, Disable, Revert, Invert };
   template <td::int32 x>
@@ -110,6 +115,7 @@ class Outputter {
 
   Outputter &operator<<(Date date);
   Outputter &operator<<(FgColor color);
+  Outputter &operator<<(FgColorRgb color);
   Outputter &operator<<(BgColor color);
   Outputter &operator<<(Color color) {
     return *this << FgColor{color};
@@ -137,8 +143,14 @@ class Outputter {
     td::int32 width;
     td::int32 height;
   };
+  struct UserpicPhoto {
+    td::CSlice path;
+    td::int32 width;
+    td::int32 height;
+  };
 
   Outputter &operator<<(const Photo &);
+  Outputter &operator<<(const UserpicPhoto &);
 
  private:
   std::vector<std::vector<std::pair<size_t, td::int32>>> args_;

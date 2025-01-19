@@ -93,6 +93,11 @@ Outputter &Outputter::operator<<(FgColor color) {
   return *this;
 }
 
+Outputter &Outputter::operator<<(FgColorRgb color) {
+  set_attr_ex(windows::MarkupElement::Attr::FgColorRGB, (td::int32)color.color);
+  return *this;
+}
+
 Outputter &Outputter::operator<<(BgColor color) {
   set_attr_ex(windows::MarkupElement::Attr::BgColor, (td::int32)color.color);
   return *this;
@@ -122,6 +127,13 @@ Outputter &Outputter::operator<<(const RightPad &x) {
 }
 
 Outputter &Outputter::operator<<(const Photo &obj) {
+  markup_.push_back(windows::MarkupElement::photo(sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.height,
+                                                  obj.width, obj.path.str()));
+  *this << " ";
+  return *this;
+}
+
+Outputter &Outputter::operator<<(const UserpicPhoto &obj) {
   markup_.push_back(windows::MarkupElement::photo(sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.height,
                                                   obj.width, obj.path.str()));
   *this << " ";

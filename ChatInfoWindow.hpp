@@ -44,10 +44,6 @@ class ChatInfoWindow : public MenuWindowCommon {
   void set_chat(std::shared_ptr<Supergroup> chat);
   void set_chat(std::shared_ptr<SecretChat> chat);
 
-  td::int32 best_height() override {
-    return 40;
-  }
-
   auto chat() const {
     return chat_;
   }

@@ -83,7 +83,11 @@ void ScopeNotificationsSettingsWindow::build_menu() {
     Outputter out;
     out << settings_->sound_id_;
     out << " (" << ex << " exceptions)";
-    add_element("sound_id", out.as_str(), out.markup());
+    add_element("sound", out.as_str(), out.markup(),
+                create_menu_window_spawn_function<ChangeScopeNotificationsSettingsWindowSound>(
+                    scope_, &td::td_api::scopeNotificationSettings::sound_id_,
+                    &td::td_api::chatNotificationSettings::use_default_sound_,
+                    &td::td_api::chatNotificationSettings::sound_id_));
   }
   {
     td::int32 ex = 0;
@@ -135,7 +139,11 @@ void ScopeNotificationsSettingsWindow::build_menu() {
     Outputter out;
     out << settings_->story_sound_id_;
     out << " (" << ex << " exceptions)";
-    add_element("stories sound", out.as_str(), out.markup());
+    add_element("stories sound", out.as_str(), out.markup(),
+                create_menu_window_spawn_function<ChangeScopeNotificationsSettingsWindowSound>(
+                    scope_, &td::td_api::scopeNotificationSettings::story_sound_id_,
+                    &td::td_api::chatNotificationSettings::use_default_story_sound_,
+                    &td::td_api::chatNotificationSettings::story_sound_id_));
   }
   {
     td::int32 ex = 0;

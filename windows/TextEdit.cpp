@@ -41,6 +41,9 @@ MarkupElement MarkupElement::blink(size_t first_pos, size_t last_pos) {
 MarkupElement MarkupElement::nolb(size_t first_pos, size_t last_pos) {
   return MarkupElement(first_pos, last_pos, Attr::NoLB, 1);
 }
+MarkupElement MarkupElement::fg_color_rgb(size_t first_pos, size_t last_pos, td::uint32 fg_color) {
+  return MarkupElement(first_pos, last_pos, Attr::FgColorRGB, (td::int32)fg_color);
+}
 
 MarkupElement MarkupElement::photo(size_t first_pos, size_t last_pos, td::int32 height, td::int32 width,
                                    std::string path) {
@@ -75,6 +78,9 @@ void MarkupElement::install(WindowOutputter &rb) const {
       break;
     case Attr::Underline:
       rb.set_underline(arg);
+      break;
+    case Attr::FgColorRGB:
+      rb.set_fg_color_rgb((td::uint32)arg);
       break;
     default:
       break;

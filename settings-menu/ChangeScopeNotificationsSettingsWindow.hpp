@@ -186,4 +186,87 @@ class ChangeScopeNotificationsSettingsWindowMute : public ChangeScopeNotificatio
   td::int32 td::td_api::chatNotificationSettings::*chat_value_;
 };
 
+class ChangeScopeNotificationsSettingsWindowSound : public ChangeScopeNotificationsSettingsWindow {
+ public:
+  ChangeScopeNotificationsSettingsWindowSound(Tdcurses *root, td::ActorId<Tdcurses> root_actor, NotificationScope scope,
+                                              td::int64 td::td_api::scopeNotificationSettings::*scope_value,
+                                              bool td::td_api::chatNotificationSettings::*is_default,
+                                              td::int64 td::td_api::chatNotificationSettings::*chat_value)
+      : ChangeScopeNotificationsSettingsWindow(root, root_actor, scope)
+      , scope_value_(scope_value)
+      , is_default_(std::move(is_default))
+      , chat_value_(chat_value) {
+  }
+
+  bool is_default(const td::td_api::chatNotificationSettings &tl) override {
+    return tl.*is_default_;
+  }
+  void output(Outputter &out, td::int64 sound_id) {
+    auto &x = global_parameters().notification_sounds();
+    if (sound_id == 0) {
+      out << "no sound";
+    } else {
+      auto it = x.find(sound_id);
+      if (it != x.end()) {
+        out << it->second->title_;
+      } else {
+        out << "system default {" << sound_id << "}";
+      }
+    }
+  }
+  void output_chat_value(Outputter &out, const td::td_api::chatNotificationSettings &tl) override {
+    output(out, tl.*chat_value_);
+  }
+  void output_scope_value(Outputter &out, const td::td_api::scopeNotificationSettings &tl) override {
+    output(out, tl.*scope_value_);
+  }
+
+  std::vector<std::string> values(bool add_default) override {
+    auto v = std::vector<std::string>{"no sound", "system default"};
+    auto &x = global_parameters().notification_sounds();
+    for (auto &e : x) {
+      v.push_back(e.second->title_);
+    }
+    if (add_default) {
+      v.push_back("default");
+    }
+    return v;
+  }
+
+  td::int64 value_idx_to_int(size_t idx) {
+    auto &x = global_parameters().notification_sounds();
+    if (idx == 0) {
+      return 0;
+    } else if (idx == 1) {
+      return 1;
+    } else if (idx < x.size() + 2) {
+      auto it = x.begin();
+      for (size_t i = 2; i < idx; i++) {
+        it++;
+      }
+      return it->first;
+    } else {
+      return -999;
+    }
+  }
+
+  void set_scope_value(td::td_api::scopeNotificationSettings &tl, size_t value) override {
+    tl.*scope_value_ = value_idx_to_int(value);
+  }
+
+  void set_chat_value(td::td_api::chatNotificationSettings &tl, size_t value) override {
+    auto v = value_idx_to_int(value);
+    if (v == -999) {
+      tl.*is_default_ = true;
+    } else {
+      tl.*chat_value_ = v;
+    }
+  }
+
+ private:
+  td::int64 td::td_api::scopeNotificationSettings::*scope_value_;
+  bool td::td_api::chatNotificationSettings::*is_default_;
+  td::int64 td::td_api::chatNotificationSettings::*chat_value_;
+};
+
 }  // namespace tdcurses

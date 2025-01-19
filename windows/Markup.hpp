@@ -18,6 +18,7 @@ struct MarkupElement {
       Blink,
       NoLB,
       Photo,
+      FgColorRGB,
       Max
     };
   };
@@ -35,6 +36,7 @@ struct MarkupElement {
   static MarkupElement blink(size_t first_pos, size_t last_pos);
   static MarkupElement nolb(size_t first_pos, size_t last_pos);
   static MarkupElement photo(size_t first_pos, size_t last_pos, td::int32 height, td::int32 width, std::string path);
+  static MarkupElement fg_color_rgb(size_t first_pos, size_t last_pos, td::uint32 fg_color_rgb);
   size_t first_pos;
   size_t last_pos;
   td::int32 attr;

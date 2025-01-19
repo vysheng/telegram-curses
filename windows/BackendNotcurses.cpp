@@ -303,6 +303,10 @@ class WindowOutputterNotcurses : public WindowOutputter {
     fg_channels_.push_back(color_to_rgb[(td::int32)color]);
     set_channels();
   }
+  void set_fg_color_rgb(td::uint32 color) override {
+    fg_channels_.push_back(color);
+    set_channels();
+  }
   void unset_fg_color() override {
     CHECK(fg_channels_.size() > 1);
     fg_channels_.pop_back();
@@ -607,6 +611,8 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
     cursor_shape_ = cursor_shape;
   }
   void set_fg_color(Color color) override {
+  }
+  void set_fg_color_rgb(td::uint32 color) override {
   }
   void unset_fg_color() override {
   }
