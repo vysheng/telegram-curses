@@ -316,6 +316,10 @@ class WindowOutputterNotcurses : public WindowOutputter {
     bg_channels_.push_back(color_to_rgb[(td::int32)color]);
     set_channels();
   }
+  void set_bg_color_rgb(td::uint32 color) override {
+    bg_channels_.push_back(color);
+    set_channels();
+  }
   void unset_bg_color() override {
     CHECK(bg_channels_.size() > 1);
     bg_channels_.pop_back();
@@ -617,6 +621,8 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
   void unset_fg_color() override {
   }
   void set_bg_color(Color color) override {
+  }
+  void set_bg_color_rgb(td::uint32 color) override {
   }
   void unset_bg_color() override {
   }

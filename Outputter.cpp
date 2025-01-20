@@ -1,11 +1,13 @@
 #include "Outputter.hpp"
 #include "td/utils/Slice-decl.h"
+#include "td/utils/overloaded.h"
 #include "td/utils/port/Clocks.h"
 #include "td/utils/format.h"
 #include "td/utils/format.h"
 #include "ChatWindow.hpp"
 #include "windows/Markup.hpp"
 #include "windows/unicode.h"
+#include <memory>
 
 namespace td {
 namespace format {
@@ -47,68 +49,54 @@ Outputter &Outputter::operator<<(Date date) {
   return *this << "]";
 }
 
-void Outputter::add_markup(td::int32 attr, size_t f, size_t l, td::int32 val) {
-  markup_.emplace_back(f, l, attr, val);
-}
-
-void Outputter::set_attr_ex(td::int32 attr, td::int32 attr_val) {
-  auto val = (td::int32)attr;
-  if (attr_val == -1) {
-    CHECK(args_[val].size() > 0);
-    add_markup(attr, args_[val].back().first, sb_.as_cslice().size(), args_[val].back().second);
-    args_[val].pop_back();
-    if (args_[val].size() > 0) {
-      args_[val].back().first = sb_.as_cslice().size();
-    }
-  } else {
-    if (args_[val].size() > 0) {
-      add_markup(attr, args_[val].back().first, sb_.as_cslice().size(), args_[val].back().second);
-    }
-    args_[val].emplace_back(sb_.as_cslice().size(), attr_val);
-  }
-}
-
-void Outputter::set_attr(td::int32 attr, ChangeBool mode) {
-  td::int32 attr_val = 0;
-  auto val = (td::int32)attr;
-  switch (mode) {
-    case ChangeBool::Disable:
-      attr_val = 0;
-      break;
-    case ChangeBool::Enable:
-      attr_val = 1;
-      break;
-    case ChangeBool::Revert:
-      attr_val = -1;
-      break;
-    case ChangeBool::Invert:
-      attr_val = args_[val].size() > 0 ? !args_[val].back().second : 1;
-      break;
-  }
-  set_attr_ex(attr, attr_val);
-}
-
 Outputter &Outputter::operator<<(FgColor color) {
-  set_attr_ex(windows::MarkupElement::Attr::FgColor, (td::int32)color.color);
+  set_color(color.color, true);
   return *this;
 }
 
 Outputter &Outputter::operator<<(FgColorRgb color) {
-  set_attr_ex(windows::MarkupElement::Attr::FgColorRGB, (td::int32)color.color);
+  set_color(color.color, true);
   return *this;
 }
 
 Outputter &Outputter::operator<<(BgColor color) {
-  set_attr_ex(windows::MarkupElement::Attr::BgColor, (td::int32)color.color);
+  set_color(color.color, false);
   return *this;
+}
+
+Outputter &Outputter::operator<<(BgColorRgb color) {
+  set_color(color.color, false);
+  return *this;
+}
+
+void Outputter::set_color(td::Variant<Color, td::uint32> color, bool is_fg) {
+  auto &l = (is_fg ? fg_colors_stack_ : bg_colors_stack_);
+  if (color.get_offset() == color.offset<Color>() && color.get<Color>() == Color::Revert) {
+    l.pop_arg(*this, sb_.as_cslice().size());
+  } else {
+    l.push_arg(*this, sb_.as_cslice().size(),
+               [color = std::move(color), is_fg](size_t from, size_t to) -> windows::MarkupElement {
+                 windows::MarkupElement el;
+                 if (is_fg) {
+                   color.visit(td::overloaded(
+                       [&](Color c) { el = std::make_shared<windows::MarkupElementFgColor>(from, to, c); },
+                       [&](td::uint32 c) { el = std::make_shared<windows::MarkupElementFgColorRGB>(from, to, c); }));
+                 } else {
+                   color.visit(td::overloaded(
+                       [&](Color c) { el = std::make_shared<windows::MarkupElementBgColor>(from, to, c); },
+                       [&](td::uint32 c) { el = std::make_shared<windows::MarkupElementBgColorRGB>(from, to, c); }));
+                 }
+                 return el;
+               });
+  }
 }
 
 std::vector<windows::MarkupElement> Outputter::markup() {
   auto res = markup_;
-  for (size_t i = 0; i < args_.size(); i++) {
-    if (args_[i].size() > 0) {
-      res.emplace_back(args_[i].back().first, sb_.as_cslice().size(), (td::int32)i, args_[i].back().second);
-    }
+  fg_colors_stack_.flush_to(res, sb_.as_cslice().size());
+  bg_colors_stack_.flush_to(res, sb_.as_cslice().size());
+  for (auto &e : bool_stack_) {
+    e->flush_to(res, sb_.as_cslice().size());
   }
   return res;
 }
@@ -127,15 +115,15 @@ Outputter &Outputter::operator<<(const RightPad &x) {
 }
 
 Outputter &Outputter::operator<<(const Photo &obj) {
-  markup_.push_back(windows::MarkupElement::photo(sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.height,
-                                                  obj.width, obj.path.str()));
+  markup_.push_back(std::make_shared<windows::MarkupElementImage>(sb_.as_cslice().size(), sb_.as_cslice().size() + 1,
+                                                                  obj.path.str(), obj.height, obj.width, 20, 1000));
   *this << " ";
   return *this;
 }
 
 Outputter &Outputter::operator<<(const UserpicPhoto &obj) {
-  markup_.push_back(windows::MarkupElement::photo(sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.height,
-                                                  obj.width, obj.path.str()));
+  markup_.push_back(std::make_shared<windows::MarkupElementImage>(sb_.as_cslice().size(), sb_.as_cslice().size() + 1,
+                                                                  obj.path.str(), obj.height, obj.width, 20, 1000));
   *this << " ";
   return *this;
 }

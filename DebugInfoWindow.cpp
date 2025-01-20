@@ -40,7 +40,7 @@ void DebugInfoWindow::create_text(const td::td_api::message &message) {
               out << "AAA" << *message.content_;
               auto markup = out.markup();
               for (auto &m : markup) {
-                outputter << "RESULT MARKUP: " << m.first_pos << " - " << m.last_pos << "\n";
+                outputter << "RESULT MARKUP: " << m->first_pos() << " - " << m->last_pos() << "\n";
               }
 
               auto r = out.as_str();

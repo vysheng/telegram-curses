@@ -68,6 +68,11 @@ class WindowOutputterTickit : public WindowOutputter {
       tickit_pen_set_colour_attr(pen_, TickitPenAttr::TICKIT_PEN_BG, color_to_tickit(color));
     }
   }
+  void set_bg_color_rgb(td::uint32 color) override {
+    if (pen_) {
+      tickit_pen_set_colour_attr(pen_, TickitPenAttr::TICKIT_PEN_BG, color_to_tickit(Color::Black));
+    }
+  }
   void unset_bg_color() override {
     if (pen_) {
       tickit_pen_clear_attr(pen_, TickitPenAttr::TICKIT_PEN_BG);
@@ -213,6 +218,8 @@ class WindowOutputterEmptyTickit : public WindowOutputter {
   void unset_fg_color() override {
   }
   void set_bg_color(Color color) override {
+  }
+  void set_bg_color_rgb(td::uint32 color) override {
   }
   void unset_bg_color() override {
   }

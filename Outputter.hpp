@@ -3,6 +3,7 @@
 #include "td/telegram/StoryListId.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Slice-decl.h"
+#include "td/utils/Variant.h"
 #include "td/utils/format.h"
 #include "windows/Markup.hpp"
 
@@ -13,8 +14,11 @@
 #include "td/utils/StringBuilder.h"
 #include "td/utils/int_types.h"
 #include "windows/Output.hpp"
+#include <functional>
+#include <memory>
 #include <type_traits>
 #include <vector>
+#include <list>
 
 namespace tdcurses {
 
@@ -25,7 +29,14 @@ class ChatWindow;
 class Outputter {
  public:
   Outputter() {
-    args_.resize(windows::MarkupElement::Attr::Max);
+    //args_.resize(windows::MarkupElement::Attr::Max);
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementUnderline>>());
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementBold>>());
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementItalic>>());
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementReverse>>());
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementBlink>>());
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementStrike>>());
+    bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementNoLb>>());
   }
   struct Date {
     td::int32 date;
@@ -45,9 +56,14 @@ class Outputter {
     }
     td::uint32 color;
   };
+  struct BgColorRgb {
+    BgColorRgb(td::uint32 color) : color(color) {
+    }
+    td::uint32 color;
+  };
 
-  enum class ChangeBool { Enable, Disable, Revert, Invert };
-  template <td::int32 x>
+  enum class ChangeBool { Enable, Disable, Revert };
+  template <typename T, size_t idx>
   struct ChangeBoolImpl {
     explicit ChangeBoolImpl(bool v) {
       if (v) {
@@ -58,10 +74,10 @@ class Outputter {
     }
     ChangeBoolImpl(ChangeBool t) : type(t) {
     }
-    ChangeBool type;
-    static constexpr td::int32 attr() {
-      return x;
+    size_t get_idx() const {
+      return idx;
     }
+    ChangeBool type;
   };
 
   struct RightPad {
@@ -70,13 +86,13 @@ class Outputter {
     td::Slice data;
   };
 
-  using Underline = ChangeBoolImpl<windows::MarkupElement::Attr::Underline>;
-  using Bold = ChangeBoolImpl<windows::MarkupElement::Attr::Bold>;
-  using Italic = ChangeBoolImpl<windows::MarkupElement::Attr::Italic>;
-  using Reverse = ChangeBoolImpl<windows::MarkupElement::Attr::Reverse>;
-  using Blink = ChangeBoolImpl<windows::MarkupElement::Attr::Blink>;
-  using Strike = ChangeBoolImpl<windows::MarkupElement::Attr::Strike>;
-  using NoLb = ChangeBoolImpl<windows::MarkupElement::Attr::NoLB>;
+  using Underline = ChangeBoolImpl<windows::MarkupElementUnderline, 0>;
+  using Bold = ChangeBoolImpl<windows::MarkupElementBold, 1>;
+  using Italic = ChangeBoolImpl<windows::MarkupElementItalic, 2>;
+  using Reverse = ChangeBoolImpl<windows::MarkupElementReverse, 3>;
+  using Blink = ChangeBoolImpl<windows::MarkupElementBlink, 4>;
+  using Strike = ChangeBoolImpl<windows::MarkupElementStrike, 5>;
+  using NoLb = ChangeBoolImpl<windows::MarkupElementNoLb, 6>;
 
   template <typename T>
   std::enable_if_t<std::is_copy_constructible<T>::value, Outputter &> operator<<(T x) {
@@ -117,20 +133,17 @@ class Outputter {
   Outputter &operator<<(FgColor color);
   Outputter &operator<<(FgColorRgb color);
   Outputter &operator<<(BgColor color);
+  Outputter &operator<<(BgColorRgb color);
   Outputter &operator<<(Color color) {
     return *this << FgColor{color};
   }
   Outputter &operator<<(const RightPad &x);
 
-  template <td::int32 x>
-  Outputter &operator<<(const ChangeBoolImpl<x> &el) {
-    set_attr(el.attr(), el.type);
+  template <typename T, size_t x>
+  Outputter &operator<<(const ChangeBoolImpl<T, x> &el) {
+    bool_stack_[x]->push_arg(*this, sb_.as_cslice().size(), el.type);
     return *this;
   }
-
-  void add_markup(td::int32 attr, size_t f, size_t l, td::int32 val);
-  void set_attr_ex(td::int32 attr, td::int32 val);
-  void set_attr(td::int32 attr, ChangeBool mode);
 
   const td::td_api::message *get_message(td::int64 chat_id, td::int64 message_id);
 
@@ -153,10 +166,79 @@ class Outputter {
   Outputter &operator<<(const UserpicPhoto &);
 
  private:
-  std::vector<std::vector<std::pair<size_t, td::int32>>> args_;
+  void set_color(td::Variant<Color, td::uint32> color, bool is_fg);
+
   std::vector<windows::MarkupElement> markup_;
   ChatWindow *cur_chat_{nullptr};
   td::StringBuilder sb_;
+
+  struct Arg {
+    Arg(size_t from_pos, std::function<windows::MarkupElement(size_t, size_t)> create)
+        : from_pos(from_pos), create(std::move(create)) {
+    }
+    size_t from_pos;
+    std::function<windows::MarkupElement(size_t, size_t)> create;
+  };
+  class ArgList {
+   private:
+    std::list<Arg> args;
+
+   public:
+    virtual ~ArgList() = default;
+    void push_arg(Outputter &out, size_t pos, std::function<windows::MarkupElement(size_t, size_t)> create) {
+      if (args.size() > 0) {
+        out.markup_.push_back(args.back().create(args.back().from_pos, pos));
+      }
+      args.emplace_back(pos, std::move(create));
+    }
+    void pop_arg(Outputter &out, size_t pos) {
+      CHECK(args.size() > 0);
+      out.markup_.push_back(args.back().create(args.back().from_pos, pos));
+      args.pop_back();
+    }
+    void flush(Outputter &out, size_t pos) {
+      if (args.size() > 0) {
+        out.markup_.push_back(args.back().create(args.back().from_pos, pos));
+        args.back().from_pos = pos;
+      }
+    }
+    void flush_to(std::vector<windows::MarkupElement> &markup, size_t pos) {
+      if (args.size() > 0) {
+        markup.push_back(args.back().create(args.back().from_pos, pos));
+      }
+    }
+  };
+
+  class ArgListBool : public ArgList {
+   public:
+    virtual void push_arg(Outputter &out, size_t pos, ChangeBool value) = 0;
+  };
+
+  template <typename T>
+  class ArgListBoolImpl : public ArgListBool {
+   public:
+    void push_arg(Outputter &out, size_t pos, ChangeBool value) override {
+      switch (value) {
+        case ChangeBool::Revert:
+          pop_arg(out, pos);
+          return;
+        case ChangeBool::Enable:
+          ArgList::push_arg(out, pos, [](size_t from, size_t to) -> windows::MarkupElement {
+            return std::make_shared<T>(from, to, true);
+          });
+          return;
+        case ChangeBool::Disable:
+          ArgList::push_arg(out, pos, [](size_t from, size_t to) -> windows::MarkupElement {
+            return std::make_shared<T>(from, to, false);
+          });
+          return;
+      }
+    }
+  };
+
+  ArgList fg_colors_stack_;
+  ArgList bg_colors_stack_;
+  std::vector<std::unique_ptr<ArgListBool>> bool_stack_;
 };
 
 }  // namespace tdcurses

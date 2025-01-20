@@ -1,5 +1,6 @@
 #pragma once
 #include "MenuWindowPad.hpp"
+#include "windows/Markup.hpp"
 #include "windows/Output.hpp"
 #include "windows/unicode.h"
 #include <functional>
@@ -103,11 +104,10 @@ class MenuWindowCommon : public MenuWindowPad {
       auto size = text.size();
       text += element_->data;
       for (auto &e : markup) {
-        e.first_pos += size;
-        e.last_pos += size;
+        e->move(size);
       }
-      markup.push_back(windows::MarkupElement::bold(0, size));
-      markup.push_back(windows::MarkupElement::fg_color(0, size, windows::Color::White));
+      markup.push_back(std::make_shared<windows::MarkupElementBold>(0, size, true));
+      markup.push_back(std::make_shared<windows::MarkupElementFgColor>(0, size, windows::Color::White));
       return render_plain_text(rb, text, std::move(markup), width(), std::numeric_limits<td::int32>::max(), is_selected,
                                &dir);
     }

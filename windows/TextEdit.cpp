@@ -14,110 +14,6 @@ bool is_printable_control_char(td::Slice data) {
   return data.size() == 1 && (data[0] == '\n' || data[0] == '\t');
 }
 
-MarkupElement MarkupElement::fg_color(size_t first_pos, size_t last_pos, Color fg_color) {
-  return MarkupElement(first_pos, last_pos, Attr::FgColor, (td::int32)fg_color);
-}
-MarkupElement MarkupElement::bg_color(size_t first_pos, size_t last_pos, Color bg_color) {
-  return MarkupElement(first_pos, last_pos, Attr::BgColor, (td::int32)bg_color);
-}
-MarkupElement MarkupElement::bold(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, Attr::Bold, 1);
-}
-MarkupElement MarkupElement::underline(size_t first_pos, size_t last_pos, td::int32 line_type) {
-  return MarkupElement(first_pos, last_pos, Attr::Underline, line_type);
-}
-MarkupElement MarkupElement::italic(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, Attr::Italic, 1);
-}
-MarkupElement MarkupElement::reverse(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, Attr::Reverse, 1);
-}
-MarkupElement MarkupElement::strike(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, Attr::Strike, 1);
-}
-MarkupElement MarkupElement::blink(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, Attr::Blink, 1);
-}
-MarkupElement MarkupElement::nolb(size_t first_pos, size_t last_pos) {
-  return MarkupElement(first_pos, last_pos, Attr::NoLB, 1);
-}
-MarkupElement MarkupElement::fg_color_rgb(size_t first_pos, size_t last_pos, td::uint32 fg_color) {
-  return MarkupElement(first_pos, last_pos, Attr::FgColorRGB, (td::int32)fg_color);
-}
-
-MarkupElement MarkupElement::photo(size_t first_pos, size_t last_pos, td::int32 height, td::int32 width,
-                                   std::string path) {
-  auto r = MarkupElement(first_pos, last_pos, Attr::Photo, height);
-  r.arg2 = width;
-  r.str_arg = path;
-  return r;
-}
-
-void MarkupElement::install(WindowOutputter &rb) const {
-  switch (attr) {
-    case Attr::FgColor:
-      rb.set_fg_color((Color)arg);
-      break;
-    case Attr::BgColor:
-      rb.set_bg_color((Color)arg);
-      break;
-    case Attr::Bold:
-      rb.set_bold(arg);
-      break;
-    case Attr::Italic:
-      rb.set_italic(arg);
-      break;
-    case Attr::Reverse:
-      rb.set_reverse(arg);
-      break;
-    case Attr::Strike:
-      rb.set_strike(arg);
-      break;
-    case Attr::Blink:
-      rb.set_blink(arg);
-      break;
-    case Attr::Underline:
-      rb.set_underline(arg);
-      break;
-    case Attr::FgColorRGB:
-      rb.set_fg_color_rgb((td::uint32)arg);
-      break;
-    default:
-      break;
-  }
-}
-
-void MarkupElement::uninstall(WindowOutputter &rb) const {
-  switch (attr) {
-    case Attr::FgColor:
-      rb.unset_fg_color();
-      break;
-    case Attr::BgColor:
-      rb.unset_bg_color();
-      break;
-    case Attr::Bold:
-      rb.unset_bold();
-      break;
-    case Attr::Italic:
-      rb.unset_italic();
-      break;
-    case Attr::Reverse:
-      rb.unset_reverse();
-      break;
-    case Attr::Strike:
-      rb.unset_strike();
-      break;
-    case Attr::Blink:
-      rb.unset_blink();
-      break;
-    case Attr::Underline:
-      rb.unset_underline();
-      break;
-    default:
-      break;
-  }
-}
-
 bool TextEdit::move_cursor_right(bool allow_change_line) {
   if (pos_ == text_.size()) {
     return false;
@@ -252,18 +148,16 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, bool is_selecte
                 pad_width, pad_char);
 }
 
-namespace {
-
-class Builder {
+class TextEditBuilder {
  public:
-  Builder(WindowOutputter &rb, td::int32 width, bool is_password, SavedRenderedImagesDirectory *images)
+  TextEditBuilder(WindowOutputter &rb, td::int32 width, bool is_password, SavedRenderedImagesDirectory *images)
       : rb_(rb), width_(width), is_password_(is_password) {
     if (images) {
       old_images_ = std::move(images->old_images);
       images_ = std::move(images->new_images);
     }
   }
-  ~Builder() {
+  ~TextEditBuilder() {
   }
   void cond_start_new_line() {
     if (cur_line_pos_ != 0) {
@@ -387,55 +281,60 @@ class Builder {
     }
   }
 
-  void add_markup(const MarkupElement &me) {
-    if (me.attr == MarkupElement::Attr::NoLB) {
-      nolb_++;
-    } else if (me.attr == MarkupElement::Attr::Photo) {
-      if (!me.arg || !me.arg2 || !rb_.allow_render_image() || nolb_) {
-        return;
+  void install_nolb(bool value) {
+    nolb_++;
+  }
+  void uninstall_nolb() {
+    nolb_--;
+  }
+  void install_photo(std::string path, td::int32 image_height, td::int32 image_width, td::int32 render_height,
+                     td::int32 render_width) {
+    if (rb_.is_real()) {
+      std::unique_ptr<RenderedImage> image;
+
+      auto it = old_images_.find(path);
+      if (it != old_images_.end()) {
+        image = std::move(it->second.back());
+        it->second.pop_back();
+        if (it->second.size() == 0) {
+          old_images_.erase(it);
+        }
       }
 
-      if (rb_.is_real()) {
-        std::unique_ptr<RenderedImage> image;
+      if (image && image->rendered_to_width() != width_) {
+        image = nullptr;
+      }
 
-        auto it = old_images_.find(me.str_arg);
-        if (it != old_images_.end()) {
-          image = std::move(it->second.back());
-          it->second.pop_back();
-          if (it->second.size() == 0) {
-            old_images_.erase(it);
-          }
-        }
-
-        if (image && image->rendered_to_width() != width_) {
-          image = nullptr;
-        }
-
-        cond_start_new_line();
-        if (!image) {
-          image = rb_.render_image(20, width_, me.str_arg);
-        }
-        if (image) {
-          rb_.transparent_rect(cur_line_, 0, image->height(), width_);
-          rb_.draw_rendered_image(cur_line_, 0, *image);
-          cur_line_ += image->height();
-          images_[me.str_arg].push_back(std::move(image));
-        }
-      } else {
-        auto h = rb_.rendered_image_height(20, width_, me.arg, me.arg2, me.str_arg);
-        cond_start_new_line();
-        cur_line_ += h.first;
+      cond_start_new_line();
+      if (!image) {
+        image = rb_.render_image(20, width_, path);
+      }
+      if (image) {
+        rb_.transparent_rect(cur_line_, 0, image->height(), width_);
+        rb_.draw_rendered_image(cur_line_, 0, *image);
+        cur_line_ += image->height();
+        images_[path].push_back(std::move(image));
       }
     } else {
-      me.install(rb_);
+      auto h = rb_.rendered_image_height(20, width_, image_height, image_width, path);
+      cond_start_new_line();
+      cur_line_ += h.first;
+    }
+  }
+
+  void add_markup(const MarkupElement &me) {
+    if (me->apply_to_text_edit()) {
+      static_cast<MarkupElementTextEdit *>(me.get())->install(*this);
+    } else {
+      me->install(rb_);
     }
   }
 
   void del_markup(const MarkupElement &me) {
-    if (me.attr == MarkupElement::Attr::NoLB) {
-      nolb_--;
+    if (me->apply_to_text_edit()) {
+      static_cast<MarkupElementTextEdit *>(me.get())->uninstall(*this);
     } else {
-      me.uninstall(rb_);
+      me->uninstall(rb_);
     }
   }
 
@@ -470,47 +369,45 @@ class Builder {
   std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> images_;
 };
 
-}  // namespace
-
 td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text, size_t pos,
                            const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password,
                            SavedRenderedImagesDirectory *rendered_images, td::int32 pad_width, std::string pad_char) {
   struct Action {
-    Action(size_t pos, bool enable, const MarkupElement *el) : pos(pos), enable(enable), el(el) {
+    Action(size_t pos, bool enable, MarkupElement el) : pos(pos), enable(enable), el(el) {
     }
     size_t pos;
     bool enable;
-    const MarkupElement *el;
+    MarkupElement el;
     bool operator<(const Action &other) const {
       return pos < other.pos || (pos == other.pos && !enable && other.enable);
     }
   };
   std::vector<Action> actions;
   for (auto &m : input_markup) {
-    if (m.first_pos != m.last_pos) {
-      actions.emplace_back(m.first_pos, true, &m);
-      actions.emplace_back(m.last_pos, false, &m);
+    if (m->first_pos() != m->last_pos()) {
+      actions.emplace_back(m->first_pos(), true, m);
+      actions.emplace_back(m->last_pos(), false, m);
     }
   }
-  auto reverse_markup = MarkupElement::reverse(0, text.size() + 1);
   if (is_selected) {
-    actions.emplace_back(0, true, &reverse_markup);
-    actions.emplace_back(text.size() + 1, false, &reverse_markup);
+    auto reverse_markup = std::make_shared<MarkupElementReverse>(0, text.size() + 1, true);
+    actions.emplace_back(0, true, reverse_markup);
+    actions.emplace_back(text.size() + 1, false, reverse_markup);
   }
 
   std::sort(actions.begin(), actions.end());
   size_t actions_pos = 0;
 
-  Builder builder(rb, width, is_password, rendered_images);
+  TextEditBuilder builder(rb, width, is_password, rendered_images);
   builder.set_pad(pad_width, pad_char);
 
   size_t cur_pos = 0;
   while (cur_pos <= text.size()) {
     while (actions_pos < actions.size() && actions[actions_pos].pos <= cur_pos) {
       if (actions[actions_pos].enable) {
-        builder.add_markup(*actions[actions_pos++].el);
+        builder.add_markup(actions[actions_pos++].el);
       } else {
-        builder.del_markup(*actions[actions_pos++].el);
+        builder.del_markup(actions[actions_pos++].el);
       }
     }
     if (cur_pos == text.size()) {
@@ -533,13 +430,25 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
   builder.complete(pos == text.size(), rendered_images);
   while (actions_pos < actions.size()) {
     if (actions[actions_pos].enable) {
-      builder.add_markup(*actions[actions_pos++].el);
+      builder.add_markup(actions[actions_pos++].el);
     } else {
-      builder.del_markup(*actions[actions_pos++].el);
+      builder.del_markup(actions[actions_pos++].el);
     }
   }
   rb.cursor_move_yx(builder.cursor_y(), builder.cursor_x(), WindowOutputter::CursorShape::Block);
   return builder.height() - 1;
+}
+
+void MarkupElementNoLb::install(TextEditBuilder &rb) const {
+  rb.install_nolb(value_);
+}
+void MarkupElementNoLb::uninstall(TextEditBuilder &rb) const {
+  rb.uninstall_nolb();
+}
+void MarkupElementImage::install(TextEditBuilder &rb) const {
+  rb.install_photo(image_path_, image_height_, image_width_, rendered_height_, rendered_width_);
+}
+void MarkupElementImage::uninstall(TextEditBuilder &rb) const {
 }
 
 }  // namespace windows

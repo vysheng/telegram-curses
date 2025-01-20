@@ -2001,7 +2001,8 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   };
   command_line_window_ =
       std::make_shared<CommandLineWindow>(std::make_unique<CommandLineCallback>(this, actor_id(this)));
-  status_line_window_->replace_text("", {windows::MarkupElement::bg_color(0, 1000, windows::Color::Grey)});
+  status_line_window_->replace_text("",
+                                    {std::make_shared<windows::MarkupElementBgColor>(0, 1000, windows::Color::Grey)});
   //td::log_interface = log_interface_.get();
   screen_->change_layout(layout_);
   layout_->replace_log_window(log_window_);
@@ -2166,8 +2167,8 @@ void TdcursesImpl::update_status_line() {
     out << "\n";
     auto markup = out.markup();
     auto str = out.as_str();
-    markup.push_back(windows::MarkupElement::bg_color(0, 1000, windows::Color::Grey));
-    markup.push_back(windows::MarkupElement::fg_color(0, 1000, windows::Color::Lime));
+    markup.push_back(std::make_shared<windows::MarkupElementBgColor>(0, 1000, windows::Color::Grey));
+    markup.push_back(std::make_shared<windows::MarkupElementFgColor>(0, 1000, windows::Color::Lime));
     w->replace_text(std::move(str), std::move(markup));
   }
 }

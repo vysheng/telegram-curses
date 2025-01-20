@@ -66,10 +66,10 @@ class YesNoWindow
     auto s = (td::int32)text.size();
     if (ok_) {
       text += "<YES>  NO ";
-      markup.emplace_back(windows::MarkupElement::reverse(s, s + 5));
+      markup.emplace_back(std::make_shared<windows::MarkupElementReverse>(s, s + 5, true));
     } else {
       text += " YES  <NO>";
-      markup.emplace_back(windows::MarkupElement::reverse(s + 6, s + 10));
+      markup.emplace_back(std::make_shared<windows::MarkupElementReverse>(s + 6, s + 10, true));
     }
 
     rb.translate(height() - 2, 0);

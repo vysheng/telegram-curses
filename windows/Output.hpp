@@ -125,6 +125,7 @@ class WindowOutputter {
   virtual void set_fg_color_rgb(td::uint32 color) = 0;
   virtual void unset_fg_color() = 0;
   virtual void set_bg_color(Color color) = 0;
+  virtual void set_bg_color_rgb(td::uint32 color) = 0;
   virtual void unset_bg_color() = 0;
   virtual void set_bold(bool value) = 0;
   virtual void unset_bold() = 0;

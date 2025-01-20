@@ -1,4 +1,5 @@
 #include "ScopeNotificationsSettingsWindow.hpp"
+#include "GlobalParameters.hpp"
 #include "ChangeScopeNotificationsSettingsWindow.hpp"
 #include "ChatManager.hpp"
 #include "LoadingWindow.hpp"
