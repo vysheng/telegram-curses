@@ -2153,7 +2153,7 @@ void TdcursesImpl::update_status_line() {
     }
     out << Outputter::Reverse(Outputter::ChangeBool::Enable) << " ";
     if (ch) {
-      out << ch->search_pattern() << " ";
+      out << ch->text_mode() << " ";
     }
     out << Outputter::Reverse(Outputter::ChangeBool::Revert) << " ";
     {

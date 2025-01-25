@@ -76,7 +76,7 @@ class MarkupElementFgColor : public MarkupElementBase {
 
 class MarkupElementFgColorRGB : public MarkupElementBase {
  public:
-  MarkupElementFgColorRGB(size_t first_pos, size_t last_pos, td::uint32 color)
+  MarkupElementFgColorRGB(size_t first_pos, size_t last_pos, ColorRGB color)
       : MarkupElementBase(first_pos, last_pos), color_(color) {
   }
 
@@ -88,7 +88,7 @@ class MarkupElementFgColorRGB : public MarkupElementBase {
   }
 
  private:
-  td::uint32 color_;
+  ColorRGB color_;
 };
 
 class MarkupElementBgColor : public MarkupElementBase {
@@ -110,7 +110,7 @@ class MarkupElementBgColor : public MarkupElementBase {
 
 class MarkupElementBgColorRGB : public MarkupElementBase {
  public:
-  MarkupElementBgColorRGB(size_t first_pos, size_t last_pos, td::uint32 color)
+  MarkupElementBgColorRGB(size_t first_pos, size_t last_pos, ColorRGB color)
       : MarkupElementBase(first_pos, last_pos), color_(color) {
   }
 
@@ -122,7 +122,7 @@ class MarkupElementBgColorRGB : public MarkupElementBase {
   }
 
  private:
-  td::uint32 color_;
+  ColorRGB color_;
 };
 
 class MarkupElementBold : public MarkupElementBase {
@@ -243,13 +243,14 @@ class MarkupElementNoLb : public MarkupElementTextEdit {
 class MarkupElementImage : public MarkupElementTextEdit {
  public:
   MarkupElementImage(size_t first_pos, size_t last_pos, std::string image_path, td::int32 image_height,
-                     td::int32 image_width, td::int32 rendered_height, td::int32 rendered_width)
+                     td::int32 image_width, td::int32 rendered_height, td::int32 rendered_width, bool allow_pixel)
       : MarkupElementTextEdit(first_pos, last_pos)
       , image_path_(std::move(image_path))
       , image_height_(image_height)
       , image_width_(image_width)
       , rendered_height_(rendered_height)
-      , rendered_width_(rendered_width) {
+      , rendered_width_(rendered_width)
+      , allow_pixel_(allow_pixel) {
   }
 
   void install(TextEditBuilder &rb) const override;
@@ -261,6 +262,32 @@ class MarkupElementImage : public MarkupElementTextEdit {
   td::int32 image_width_;
   td::int32 rendered_height_;
   td::int32 rendered_width_;
+  bool allow_pixel_;
+};
+
+class MarkupElementImageData : public MarkupElementTextEdit {
+ public:
+  MarkupElementImageData(size_t first_pos, size_t last_pos, std::string image_data, td::int32 image_height,
+                         td::int32 image_width, td::int32 rendered_height, td::int32 rendered_width, bool allow_pixel)
+      : MarkupElementTextEdit(first_pos, last_pos)
+      , image_data_(std::move(image_data))
+      , image_height_(image_height)
+      , image_width_(image_width)
+      , rendered_height_(rendered_height)
+      , rendered_width_(rendered_width)
+      , allow_pixel_(allow_pixel) {
+  }
+
+  void install(TextEditBuilder &rb) const override;
+  void uninstall(TextEditBuilder &rb) const override;
+
+ private:
+  std::string image_data_;
+  td::int32 image_height_;
+  td::int32 image_width_;
+  td::int32 rendered_height_;
+  td::int32 rendered_width_;
+  bool allow_pixel_;
 };
 
 using MarkupElement = std::shared_ptr<MarkupElementBase>;

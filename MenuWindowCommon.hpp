@@ -106,6 +106,11 @@ class MenuWindowCommon : public MenuWindowPad {
       for (auto &e : markup) {
         e->move(size);
       }
+      SCOPE_EXIT {
+        for (auto &e : element_->markup) {
+          e->move(-size);
+        }
+      };
       markup.push_back(std::make_shared<windows::MarkupElementBold>(0, size, true));
       markup.push_back(std::make_shared<windows::MarkupElementFgColor>(0, size, windows::Color::White));
       return render_plain_text(rb, text, std::move(markup), width(), std::numeric_limits<td::int32>::max(), is_selected,

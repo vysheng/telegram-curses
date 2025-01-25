@@ -519,6 +519,7 @@ void PadWindow::adjust_cur_element(td::int32 lines) {
   }
 
   if (pad_to_ == PadTo::Top) {
+    CHECK(lines_before_cur_element_ >= 0);
     auto off = offset_in_cur_element_ + lines_before_cur_element_;
     CHECK(offset_in_cur_element_ >= 0);
     CHECK(lines_before_cur_element_ >= 0);

@@ -91,7 +91,7 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
       selected_messages_.clear();
       return;
     }
-    set_search_pattern("");
+    set_mode(Mode{ModeDefault{}});
     return;
   } else if (info == "T-Enter") {
     show_message_actions();
@@ -102,7 +102,7 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
       selected_messages_.clear();
       return;
     }
-    set_search_pattern("");
+    set_mode(Mode{ModeDefault{}});
     return;
   } else if (info == "i") {
     root()->open_compose_window(main_chat_id_, 0);
@@ -113,7 +113,7 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
       selected_messages_.clear();
       return;
     }
-    set_search_pattern("");
+    set_mode(Mode{ModeDefault{}});
     return;
   } else if (info == "/" || info == ":") {
     root()->command_line_window()->handle_input(info);
@@ -177,7 +177,7 @@ td::int32 ChatWindow::Element::render(windows::PadWindow &root, windows::WindowO
 }
 
 void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
-  if (running_req_bottom_ || messages_.size() == 0 || is_completed_bottom_ || search_pattern_.size() > 0) {
+  if (running_req_bottom_ || messages_.size() == 0 || is_completed_bottom_ || !is_main_mode()) {
     return;
   }
 
@@ -185,24 +185,36 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
 
   auto max_message_id = get_newest_message_id();
 
-  if (search_pattern_.size() == 0) {
-    auto req = td::make_tl_object<td::td_api::getChatHistory>(max_message_id.chat_id, max_message_id.message_id, -10,
-                                                              10, false);
-    send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
-                                     td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
-      self->received_bottom_elements(std::move(R), pivot_message_id);
-    });
-  } else {
-    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
-    auto req = td::make_tl_object<td::td_api::searchChatMessages>(
-        max_message_id.chat_id, search_pattern_, /* sender_id */ nullptr,
-        /* from_message_id */ max_message_id.message_id, /* offset */ -10, /* limit */ 11,
-        /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
-    send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
-                                     td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
-      self->received_bottom_search_elements(std::move(R), pivot_message_id);
-    });
-  }
+  mode_.visit(td::overloaded(
+      [&](const ModeDefault &) {
+        auto req = td::make_tl_object<td::td_api::getChatHistory>(max_message_id.chat_id, max_message_id.message_id,
+                                                                  -10, 10, false);
+        send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
+                                         td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+          self->received_bottom_elements(std::move(R), pivot_message_id);
+        });
+      },
+      [&](const ModeSearch &m) {
+        //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
+        auto req = td::make_tl_object<td::td_api::searchChatMessages>(
+            max_message_id.chat_id, m.search_pattern, /* sender_id */ nullptr,
+            /* from_message_id */ max_message_id.message_id, /* offset */ -10, /* limit */ 11,
+            /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
+        send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
+                                         td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+          self->received_bottom_search_elements(std::move(R), pivot_message_id);
+        });
+      },
+      [&](const ModeComments &m) {
+        //getMessageThreadHistory chat_id:int53 message_id:int53 from_message_id:int53 offset:int32 limit:int32 = Messages;
+        auto req = td::make_tl_object<td::td_api::getMessageThreadHistory>(
+            m.message_id.chat_id, m.message_id.message_id, max_message_id.message_id, /* offset */ -10,
+            /* limit */ -11);
+        send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
+                                         td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+          self->received_bottom_elements(std::move(R), pivot_message_id);
+        });
+      }));
 }
 
 void ChatWindow::received_bottom_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R,
@@ -256,7 +268,7 @@ void ChatWindow::request_top_elements_ex(td::int32 message_id) {
   auto min_message_id = get_oldest_message_id();
   auto msg = get_message_as_message(min_message_id);
 
-  if (msg && msg->content_->get_id() == td::td_api::messageChatUpgradeFrom::ID) {
+  if (is_main_mode() && msg && msg->content_->get_id() == td::td_api::messageChatUpgradeFrom::ID) {
     auto content = static_cast<const td::td_api::messageChatUpgradeFrom *>(msg->content_.get());
     auto req0 = td::make_tl_object<td::td_api::createBasicGroupChat>(content->basic_group_id_, true);
     send_request(std::move(req0), [&](td::Result<td::tl_object_ptr<td::td_api::chat>> R) {
@@ -272,21 +284,32 @@ void ChatWindow::request_top_elements_ex(td::int32 message_id) {
     });
     return;
   }
-  if (search_pattern_.size() == 0) {
-    auto req =
-        td::make_tl_object<td::td_api::getChatHistory>(min_message_id.chat_id, min_message_id.message_id, 0, 10, false);
-    send_request(std::move(req),
-                 [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) { received_top_elements(std::move(R)); });
-  } else {
-    //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
-    auto req = td::make_tl_object<td::td_api::searchChatMessages>(
-        min_message_id.chat_id, search_pattern_, /* sender_id */ nullptr,
-        /* from_message_id */ min_message_id.message_id, /* offset */ 0, /* limit */ 10,
-        /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
-    send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
-      received_top_search_elements(std::move(R));
-    });
-  }
+  mode_.visit(td::overloaded(
+      [&](const ModeDefault &) {
+        auto req = td::make_tl_object<td::td_api::getChatHistory>(min_message_id.chat_id, min_message_id.message_id, 0,
+                                                                  10, false);
+        send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+          received_top_elements(std::move(R));
+        });
+      },
+      [&](const ModeSearch &m) {
+        //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
+        auto req = td::make_tl_object<td::td_api::searchChatMessages>(
+            min_message_id.chat_id, m.search_pattern, /* sender_id */ nullptr,
+            /* from_message_id */ min_message_id.message_id, /* offset */ 0, /* limit */ 10,
+            /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
+        send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
+          received_top_search_elements(std::move(R));
+        });
+      },
+      [&](const ModeComments &m) {
+        //getMessageThreadHistory chat_id:int53 message_id:int53 from_message_id:int53 offset:int32 limit:int32 = Messages;
+        auto req = td::make_tl_object<td::td_api::getMessageThreadHistory>(
+            m.message_id.chat_id, m.message_id.message_id, min_message_id.message_id, /* offset */ 0, /* limit */ 10);
+        send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
+          received_top_elements(std::move(R));
+        });
+      }));
 }
 void ChatWindow::received_top_elements(td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
   if (R.is_error() && R.error().code() == ErrorCodeWindowDeleted) {
@@ -340,6 +363,9 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
   if (!is_completed_bottom_) {
     return;
   }
+  if (!is_main_mode()) {
+    return;
+  }
   auto m = std::move(update.message_);
   auto id = build_message_id(*m);
   auto it = messages_.find(id);
@@ -354,6 +380,9 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
 }
 
 void ChatWindow::process_update_sent_message(td::tl_object_ptr<td::td_api::message> message) {
+  if (!is_main_mode()) {
+    return;
+  }
   auto id = build_message_id(*message);
   auto el = std::make_shared<Element>(std::move(message), get_chat_generation(id.chat_id));
   messages_.emplace(id, el);
@@ -737,12 +766,12 @@ void ChatWindow::clear_file_subscriptions() {
   file_id_2_messages_.clear();
 }
 
-void ChatWindow::set_search_pattern(std::string pattern) {
-  if (pattern == search_pattern_) {
+void ChatWindow::set_mode(ChatWindow::Mode mode) {
+  if (mode_ == mode) {
     return;
   }
   std::shared_ptr<Element> cur;
-  if (pattern == "") {
+  if (is_main_mode(mode) && is_search_mode(mode_)) {
     cur = std::static_pointer_cast<Element>(get_active_element());
   }
 
@@ -750,7 +779,7 @@ void ChatWindow::set_search_pattern(std::string pattern) {
   change_unique_id();
 
   clear_file_subscriptions();
-  search_pattern_ = std::move(pattern);
+  mode_ = std::move(mode);
   running_req_top_ = false;
   running_req_bottom_ = false;
   is_completed_top_ = false;
@@ -782,7 +811,7 @@ void ChatWindow::seek(MessageId message_id) {
   auto it = messages_.find(message_id);
   if (it != messages_.end()) {
     scroll_to_element(it->second.get(), ScrollMode::Minimal);
-    set_search_pattern("");
+    set_mode(Mode{ModeDefault{}});
   }
 }
 

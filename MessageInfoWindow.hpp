@@ -32,6 +32,37 @@ class MessageInfoWindow : public MenuWindowCommon {
       return;
     }
     message_ = R.move_as_ok();
+    auto req = td::make_tl_object<td::td_api::getMessageProperties>(chat_id_, message_id_);
+    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageProperties>> R) mutable {
+      DROP_IF_DELETED(R);
+      self->got_message_properties(std::move(R));
+    });
+  }
+
+  void got_message_properties(td::Result<td::tl_object_ptr<td::td_api::messageProperties>> R) {
+    if (R.is_error()) {
+      add_element("ERROR", R.move_as_error().to_string());
+      return;
+    }
+
+    message_properties_ = R.move_as_ok();
+
+    if (!message_properties_->can_get_message_thread_) {
+      process_message();
+      return;
+    }
+    auto req = td::make_tl_object<td::td_api::getMessageThread>(chat_id_, message_id_);
+    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageThreadInfo>> R) mutable {
+      DROP_IF_DELETED(R);
+      self->got_message_thread_info(std::move(R));
+    });
+  }
+
+  void got_message_thread_info(td::Result<td::tl_object_ptr<td::td_api::messageThreadInfo>> R) {
+    if (R.is_ok()) {
+      message_thread_info_ = R.move_as_ok();
+    }
+
     process_message();
   }
 
@@ -65,12 +96,15 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_reply(td::int64 chat_id, td::int64 message_id);
   void add_action_reactions(td::int64 chat_id, td::int64 message_id);
   void add_action_delete_message(td::int64 chat_id, td::int64 message_id);
+  void add_action_view_thread(td::int64 chat_id, td::int64 message_id);
 
   void handle_file_update(const td::td_api::updateFile &);
 
   td::int64 chat_id_;
   td::int64 message_id_;
   td::tl_object_ptr<td::td_api::message> message_;
+  td::tl_object_ptr<td::td_api::messageProperties> message_properties_;
+  td::tl_object_ptr<td::td_api::messageThreadInfo> message_thread_info_;
   std::map<td::int64, std::pair<td::int64, std::shared_ptr<ElInfo>>> subscription_ids_;
   std::shared_ptr<ElInfo> open_file_el_;
 };

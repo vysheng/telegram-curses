@@ -13,6 +13,7 @@
 #include "TdObjectsOutput.h"
 #include "StickerManager.hpp"
 #include "GlobalParameters.hpp"
+#include "FileManager.hpp"
 
 #include "utf8proc.h"
 
@@ -20,6 +21,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <jpeglib.h>
 
 namespace tdcurses {
 
@@ -86,6 +88,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
   } else {
     add_color(out, *message.sender_id_);
   }
+
   out << Outputter::Date{message.date_} << " ";
 
   if (C->chat_type() == ChatType::SecretChat || C->chat_type() == ChatType::User) {
@@ -169,7 +172,6 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     }
     out << " ";
   }
-
   return out;
 }
 

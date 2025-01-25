@@ -258,7 +258,7 @@ add_executable(telegram-curses
 
   third-party/qrcodegen/qrcodegen.cpp 
 )
-target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc notcurses-core notcurses notify ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} )
+target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc notcurses-core notcurses notify jpeg ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} )
 target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${GDKPIXBUF_INCLUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}

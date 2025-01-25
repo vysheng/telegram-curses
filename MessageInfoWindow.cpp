@@ -231,6 +231,9 @@ void MessageInfoWindow::process_message() {
   }
 
   add_action_delete_message(message_->chat_id_, message_->id_);
+  if (message_properties_->can_get_message_thread_ && message_thread_info_) {
+    add_action_view_thread(message_thread_info_->chat_id_, message_thread_info_->message_thread_id_);
+  }
 
   set_need_refresh();
 }
@@ -541,6 +544,16 @@ void MessageInfoWindow::add_action_delete_message(td::int64 chat_id, td::int64 m
                                   });
     });
     return false;
+  });
+}
+
+void MessageInfoWindow::add_action_view_thread(td::int64 chat_id, td::int64 message_id) {
+  add_element("view thread", "view thread", {}, [chat_id, message_id, self = this]() {
+    auto w = self->root()->chat_window();
+    if (w) {
+      w->set_comments_mode(ChatWindow::MessageId{chat_id, message_id});
+    }
+    return true;
   });
 }
 

@@ -2,6 +2,8 @@
 #include "td/actor/impl/ActorId-decl.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
+#include "td/utils/Variant.h"
+#include "td/utils/overloaded.h"
 #include "windows/Output.hpp"
 #include "windows/PadWindow.hpp"
 #include "td/generate/auto/td/telegram/td_api.h"
@@ -28,7 +30,32 @@ class ChatWindow
     bool operator<(const MessageId &other) const {
       return std::tie(chat_id, message_id) < std::tie(other.chat_id, other.message_id);
     }
+    bool operator==(const MessageId &other) const {
+      return std::tie(chat_id, message_id) == std::tie(other.chat_id, other.message_id);
+    }
   };
+  struct ModeDefault {
+    bool operator==(const ModeDefault &) const {
+      return true;
+    }
+  };
+  struct ModeSearch {
+    ModeSearch(std::string pattern) : search_pattern(std::move(pattern)) {
+    }
+    std::string search_pattern;
+    bool operator==(const ModeSearch &other) const {
+      return search_pattern == other.search_pattern;
+    }
+  };
+  struct ModeComments {
+    ModeComments(MessageId message_id) : message_id(message_id) {
+    }
+    MessageId message_id;
+    bool operator==(const ModeComments &other) const {
+      return message_id == other.message_id;
+    }
+  };
+  using Mode = td::Variant<ModeDefault, ModeSearch, ModeComments>;
   ChatWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id);
 
   class Element : public windows::PadWindowElement {
@@ -138,10 +165,41 @@ class ChatWindow
     return get_message_as_message(MessageId{chat_id, message_id});
   }
 
-  void set_search_pattern(std::string pattern);
-  const auto &search_pattern() const {
-    return search_pattern_;
+  bool is_main_mode(const Mode &mode) const {
+    return mode.get_offset() == mode.offset<ModeDefault>();
   }
+  bool is_main_mode() const {
+    return is_main_mode(mode_);
+  }
+  bool is_search_mode(const Mode &mode) const {
+    return mode.get_offset() == mode.offset<ModeSearch>();
+  }
+  bool is_search_mode() const {
+    return is_search_mode(mode_);
+  }
+  bool is_comments_mode(const Mode &mode) const {
+    return mode.get_offset() == mode.offset<ModeComments>();
+  }
+  bool is_comments_mode() const {
+    return is_comments_mode(mode_);
+  }
+
+  std::string text_mode() const {
+    std::string result;
+    mode_.visit(td::overloaded([&](const ModeDefault &) { result = ""; },
+                               [&](const ModeSearch &m) { result = "/" + m.search_pattern; },
+                               [&](const ModeComments &m) { result = "comments"; }));
+    return result;
+  }
+
+  void set_search_pattern(std::string pattern) {
+    set_mode(Mode{ModeSearch{pattern}});
+  }
+  void set_comments_mode(MessageId message_id) {
+    set_mode(Mode{ModeComments{message_id}});
+  }
+
+  void set_mode(Mode mode);
 
   void show_message_actions();
 
@@ -177,6 +235,7 @@ class ChatWindow
 
  private:
   const td::int64 main_chat_id_;
+
   std::map<MessageId, std::shared_ptr<Element>> messages_;
   struct FileSubscription {
     FileSubscription(td::int64 id) : subscription_id(id) {
@@ -185,7 +244,7 @@ class ChatWindow
     std::set<MessageId> messages;
   };
   std::map<td::int32, FileSubscription> file_id_2_messages_;
-  std::string search_pattern_;
+  Mode mode_{ModeDefault{}};
   bool running_req_top_{false};
   bool running_req_bottom_{false};
   bool is_completed_top_{false};

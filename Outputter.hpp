@@ -23,6 +23,7 @@
 namespace tdcurses {
 
 using Color = windows::Color;
+using ColorRGB = windows::ColorRGB;
 
 class ChatWindow;
 
@@ -52,14 +53,14 @@ class Outputter {
     Color color;
   };
   struct FgColorRgb {
-    FgColorRgb(td::uint32 color) : color(color) {
+    FgColorRgb(ColorRGB color) : color(color) {
     }
-    td::uint32 color;
+    ColorRGB color;
   };
   struct BgColorRgb {
-    BgColorRgb(td::uint32 color) : color(color) {
+    BgColorRgb(ColorRGB color) : color(color) {
     }
-    td::uint32 color;
+    ColorRGB color;
   };
 
   enum class ChangeBool { Enable, Disable, Revert };
@@ -137,6 +138,9 @@ class Outputter {
   Outputter &operator<<(Color color) {
     return *this << FgColor{color};
   }
+  Outputter &operator<<(ColorRGB color) {
+    return *this << FgColorRgb{color};
+  }
   Outputter &operator<<(const RightPad &x);
 
   template <typename T, size_t x>
@@ -161,12 +165,18 @@ class Outputter {
     td::int32 width;
     td::int32 height;
   };
+  struct UserpicPhotoData {
+    td::Slice data;
+    td::int32 width;
+    td::int32 height;
+  };
 
   Outputter &operator<<(const Photo &);
   Outputter &operator<<(const UserpicPhoto &);
+  Outputter &operator<<(const UserpicPhotoData &);
 
  private:
-  void set_color(td::Variant<Color, td::uint32> color, bool is_fg);
+  void set_color(td::Variant<Color, ColorRGB> color, bool is_fg);
 
   std::vector<windows::MarkupElement> markup_;
   ChatWindow *cur_chat_{nullptr};

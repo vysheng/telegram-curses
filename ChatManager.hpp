@@ -207,6 +207,10 @@ class Chat {
     return chat_->accent_color_id_;
   }
 
+  const auto &photo() const {
+    return chat_->photo_;
+  }
+
  private:
   td::tl_object_ptr<td::td_api::chat> chat_;
   td::int32 online_{0};

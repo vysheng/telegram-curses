@@ -69,7 +69,7 @@ Outputter &Outputter::operator<<(BgColorRgb color) {
   return *this;
 }
 
-void Outputter::set_color(td::Variant<Color, td::uint32> color, bool is_fg) {
+void Outputter::set_color(td::Variant<Color, ColorRGB> color, bool is_fg) {
   auto &l = (is_fg ? fg_colors_stack_ : bg_colors_stack_);
   if (color.get_offset() == color.offset<Color>() && color.get<Color>() == Color::Revert) {
     l.pop_arg(*this, sb_.as_cslice().size());
@@ -80,11 +80,11 @@ void Outputter::set_color(td::Variant<Color, td::uint32> color, bool is_fg) {
                  if (is_fg) {
                    color.visit(td::overloaded(
                        [&](Color c) { el = std::make_shared<windows::MarkupElementFgColor>(from, to, c); },
-                       [&](td::uint32 c) { el = std::make_shared<windows::MarkupElementFgColorRGB>(from, to, c); }));
+                       [&](ColorRGB c) { el = std::make_shared<windows::MarkupElementFgColorRGB>(from, to, c); }));
                  } else {
                    color.visit(td::overloaded(
                        [&](Color c) { el = std::make_shared<windows::MarkupElementBgColor>(from, to, c); },
-                       [&](td::uint32 c) { el = std::make_shared<windows::MarkupElementBgColorRGB>(from, to, c); }));
+                       [&](ColorRGB c) { el = std::make_shared<windows::MarkupElementBgColorRGB>(from, to, c); }));
                  }
                  return el;
                });
@@ -115,15 +115,22 @@ Outputter &Outputter::operator<<(const RightPad &x) {
 }
 
 Outputter &Outputter::operator<<(const Photo &obj) {
-  markup_.push_back(std::make_shared<windows::MarkupElementImage>(sb_.as_cslice().size(), sb_.as_cslice().size() + 1,
-                                                                  obj.path.str(), obj.height, obj.width, 20, 1000));
+  markup_.push_back(std::make_shared<windows::MarkupElementImage>(
+      sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.path.str(), obj.height, obj.width, 20, 1000, true));
   *this << " ";
   return *this;
 }
 
 Outputter &Outputter::operator<<(const UserpicPhoto &obj) {
   markup_.push_back(std::make_shared<windows::MarkupElementImage>(sb_.as_cslice().size(), sb_.as_cslice().size() + 1,
-                                                                  obj.path.str(), obj.height, obj.width, 20, 1000));
+                                                                  obj.path.str(), obj.height, obj.width, 2, 4, true));
+  *this << " ";
+  return *this;
+}
+
+Outputter &Outputter::operator<<(const UserpicPhotoData &obj) {
+  markup_.push_back(std::make_shared<windows::MarkupElementImageData>(
+      sb_.as_cslice().size(), sb_.as_cslice().size() + 1, obj.data.str(), obj.height, obj.width, 2, 4, true));
   *this << " ";
   return *this;
 }

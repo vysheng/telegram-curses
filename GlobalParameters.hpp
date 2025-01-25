@@ -238,11 +238,12 @@ class GlobalParameters {
     }
   }
 
-  windows::Color builtin_color(td::int32 id) {
+  windows::ColorRGB builtin_color(td::int32 id) {
     CHECK(id >= 0 && id <= 6);
-    static const std::vector<windows::Color> colors{
-        windows::Color::Red,  windows::Color::Yellow, windows::Color::Purple, windows::Color::Green,
-        windows::Color::Navy, windows::Color::Blue,   windows::Color::Fuchsia};
+    static const std::vector<windows::ColorRGB> colors{windows::ColorRGB{0xff0000}, windows::ColorRGB{0xff6600},
+                                                       windows::ColorRGB{0x7f00ff}, windows::ColorRGB{0x00ff00},
+                                                       windows::ColorRGB{0x00ffff}, windows::ColorRGB{0x0000ff},
+                                                       windows::ColorRGB{0xf88379}};
     return colors[id];
   }
 

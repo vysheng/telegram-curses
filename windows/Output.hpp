@@ -29,6 +29,14 @@ enum class Color : td::int32 {
   White
 };
 
+struct ColorRGB {
+  explicit ColorRGB(td::uint32 color) : color(color) {
+  }
+  ColorRGB() : color(0) {
+  }
+  td::uint32 color;
+};
+
 class RenderedImage {
  public:
   virtual ~RenderedImage() = default;
@@ -122,10 +130,10 @@ class WindowOutputter {
   }
   virtual void cursor_move_yx(td::int32 y, td::int32 x, CursorShape cursor_shape) = 0;
   virtual void set_fg_color(Color color) = 0;
-  virtual void set_fg_color_rgb(td::uint32 color) = 0;
+  virtual void set_fg_color_rgb(ColorRGB color) = 0;
   virtual void unset_fg_color() = 0;
   virtual void set_bg_color(Color color) = 0;
-  virtual void set_bg_color_rgb(td::uint32 color) = 0;
+  virtual void set_bg_color_rgb(ColorRGB color) = 0;
   virtual void unset_bg_color() = 0;
   virtual void set_bold(bool value) = 0;
   virtual void unset_bold() = 0;
@@ -164,7 +172,12 @@ class WindowOutputter {
                                                                 std::string path) {
     return {0, 0};
   }
-  virtual std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, std::string path) {
+  virtual std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, bool allow_pixel,
+                                                      std::string path) {
+    return nullptr;
+  }
+  virtual std::unique_ptr<RenderedImage> render_image_data(td::int32 max_height, td::int32 max_width, bool allow_pixel,
+                                                           std::string data) {
     return nullptr;
   }
   virtual void draw_rendered_image(td::int32 y, td::int32 x, RenderedImage &image) {

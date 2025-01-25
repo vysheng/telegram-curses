@@ -1,5 +1,7 @@
 #include "TextEdit.hpp"
 #include "td/utils/Status.h"
+#include "td/utils/StringBuilder.h"
+#include "td/utils/crypto.h"
 #include "td/utils/utf8.h"
 #include "unicode.h"
 #include <memory>
@@ -288,7 +290,10 @@ class TextEditBuilder {
     nolb_--;
   }
   void install_photo(std::string path, td::int32 image_height, td::int32 image_width, td::int32 render_height,
-                     td::int32 render_width) {
+                     td::int32 render_width, bool allow_pixel) {
+    if (nolb_) {
+      return;
+    }
     if (rb_.is_real()) {
       std::unique_ptr<RenderedImage> image;
 
@@ -307,7 +312,7 @@ class TextEditBuilder {
 
       cond_start_new_line();
       if (!image) {
-        image = rb_.render_image(20, width_, path);
+        image = rb_.render_image(render_height, std::min(width_, render_width), allow_pixel, path);
       }
       if (image) {
         rb_.transparent_rect(cur_line_, 0, image->height(), width_);
@@ -316,7 +321,46 @@ class TextEditBuilder {
         images_[path].push_back(std::move(image));
       }
     } else {
-      auto h = rb_.rendered_image_height(20, width_, image_height, image_width, path);
+      auto h =
+          rb_.rendered_image_height(render_height, std::min(width_, render_width), image_height, image_width, path);
+      cond_start_new_line();
+      cur_line_ += h.first;
+    }
+  }
+
+  void install_photo_data(std::string data, td::int32 image_height, td::int32 image_width, td::int32 render_height,
+                          td::int32 render_width, bool allow_pixel) {
+    if (rb_.is_real()) {
+      std::unique_ptr<RenderedImage> image;
+
+      auto crc = td::to_string(td::crc64(data));
+
+      auto it = old_images_.find(crc);
+      if (it != old_images_.end()) {
+        image = std::move(it->second.back());
+        it->second.pop_back();
+        if (it->second.size() == 0) {
+          old_images_.erase(it);
+        }
+      }
+
+      if (image && image->rendered_to_width() != width_) {
+        image = nullptr;
+      }
+
+      cond_start_new_line();
+      if (!image) {
+        image = rb_.render_image_data(render_height, std::min(width_, render_width), allow_pixel, data);
+      }
+      if (image) {
+        rb_.transparent_rect(cur_line_, 0, image->height(), width_);
+        rb_.draw_rendered_image(cur_line_, 0, *image);
+        cur_line_ += image->height();
+        images_[crc].push_back(std::move(image));
+      }
+    } else {
+      auto h =
+          rb_.rendered_image_height(render_height, std::min(width_, render_width), image_height, image_width, data);
       cond_start_new_line();
       cur_line_ += h.first;
     }
@@ -446,9 +490,14 @@ void MarkupElementNoLb::uninstall(TextEditBuilder &rb) const {
   rb.uninstall_nolb();
 }
 void MarkupElementImage::install(TextEditBuilder &rb) const {
-  rb.install_photo(image_path_, image_height_, image_width_, rendered_height_, rendered_width_);
+  rb.install_photo(image_path_, image_height_, image_width_, rendered_height_, rendered_width_, allow_pixel_);
 }
 void MarkupElementImage::uninstall(TextEditBuilder &rb) const {
+}
+void MarkupElementImageData::install(TextEditBuilder &rb) const {
+  rb.install_photo_data(image_data_, image_height_, image_width_, rendered_height_, rendered_width_, allow_pixel_);
+}
+void MarkupElementImageData::uninstall(TextEditBuilder &rb) const {
 }
 
 }  // namespace windows

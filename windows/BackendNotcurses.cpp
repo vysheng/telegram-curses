@@ -5,6 +5,8 @@
 
 #include <memory>
 #include <notcurses/notcurses.h>
+#include <jpeglib.h>
+#include <vector>
 
 namespace windows {
 
@@ -14,12 +16,13 @@ std::vector<int> color_to_rgb{0x000000, 0xcc0403, 0x19cb00, 0xcecb00, 0x0d73cc, 
 class RenderedImageNotcurses : public RenderedImage {
  public:
   RenderedImageNotcurses(td::int32 renderd_to_width, td::int32 height, td::int32 width, td::int32 pix_height,
-                         td::int32 pix_width, struct ncplane *plane, struct ncvisual *visual)
+                         td::int32 pix_width, bool allow_pixel, struct ncplane *plane, struct ncvisual *visual)
       : renderd_to_width_(renderd_to_width)
       , height_(height)
       , width_(width)
       , pix_height_(pix_height)
       , pix_width_(pix_width)
+      , allow_pixel_(allow_pixel)
       , plane_(plane)
       , visual_(visual) {
     rendered_height_ = height;
@@ -75,14 +78,14 @@ class RenderedImageNotcurses : public RenderedImage {
       tmp_plane = ncplane_create(baseplane, &plane_opts);
       CHECK(tmp_plane);
       struct ncvisual_options opts = {.n = tmp_plane,
-                                      .scaling = is_active ? NCSCALE_NONE_HIRES : NCSCALE_STRETCH,
+                                      .scaling = (is_active && allow_pixel_) ? NCSCALE_NONE_HIRES : NCSCALE_STRETCH,
                                       .y = 0,
                                       .x = 0,
                                       .begy = (unsigned int)(offset * geom.cdimy),
                                       .begx = 0,
                                       .leny = (unsigned int)(slice_height * geom.cdimy),
                                       .lenx = (unsigned int)pix_width_,
-                                      .blitter = is_active ? NCBLIT_PIXEL : NCBLIT_DEFAULT,
+                                      .blitter = (is_active && allow_pixel_) ? NCBLIT_PIXEL : NCBLIT_DEFAULT,
                                       .flags = 0,
                                       .transcolor = 0,
                                       .pxoffy = 0,
@@ -179,6 +182,7 @@ class RenderedImageNotcurses : public RenderedImage {
   td::int32 width_;
   td::int32 pix_height_;
   td::int32 pix_width_;
+  bool allow_pixel_;
   td::int32 offset_{0};
   td::int32 rendered_height_{0};
   bool is_active_{false};
@@ -303,8 +307,8 @@ class WindowOutputterNotcurses : public WindowOutputter {
     fg_channels_.push_back(color_to_rgb[(td::int32)color]);
     set_channels();
   }
-  void set_fg_color_rgb(td::uint32 color) override {
-    fg_channels_.push_back(color);
+  void set_fg_color_rgb(ColorRGB color) override {
+    fg_channels_.push_back(color.color);
     set_channels();
   }
   void unset_fg_color() override {
@@ -316,8 +320,8 @@ class WindowOutputterNotcurses : public WindowOutputter {
     bg_channels_.push_back(color_to_rgb[(td::int32)color]);
     set_channels();
   }
-  void set_bg_color_rgb(td::uint32 color) override {
-    bg_channels_.push_back(color);
+  void set_bg_color_rgb(ColorRGB color) override {
+    bg_channels_.push_back(color.color);
     set_channels();
   }
   void unset_bg_color() override {
@@ -488,18 +492,14 @@ class WindowOutputterNotcurses : public WindowOutputter {
     return {(real_height + geom.scaley - 1) / geom.scaley, (real_width + geom.scalex - 1) / geom.scalex};
   }
 
-  std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, std::string path) override {
+  std::unique_ptr<RenderedImage> render_image_common(td::int32 max_height, td::int32 max_width, bool allow_pixel,
+                                                     struct ncvisual *v) {
     auto saved_max_width = max_width;
-    struct ncvisual *v = nullptr;
     SCOPE_EXIT {
       if (v) {
         ncvisual_destroy(v);
       }
     };
-    v = ncvisual_from_file(path.c_str());
-    if (!v) {
-      return nullptr;
-    }
     struct ncvisual_options opts = {.n = rb_,
                                     .scaling = NCSCALE_NONE,
                                     .y = 0,
@@ -541,10 +541,58 @@ class WindowOutputterNotcurses : public WindowOutputter {
                          struct ncvisual *visual*/
     auto img = std::make_unique<RenderedImageNotcurses>(saved_max_width, (real_height + geom.scaley - 1) / geom.scaley,
                                                         (real_width + geom.scalex - 1) / geom.scalex, real_height,
-                                                        real_width, nullptr, v);
+                                                        real_width, allow_pixel, nullptr, v);
     v = nullptr;
 
     return img;
+  }
+
+  std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, bool allow_pixel,
+                                              std::string path) override {
+    auto v = ncvisual_from_file(path.c_str());
+    if (!v) {
+      return nullptr;
+    }
+    return render_image_common(max_height, max_width, allow_pixel, v);
+  }
+
+  std::unique_ptr<RenderedImage> render_image_data(td::int32 max_height, td::int32 max_width, bool allow_pixel,
+                                                   std::string data) override {
+    struct jpeg_decompress_struct cinfo;
+
+    JSAMPARRAY buffer;
+
+    struct jpeg_error_mgr jerr;
+
+    cinfo.err = jpeg_std_error(&jerr);
+
+    jpeg_create_decompress(&cinfo);
+
+    jpeg_mem_src(&cinfo, (const unsigned char *)data.data(), data.size());
+    jpeg_read_header(&cinfo, TRUE);
+    jpeg_start_decompress(&cinfo);
+
+    buffer =
+        (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
+    std::vector<unsigned char> r;
+    r.resize(cinfo.output_width * (size_t)cinfo.output_height * 3);
+    size_t pos = 0;
+
+    while (cinfo.output_scanline < cinfo.output_height) {
+      (void)jpeg_read_scanlines(&cinfo, buffer, 1);
+      unsigned char *pixel_row = (unsigned char *)(buffer[0]);
+      // iterate over the pixels:
+      for (unsigned int i = 0; i < 3 * cinfo.output_width; i++) {
+        r[pos++] = *pixel_row++;
+      }
+    }
+
+    auto v = ncvisual_from_rgb_packed((const void *)r.data(), cinfo.output_height, 3 * cinfo.output_width,
+                                      cinfo.output_width, 0xff);
+    if (!v) {
+      return nullptr;
+    }
+    return render_image_common(max_height, max_width, allow_pixel, v);
   }
 
   void draw_rendered_image(td::int32 y, td::int32 x, RenderedImage &image) override {
@@ -616,13 +664,13 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
   }
   void set_fg_color(Color color) override {
   }
-  void set_fg_color_rgb(td::uint32 color) override {
+  void set_fg_color_rgb(ColorRGB color) override {
   }
   void unset_fg_color() override {
   }
   void set_bg_color(Color color) override {
   }
-  void set_bg_color_rgb(td::uint32 color) override {
+  void set_bg_color_rgb(ColorRGB color) override {
   }
   void unset_bg_color() override {
   }
