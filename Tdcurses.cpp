@@ -623,7 +623,7 @@ class TdcursesImpl : public Tdcurses {
   //updateNewMessage message:message = Update;
   void process_update(td::td_api::updateNewMessage &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.message_->chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -635,7 +635,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageSendAcknowledged chat_id:int53 message_id:int53 = Update;
   void process_update(td::td_api::updateMessageSendAcknowledged &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -646,7 +646,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageSendSucceeded message:message old_message_id:int53 = Update;
   void process_update(td::td_api::updateMessageSendSucceeded &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.message_->chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -658,7 +658,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageSendFailed message:message old_message_id:int53 error:error = Update;
   void process_update(td::td_api::updateMessageSendFailed &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.message_->chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -670,7 +670,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageContent chat_id:int53 message_id:int53 new_content:MessageContent = Update;
   void process_update(td::td_api::updateMessageContent &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -683,7 +683,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageEdited chat_id:int53 message_id:int53 edit_date:int32 reply_markup:ReplyMarkup = Update;
   void process_update(td::td_api::updateMessageEdited &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -694,7 +694,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageIsPinned chat_id:int53 message_id:int53 is_pinned:Bool = Update;
   void process_update(td::td_api::updateMessageIsPinned &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -706,7 +706,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageInteractionInfo chat_id:int53 message_id:int53 interaction_info:messageInteractionInfo = Update;
   void process_update(td::td_api::updateMessageInteractionInfo &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -717,7 +717,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageContentOpened chat_id:int53 message_id:int53 = Update;
   void process_update(td::td_api::updateMessageContentOpened &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -729,7 +729,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageMentionRead chat_id:int53 message_id:int53 unread_mention_count:int32 = Update;
   void process_update(td::td_api::updateMessageMentionRead &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -742,7 +742,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageUnreadReactions chat_id:int53 message_id:int53 unread_reactions:vector<unreadReaction> unread_reaction_count:int32 = Update;
   void process_update(td::td_api::updateMessageUnreadReactions &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -754,7 +754,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageFactCheck chat_id:int53 message_id:int53 fact_check:factCheck = Update;
   void process_update(td::td_api::updateMessageFactCheck &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }
@@ -765,7 +765,7 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageLiveLocationViewed chat_id:int53 message_id:int53 = Update;
   void process_update(td::td_api::updateMessageLiveLocationViewed &update) {
     auto c = chat_window();
-    if (c && c->main_chat_id() == update.chat_id_) {
+    if (c) {
       c->process_update(update);
     }
   }

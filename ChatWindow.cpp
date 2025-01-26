@@ -44,7 +44,11 @@ ChatWindow::ChatWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int
 }
 
 void ChatWindow::send_open() {
-  auto req = td::make_tl_object<td::td_api::openChat>(main_chat_id());
+  td::tl_object_ptr<td::td_api::openChat> req;
+  mode_.visit(td::overloaded(
+      [&](const ModeDefault &) { req = td::make_tl_object<td::td_api::openChat>(main_chat_id()); },
+      [&](const ModeSearch &) { req = td::make_tl_object<td::td_api::openChat>(main_chat_id()); },
+      [&](const ModeComments &m) { req = td::make_tl_object<td::td_api::openChat>(m.message_id.chat_id); }));
   send_request(std::move(req), {});
 }
 
@@ -368,7 +372,14 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
   if (!is_completed_bottom_) {
     return;
   }
-  if (!is_main_mode()) {
+  bool need_drop = false;
+  mode_.visit(td::overloaded([&](const ModeDefault &) { need_drop = (update.message_->chat_id_ != main_chat_id_); },
+                             [&](const ModeSearch &) { need_drop = true; },
+                             [&](const ModeComments &m) {
+                               need_drop = (update.message_->chat_id_ != m.message_id.chat_id) ||
+                                           (update.message_->message_thread_id_ != m.thread_id);
+                             }));
+  if (need_drop) {
     return;
   }
   auto m = std::move(update.message_);
@@ -385,7 +396,17 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
 }
 
 void ChatWindow::process_update_sent_message(td::tl_object_ptr<td::td_api::message> message) {
-  if (!is_main_mode()) {
+  if (!is_completed_bottom_) {
+    return;
+  }
+  bool need_drop = false;
+  mode_.visit(td::overloaded([&](const ModeDefault &) { need_drop = (message->chat_id_ != main_chat_id_); },
+                             [&](const ModeSearch &) { need_drop = true; },
+                             [&](const ModeComments &m) {
+                               need_drop = (message->chat_id_ != m.message_id.chat_id) ||
+                                           (message->message_thread_id_ != m.thread_id);
+                             }));
+  if (need_drop) {
     return;
   }
   auto id = build_message_id(*message);
@@ -788,7 +809,7 @@ void ChatWindow::set_mode(ChatWindow::Mode mode) {
   running_req_top_ = false;
   running_req_bottom_ = false;
   is_completed_top_ = false;
-  is_completed_bottom_ = false;
+  is_completed_bottom_ = !is_main_mode();
 
   messages_.clear();
 
@@ -804,6 +825,8 @@ void ChatWindow::set_mode(ChatWindow::Mode mode) {
   if (cur) {
     request_bottom_elements_ex(0);
   }
+
+  send_open();
 
   root()->update_status_line();
 }
