@@ -2040,14 +2040,14 @@ void Tdcurses::seek_chat(td::int64 chat_id, td::int64 message_id) {
   }
 }
 
-void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 reply_message_id) {
+void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 thread_id, td::int64 reply_message_id) {
   if (!chat_window_) {
     return;
   }
-  if (chat_window_->main_chat_id() != chat_id) {
+  /*if (chat_window_->main_chat_id() != chat_id) {
     chat_id = 0;
     reply_message_id = 0;
-  }
+  }*/
   if (compose_window_) {
     compose_window_->set_reply_message_id(reply_message_id);
     return;
@@ -2055,8 +2055,8 @@ void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 reply_message_id
 
   //ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text)
   compose_window_ =
-      std::make_shared<ComposeWindow>(this, actor_id(this), chat_window_->main_chat_id(),
-                                      chat_window_->draft_message_text(), reply_message_id, chat_window_.get());
+      std::make_shared<ComposeWindow>(this, actor_id(this), chat_id, thread_id, chat_window_->draft_message_text(),
+                                      reply_message_id, chat_window_.get());
   layout_->replace_compose_window(compose_window_);
   layout_->activate_subwindow(compose_window_);
 }

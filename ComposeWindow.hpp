@@ -15,17 +15,21 @@ class ComposeWindow
     : public windows::Window
     , public TdcursesWindowBase {
  public:
-  ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text,
-                ChatWindow *chat_window)
-      : TdcursesWindowBase(root, std::move(root_actor)), chat_id_(chat_id), chat_window_(chat_window) {
+  ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 thread_id,
+                std::string text, ChatWindow *chat_window)
+      : TdcursesWindowBase(root, std::move(root_actor))
+      , chat_id_(chat_id)
+      , thread_id_(thread_id)
+      , chat_window_(chat_window) {
     editor_window_ = std::make_shared<windows::EditorWindow>(std::move(text), nullptr);
     add_subwindow(editor_window_, 0, 0);
     install_callback();
   }
-  ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text,
-                td::int64 reply_message_id, ChatWindow *chat_window)
+  ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 thread_id,
+                std::string text, td::int64 reply_message_id, ChatWindow *chat_window)
       : TdcursesWindowBase(root, std::move(root_actor))
       , chat_id_(chat_id)
+      , thread_id_(thread_id)
       , reply_message_id_(reply_message_id)
       , chat_window_(chat_window) {
     editor_window_ = std::make_shared<windows::EditorWindow>(std::move(text), nullptr);
@@ -64,6 +68,7 @@ class ComposeWindow
 
  private:
   td::int64 chat_id_;
+  td::int64 thread_id_;
   td::int64 reply_message_id_{0};
   ChatWindow *chat_window_{nullptr};
   std::shared_ptr<windows::EditorWindow> editor_window_;

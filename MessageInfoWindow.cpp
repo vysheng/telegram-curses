@@ -232,7 +232,8 @@ void MessageInfoWindow::process_message() {
 
   add_action_delete_message(message_->chat_id_, message_->id_);
   if (message_properties_->can_get_message_thread_ && message_thread_info_) {
-    add_action_view_thread(message_thread_info_->chat_id_, message_thread_info_->message_thread_id_);
+    add_action_view_thread(message_thread_info_->chat_id_, message_thread_info_->message_thread_id_,
+                           message_thread_info_->message_thread_id_);
   }
 
   set_need_refresh();
@@ -506,7 +507,7 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
 
 void MessageInfoWindow::add_action_reply(td::int64 chat_id, td::int64 message_id) {
   add_element("reply", "create", {}, [chat_id, message_id, self = this]() {
-    self->root()->open_compose_window(chat_id, message_id);
+    self->root()->open_compose_window(chat_id, 0, message_id);
     return true;
   });
 }
@@ -547,11 +548,11 @@ void MessageInfoWindow::add_action_delete_message(td::int64 chat_id, td::int64 m
   });
 }
 
-void MessageInfoWindow::add_action_view_thread(td::int64 chat_id, td::int64 message_id) {
-  add_element("view thread", "view thread", {}, [chat_id, message_id, self = this]() {
+void MessageInfoWindow::add_action_view_thread(td::int64 chat_id, td::int64 message_id, td::int64 thread_id) {
+  add_element("view thread", "view thread", {}, [chat_id, message_id, thread_id, self = this]() {
     auto w = self->root()->chat_window();
     if (w) {
-      w->set_comments_mode(ChatWindow::MessageId{chat_id, message_id});
+      w->set_comments_mode(ChatWindow::MessageId{chat_id, message_id}, thread_id);
     }
     return true;
   });

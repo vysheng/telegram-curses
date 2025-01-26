@@ -105,7 +105,12 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
     set_mode(Mode{ModeDefault{}});
     return;
   } else if (info == "i") {
-    root()->open_compose_window(main_chat_id_, 0);
+    mode_.visit(td::overloaded([&](const ModeDefault &) { root()->open_compose_window(main_chat_id_, 0, 0); },
+                               [&](const ModeSearch &) { root()->open_compose_window(main_chat_id_, 0, 0); },
+                               [&](const ModeComments &m) {
+                                 root()->open_compose_window(m.message_id.chat_id, m.thread_id,
+                                                             m.message_id.message_id);
+                               }));
     return;
   } else if (info == "q" || info == "Q") {
     if (multi_message_selection_mode_) {
@@ -660,7 +665,7 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
                                [](td::Result<td::tl_object_ptr<td::td_api::file>> R) {});
     }
   } else if (info == "r") {
-    chat_window.root()->open_compose_window(chat_window.main_chat_id(), message_id().message_id);
+    chat_window.root()->open_compose_window(chat_window.main_chat_id(), 0, message_id().message_id);
   } else if (info == "I") {
     create_menu_window<MessageInfoWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
                                           message->id_);

@@ -48,11 +48,12 @@ class ChatWindow
     }
   };
   struct ModeComments {
-    ModeComments(MessageId message_id) : message_id(message_id) {
+    ModeComments(MessageId message_id, td::int64 thread_id) : message_id(message_id), thread_id(thread_id) {
     }
     MessageId message_id;
+    td::int64 thread_id;
     bool operator==(const ModeComments &other) const {
-      return message_id == other.message_id;
+      return message_id == other.message_id && thread_id == other.thread_id;
     }
   };
   using Mode = td::Variant<ModeDefault, ModeSearch, ModeComments>;
@@ -195,8 +196,8 @@ class ChatWindow
   void set_search_pattern(std::string pattern) {
     set_mode(Mode{ModeSearch{pattern}});
   }
-  void set_comments_mode(MessageId message_id) {
-    set_mode(Mode{ModeComments{message_id}});
+  void set_comments_mode(MessageId message_id, td::int64 thread_id) {
+    set_mode(Mode{ModeComments{message_id, thread_id}});
   }
 
   void set_mode(Mode mode);

@@ -43,8 +43,8 @@ void ComposeWindow::send_message(std::string message) {
     reply = td::make_tl_object<td::td_api::inputMessageReplyToMessage>(reply_message_id_, nullptr);
   }
   //sendMessage chat_id:int53 message_thread_id:int53 reply_to:MessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
-  auto req =
-      td::make_tl_object<td::td_api::sendMessage>(chat_id_, 0, std::move(reply), nullptr, nullptr, std::move(content));
+  auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, thread_id_, std::move(reply), nullptr, nullptr,
+                                                         std::move(content));
 
   chat_window_->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::message>> R) {
     if (R.is_ok()) {
@@ -64,7 +64,7 @@ void ComposeWindow::set_draft(std::string message) {
   //draftMessage reply_to:InputMessageReplyTo date:int32 input_message_text:InputMessageContent effect_id:int64 = DraftMessage;
   auto draft = td::make_tl_object<td::td_api::draftMessage>(nullptr, 0, std::move(content), 0);
   //setChatDraftMessage chat_id:int53 message_thread_id:int53 draft_message:draftMessage = Ok;
-  auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, 0, std::move(draft));
+  auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, thread_id_, std::move(draft));
 
   send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
   editor_window_->clear();
