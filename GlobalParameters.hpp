@@ -68,11 +68,9 @@ class GlobalParameters {
   }
 
   void process_update(td::td_api::updateAccentColors &update) {
-    LOG(ERROR) << "UPDATE ACCENT COLORS";
     std::map<td::int32, td::tl_object_ptr<td::td_api::accentColor>> n;
     for (auto &x : update.colors_) {
       auto id = x->id_;
-      LOG(ERROR) << "ACCENT COLOR " << id;
       n[id] = std::move(x);
     }
     accent_colors_ = std::move(n);

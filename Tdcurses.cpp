@@ -14,6 +14,7 @@
 #include "td/tdutils/td/utils/buffer.h"
 #include "td/tdutils/td/utils/Variant.h"
 #include "td/utils/Promise.h"
+#include "td/utils/SharedSlice.h"
 #include "td/utils/Slice-decl.h"
 #include "td/utils/Status.h"
 #include "td/utils/Time.h"
@@ -2535,6 +2536,18 @@ int main(int argc, char **argv) {
   tdcurses::global_parameters().set_link_open_command(link_open_command);
   tdcurses::global_parameters().set_file_open_command(file_open_command);
   tdcurses::global_parameters().set_backend_type(backend_type_str);
+
+  [&]() -> td::Status {
+    TRY_RESULT(from_file, td::FileFd::open("/sys/devices/virtual/dmi/id/product_version", td::FileFd::Read));
+    td::UniqueSlice buf(4096);
+    TRY_RESULT(read_size, from_file.pread(buf.as_mutable_slice(), 0));
+    from_file.close();
+    if (read_size == 0 || read_size >= 4096) {
+      return td::Status::Error("Failed to read file");
+    }
+    tdlib_parameters->device_model_ = buf.as_slice().truncate(read_size).str();
+    return td::Status::OK();
+  }();
 
   td::ActorOwn<tdcurses::TdcursesImpl> act;
   act = scheduler.create_actor_unsafe<tdcurses::TdcursesImpl>(1, "CliClient");

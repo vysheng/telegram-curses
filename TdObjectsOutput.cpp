@@ -655,15 +655,15 @@ Outputter &operator<<(Outputter &out, const td::td_api::webPageInstantView &cont
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::animation &content) {
-  out << "animation ";
-  if (!content.animation_->local_->is_downloading_completed_) {
-    return out << *content.animation_;
+  out << "animation " << *content.animation_;
+  if (show_image(content.animation_)) {
+    Outputter::Photo r;
+    r.path = content.animation_->local_->path_;
+    r.width = content.width_;
+    r.height = content.height_;
+    return out << r;
   }
-  Outputter::Photo r;
-  r.path = content.animation_->local_->path_;
-  r.width = content.width_;
-  r.height = content.height_;
-  return out << r;
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::audio &content) {
@@ -671,15 +671,15 @@ Outputter &operator<<(Outputter &out, const td::td_api::audio &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::document &content) {
+  out << "document " << content.document_;
   if (show_image(content.document_)) {
-    out << "document";
     Outputter::Photo r;
     r.path = content.document_->local_->path_;
     r.width = 0;
     r.height = 0;
     return out << r;
   }
-  return out << "document " << content.document_;
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::photo &content) {
@@ -691,8 +691,9 @@ Outputter &operator<<(Outputter &out, const td::td_api::photo &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::photoSize &content) {
-  if (!content.photo_->local_->is_downloading_completed_) {
-    return out << *content.photo_;
+  out << *content.photo_;
+  if (!show_image(content.photo_)) {
+    return out;
   }
   Outputter::Photo r;
   r.path = content.photo_->local_->path_;
@@ -702,15 +703,15 @@ Outputter &operator<<(Outputter &out, const td::td_api::photoSize &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::sticker &content) {
+  out << "sticker " << content.emoji_ << " " << content.sticker_;
   if (content.format_->get_id() == td::td_api::stickerFormatWebp::ID && show_image(content.sticker_)) {
-    out << "sticker";
     Outputter::Photo r;
     r.path = content.sticker_->local_->path_;
     r.width = content.width_;
     r.height = content.height_;
     return out << r;
   }
-  return out << "sticker " << content.emoji_ << " " << content.sticker_;
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::video &content) {
