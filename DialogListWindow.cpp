@@ -39,16 +39,28 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::W
   out << title();
   if (chat_type() == ChatType::User) {
     auto user = chat_manager().get_user(this->chat_base_id());
-    if (user) {
+    if (user && user->emoji_status()) {
       auto &emoji_status = user->emoji_status();
-      if (emoji_status && emoji_status->custom_emoji_id_) {
-        auto S = sticker_manager().get_custom_emoji(emoji_status->custom_emoji_id_);
-        if (S.size() > 0) {
-          out << sticker_manager().get_custom_emoji(emoji_status->custom_emoji_id_);
-        } else {
-          unknown_custom_emoji_ids.push_back(emoji_status->custom_emoji_id_);
-        }
-      }
+      td::td_api::downcast_call(const_cast<td::td_api::EmojiStatusType &>(*emoji_status->type_),
+                                td::overloaded(
+                                    [&](td::td_api::emojiStatusTypeCustomEmoji &e) {
+                                      auto emoji_id = e.custom_emoji_id_;
+                                      auto S = sticker_manager().get_custom_emoji(emoji_id);
+                                      if (S.size() > 0) {
+                                        out << sticker_manager().get_custom_emoji(emoji_id);
+                                      } else {
+                                        unknown_custom_emoji_ids.push_back(emoji_id);
+                                      }
+                                    },
+                                    [&](td::td_api::emojiStatusTypeUpgradedGift &e) {
+                                      auto emoji_id = e.model_custom_emoji_id_;
+                                      auto S = sticker_manager().get_custom_emoji(emoji_id);
+                                      if (S.size() > 0) {
+                                        out << sticker_manager().get_custom_emoji(emoji_id);
+                                      } else {
+                                        unknown_custom_emoji_ids.push_back(emoji_id);
+                                      }
+                                    }));
     }
   }
   if (unknown_custom_emoji_ids.size() > 0) {
