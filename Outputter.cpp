@@ -95,6 +95,7 @@ std::vector<windows::MarkupElement> Outputter::markup() {
   auto res = markup_;
   fg_colors_stack_.flush_to(res, sb_.as_cslice().size());
   bg_colors_stack_.flush_to(res, sb_.as_cslice().size());
+  pad_left_stack_.flush_to(res, sb_.as_cslice().size());
   for (auto &e : bool_stack_) {
     e->flush_to(res, sb_.as_cslice().size());
   }
@@ -107,6 +108,24 @@ const td::td_api::message *Outputter::get_message(td::int64 chat_id, td::int64 m
   }
   return cur_chat_->get_message_as_message(chat_id, message_id);
 }
+
+Outputter &Outputter::operator<<(const LeftPad &x) {
+  if (x.pad.size() > 0) {
+    pad_left_stack_.push_arg(
+        *this, sb_.as_cslice().size(),
+        [pad = std::move(x.pad), color = std::move(x.color)](size_t from, size_t to) -> windows::MarkupElement {
+          windows::MarkupElement el;
+          color.visit(td::overloaded(
+              [&](Color c) { el = std::make_shared<windows::MarkupElementLeftPad>(from, to, pad, c); },
+              [&](ColorRGB c) { el = std::make_shared<windows::MarkupElementLeftPad>(from, to, pad, c); }));
+          return el;
+        });
+  } else {
+    pad_left_stack_.pop_arg(*this, sb_.as_cslice().size());
+  }
+  return *this;
+}
+
 Outputter &Outputter::operator<<(const RightPad &x) {
   td::int32 code = RIGHT_ALIGN_BLOCK_START + (td::int32)x.data.size();
   char buf[6];

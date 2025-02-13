@@ -76,7 +76,7 @@ td::int32 my_wcwidth(td::int32 cp) {
 
 bool is_control_char(td::int32 op) {
   return (op >= LEFT_ALIGN_BLOCK_START && op <= LEFT_ALIGN_BLOCK_END) ||
-         (op >= RIGHT_ALIGN_BLOCK_START && op <= RIGHT_ALIGN_BLOCK_END);
+         (op >= RIGHT_ALIGN_BLOCK_START && op <= RIGHT_ALIGN_BLOCK_END) || (op == SOFT_LINE_BREAK_CP);
 }
 
 }  // namespace

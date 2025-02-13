@@ -1,7 +1,9 @@
 #include "TextEdit.hpp"
 #include "td/utils/Status.h"
 #include "td/utils/StringBuilder.h"
+#include "td/utils/Variant.h"
 #include "td/utils/crypto.h"
+#include "td/utils/overloaded.h"
 #include "td/utils/utf8.h"
 #include "unicode.h"
 #include <memory>
@@ -161,9 +163,23 @@ class TextEditBuilder {
   }
   ~TextEditBuilder() {
   }
+  void print_pad_left() {
+    if (pad_left_.size() > 0) {
+      pad_left_color_.visit(td::overloaded([&](const Color &c) { rb_.set_fg_color(c); },
+                                           [&](const ColorRGB &c) { rb_.set_fg_color_rgb(c); }));
+      auto width = utf8_string_width(pad_left_);
+      add_utf8(pad_left_, width, false);
+      rb_.unset_fg_color();
+    }
+  }
   void cond_start_new_line() {
+    if (nolb_) {
+      return;
+    }
     if (cur_line_pos_ != 0) {
       start_new_line();
+    } else {
+      print_pad_left();
     }
   }
   void start_new_line() {
@@ -173,8 +189,14 @@ class TextEditBuilder {
     }
     cur_line_++;
     cur_line_pos_ = 0;
+
+    print_pad_left();
   }
   void add_utf8(td::Slice data, td::int32 width, bool has_cursor) {
+    if (soft_lb_) {
+      soft_lb_ = false;
+      cond_start_new_line();
+    }
     if (cur_line_pos_ + (is_password_ ? 1 : width) > width_) {
       if (nolb_) {
         return;
@@ -397,6 +419,19 @@ class TextEditBuilder {
     pad_char_ = pad_char;
   }
 
+  void set_left_pad(std::string pad, td::Variant<Color, ColorRGB> color) {
+    if (nolb_) {
+      return;
+    }
+    pad_left_ = std::move(pad);
+    pad_left_color_ = std::move(color);
+    if (pad == "") {
+      cond_start_new_line();
+    } else {
+      soft_lb_ = true;
+    }
+  }
+
  private:
   WindowOutputter &rb_;
   td::int32 width_;
@@ -408,6 +443,10 @@ class TextEditBuilder {
   td::int32 cursor_y_{-1};
   bool is_password_{false};
   td::int32 nolb_{0};
+  bool soft_lb_{false};
+
+  std::string pad_left_;
+  td::Variant<Color, ColorRGB> pad_left_color_{Color::White};
 
   std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> old_images_;
   std::map<std::string, std::vector<std::unique_ptr<RenderedImage>>> images_;
@@ -439,7 +478,7 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
     actions.emplace_back(text.size() + 1, false, reverse_markup);
   }
 
-  std::sort(actions.begin(), actions.end());
+  std::stable_sort(actions.begin(), actions.end());
   size_t actions_pos = 0;
 
   TextEditBuilder builder(rb, width, is_password, rendered_images);
@@ -462,6 +501,8 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
       builder.pad_left(x.first_codepoint - LEFT_ALIGN_BLOCK_START, cur_pos == pos);
     } else if (x.first_codepoint >= RIGHT_ALIGN_BLOCK_START && x.first_codepoint <= RIGHT_ALIGN_BLOCK_END) {
       builder.pad_right(x.first_codepoint - RIGHT_ALIGN_BLOCK_START, cur_pos == pos);
+    } else if (x.first_codepoint == SOFT_LINE_BREAK_CP) {
+      builder.cond_start_new_line();
     } else if (x.width >= 0) {
       builder.add_utf8(x.data, x.width, cur_pos == pos);
     } else if (x.width == -1) {
@@ -481,6 +522,13 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
   }
   rb.cursor_move_yx(builder.cursor_y(), builder.cursor_x(), WindowOutputter::CursorShape::Block);
   return builder.height() - 1;
+}
+
+void MarkupElementLeftPad::install(TextEditBuilder &rb) const {
+  rb.set_left_pad(pad_, color_);
+}
+void MarkupElementLeftPad::uninstall(TextEditBuilder &rb) const {
+  rb.set_left_pad("", color_);
 }
 
 void MarkupElementNoLb::install(TextEditBuilder &rb) const {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "td/utils/Variant.h"
 #include "td/utils/common.h"
 #include "Output.hpp"
 #include <memory>
@@ -238,6 +239,23 @@ class MarkupElementNoLb : public MarkupElementTextEdit {
 
  private:
   bool value_;
+};
+
+class MarkupElementLeftPad : public MarkupElementTextEdit {
+ public:
+  MarkupElementLeftPad(size_t first_pos, size_t last_pos, std::string pad, Color color)
+      : MarkupElementTextEdit(first_pos, last_pos), pad_(pad), color_(color) {
+  }
+  MarkupElementLeftPad(size_t first_pos, size_t last_pos, std::string pad, ColorRGB color)
+      : MarkupElementTextEdit(first_pos, last_pos), pad_(pad), color_(color) {
+  }
+
+  void install(TextEditBuilder &rb) const override;
+  void uninstall(TextEditBuilder &rb) const override;
+
+ private:
+  std::string pad_;
+  td::Variant<Color, ColorRGB> color_;
 };
 
 class MarkupElementImage : public MarkupElementTextEdit {

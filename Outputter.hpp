@@ -5,6 +5,7 @@
 #include "td/utils/Slice-decl.h"
 #include "td/utils/Variant.h"
 #include "td/utils/format.h"
+#include "td/utils/overloaded.h"
 #include "windows/Markup.hpp"
 
 #include "td/telegram/td_api.h"
@@ -61,6 +62,12 @@ class Outputter {
     BgColorRgb(ColorRGB color) : color(color) {
     }
     ColorRGB color;
+  };
+  struct LeftPad {
+    LeftPad(std::string pad, td::Variant<Color, ColorRGB> color) : pad(std::move(pad)), color(std::move(color)) {
+    }
+    std::string pad;
+    td::Variant<Color, ColorRGB> color;
   };
 
   enum class ChangeBool { Enable, Disable, Revert };
@@ -141,6 +148,12 @@ class Outputter {
   Outputter &operator<<(ColorRGB color) {
     return *this << FgColorRgb{color};
   }
+  Outputter &operator<<(td::Variant<Color, ColorRGB> r) {
+    auto &out = *this;
+    r.visit(td::overloaded([&](const Color &c) { out << c; }, [&](const ColorRGB &c) { out << c; }));
+    return out;
+  }
+  Outputter &operator<<(const LeftPad &x);
   Outputter &operator<<(const RightPad &x);
 
   template <typename T, size_t x>
@@ -248,6 +261,7 @@ class Outputter {
 
   ArgList fg_colors_stack_;
   ArgList bg_colors_stack_;
+  ArgList pad_left_stack_;
   std::vector<std::unique_ptr<ArgListBool>> bool_stack_;
 };
 

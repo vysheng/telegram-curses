@@ -1322,6 +1322,16 @@ class TdcursesImpl : public Tdcurses {
     spawn_popup_view_window("APP VERIFICATION REQUIRED (IMPOSSIBLE TO CONTINUE)", 3);
   }
 
+  //@description A request can't be completed unless reCAPTCHA verification is performed; for official mobile applications only.
+  //-The method setApplicationVerificationToken must be called once the verification is completed or failed
+  //@verification_id Unique identifier for the verification process
+  //@action The action for the check
+  //@recaptcha_key_id Identifier of the reCAPTCHA key
+  //updateApplicationRecaptchaVerificationRequired verification_id:int53 action:string recaptcha_key_id:string = Update;
+  void process_update(td::td_api::updateApplicationRecaptchaVerificationRequired &update) {
+    spawn_popup_view_window("CAPTCHA REQUIRED (IMPOSSIBLE TO CONTINUE)", 3);
+  }
+
   //@description New call was created or information about a call was updated
   //@call New data about a call
   //updateCall call:call = Update;
@@ -1593,6 +1603,12 @@ class TdcursesImpl : public Tdcurses {
   //@reaction_type The new type of the default reaction
   //updateDefaultReactionType reaction_type:ReactionType = Update;
   void process_update(td::td_api::updateDefaultReactionType &update) {
+    global_parameters().process_update(update);
+  }
+
+  //@description The type of default paid reaction has changed @type The new type of the default paid reaction
+  //updateDefaultPaidReactionType type:PaidReactionType = Update;
+  void process_update(td::td_api::updateDefaultPaidReactionType &update) {
     global_parameters().process_update(update);
   }
 
@@ -1884,7 +1900,8 @@ class TdcursesImpl : public Tdcurses {
   //@user_id User identifier
   //@payload Bot-specified payload for the paid media
   //updatePaidMediaPurchased user_id:int53 payload:string = Update;
-  void process_update(const td::td_api::updatePaidMediaPurchased &update) {
+  void process_update(td::td_api::updatePaidMediaPurchased &update) {
+    UNREACHABLE();
   }
 
   //@description Reactions added to a message with anonymous reactions have changed; for bots only

@@ -106,6 +106,10 @@ class GlobalParameters {
     default_reaction_type_ = std::move(update.reaction_type_);
   }
 
+  void process_update(td::td_api::updateDefaultPaidReactionType &update) {
+    default_paid_reaction_type_ = std::move(update.type_);
+  }
+
   void process_update(td::td_api::updateOwnedStarCount &update) {
     stars_owned_ = std::move(update.star_amount_);
   }
@@ -265,6 +269,7 @@ class GlobalParameters {
   std::vector<td::int64> avaliable_message_reaction_effect_ids_;
   std::vector<td::int64> avaliable_message_sticker_effect_ids_;
   td::tl_object_ptr<td::td_api::ReactionType> default_reaction_type_;
+  td::tl_object_ptr<td::td_api::PaidReactionType> default_paid_reaction_type_;
   td::tl_object_ptr<td::td_api::starAmount> stars_owned_;
   std::vector<std::string> dice_emojis_;
   std::string animation_search_provider_;

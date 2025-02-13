@@ -4,6 +4,7 @@
 #include "td/telegram/DownloadManager.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Slice-decl.h"
+#include "td/utils/Variant.h"
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
 #include "td/utils/overloaded.h"
@@ -29,32 +30,39 @@ static const std::vector<std::string> month_names{"???",     "January",  "Februa
                                                   "May",     "June",     "July",     "August", "September",
                                                   "October", "November", "December"};
 
-void add_color(Outputter &out, td::int32 accent_color) {
+td::Variant<Color, ColorRGB> get_color(td::int32 accent_color) {
   if (accent_color < 0) {
-    out << Color::Lime;
+    return Color::Lime;
   } else if (accent_color <= 6) {
-    out << global_parameters().builtin_color(accent_color);
+    return global_parameters().builtin_color(accent_color);
   } else {
     auto a = global_parameters().get_accent_color(accent_color);
     if (a) {
-      out << global_parameters().builtin_color(a->built_in_accent_color_id_);
+      return global_parameters().builtin_color(a->built_in_accent_color_id_);
     } else {
-      out << Color::Lime;
+      return Color::Lime;
     }
   }
 }
 
-void add_color(Outputter &out, const td::td_api::MessageSender &x) {
+td::Variant<Color, ColorRGB> get_color(const td::td_api::MessageSender &x) {
+  td::Variant<Color, ColorRGB> res;
   td::td_api::downcast_call(const_cast<td::td_api::MessageSender &>(x),
                             td::overloaded(
                                 [&](const td::td_api::messageSenderUser &u) {
                                   auto user = chat_manager().get_user(u.user_id_);
-                                  add_color(out, user ? user->accent_color_id() : -1);
+                                  res = get_color(user ? user->accent_color_id() : -1);
                                 },
                                 [&](const td::td_api::messageSenderChat &u) {
                                   auto chat = chat_manager().get_chat(u.chat_id_);
-                                  add_color(out, chat ? chat->accent_color_id() : -1);
+                                  res = get_color(chat ? chat->accent_color_id() : -1);
                                 }));
+  return res;
+}
+
+void add_color(Outputter &out, const td::td_api::MessageSender &x) {
+  auto r = get_color(x);
+  out << r;
 }
 
 bool supported_image(td::CSlice path) {
@@ -123,32 +131,43 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
     }
   }
 
-  if (message.reply_to_) {
-    td::td_api::downcast_call(const_cast<td::td_api::MessageReplyTo &>(*message.reply_to_),
-                              td::overloaded(
-                                  [&](const td::td_api::messageReplyToMessage &r) {
-                                    auto reply_msg = out.get_message(r.chat_id_, r.message_id_);
-                                    if (reply_msg) {
-                                      add_color(out, *reply_msg->sender_id_);
-                                      out << "reply " << Outputter::NoLb{true};
-                                      out << reply_msg->sender_id_ << " " << reply_msg->content_;
-                                      out << Color::Revert;
-                                      out << Outputter::NoLb{false} << "\n";
-                                    } else {
-                                      out << "reply ?\n";
-                                    }
-                                  },
-                                  [&](const td::td_api::messageReplyToStory &r) {}));
-  }
-
   out << Color::Revert;
+
+  if (message.reply_to_) {
+    td::td_api::downcast_call(
+        const_cast<td::td_api::MessageReplyTo &>(*message.reply_to_),
+        td::overloaded(
+            [&](const td::td_api::messageReplyToMessage &r) {
+              auto reply_msg = out.get_message(r.chat_id_, r.message_id_);
+              if (reply_msg) {
+                auto col = get_color(*reply_msg->sender_id_);
+                out << col;
+                out << "reply " << Outputter::NoLb{true};
+                out << reply_msg->sender_id_ << " " << reply_msg->content_;
+                out << Color::Revert;
+                out << Outputter::NoLb{false} << "\n";
+                if (r.quote_) {
+                  col.visit(td::overloaded([&](const Color &c) { out << Outputter::BgColor{c}; },
+                                           [&](const ColorRGB &c) { out << Outputter::BgColorRgb{c}; }));
+                  out << Outputter::LeftPad{"\"\" ", Color::White};
+                  out << *r.quote_->text_;
+                  out << Outputter::LeftPad{"", Color::Revert} << Outputter::BgColor{Color::Revert};
+                }
+              } else {
+                out << "reply ?\n";
+              }
+            },
+            [&](const td::td_api::messageReplyToStory &r) {}));
+  }
 
   out << message.content_;
 
   if (message.interaction_info_ &&
       (message.interaction_info_->view_count_ || message.interaction_info_->forward_count_ ||
        message.interaction_info_->reactions_)) {
-    if (out.as_cslice().size() - start_pos < 100 && out.as_cslice().find('\n') == td::CSlice::npos) {
+    if (out.as_cslice().back() == '\n') {
+      // do nothing
+    } else if (out.as_cslice().size() - start_pos < 100 && out.as_cslice().find('\n') == td::CSlice::npos) {
       out << " ";
     } else {
       out << "\n";
@@ -386,7 +405,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatAddMembers &c
     auto user = chat_manager().get_user(member);
     if (user) {
       out << " ";
-      add_color(out, user->accent_color_id());
+      out << get_color(user->accent_color_id());
       out << user << Color::Revert;
     } else {
       out << " ???";
@@ -589,9 +608,42 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
             [&](const td::td_api::textEntityTypeUnderline &) { out << Outputter::Underline(enable); },
             [&](const td::td_api::textEntityTypeStrikethrough &) { out << Outputter::Strike(enable); },
             [&](const td::td_api::textEntityTypeSpoiler &) {}, [&](const td::td_api::textEntityTypeCode &) {},
-            [&](const td::td_api::textEntityTypePre &) {}, [&](const td::td_api::textEntityTypePreCode &) {},
-            [&](const td::td_api::textEntityTypeBlockQuote &e) {},
-            [&](const td::td_api::textEntityTypeExpandableBlockQuote &) {},
+            [&](const td::td_api::textEntityTypePre &) {
+              if (enable) {
+                out << "\n" << Outputter::BgColorRgb{ColorRGB{0x1C2841}};
+                out << Outputter::LeftPad{"██ ", Color::Aqua};
+              } else {
+                out << Outputter::LeftPad{"", Color::White};
+                out << Outputter::BgColor{Color::Revert};
+              }
+            },
+            [&](const td::td_api::textEntityTypePreCode &) {
+              if (enable) {
+                out << "\n" << Outputter::BgColorRgb{ColorRGB{0x1C2841}};
+                out << Outputter::LeftPad{"██ ", Color::Aqua};
+              } else {
+                out << Outputter::LeftPad{"", Color::White};
+                out << Outputter::BgColor{Color::Revert};
+              }
+            },
+            [&](const td::td_api::textEntityTypeBlockQuote &e) {
+              if (enable) {
+                out << "\n" << Outputter::BgColorRgb{ColorRGB{0x002000}};
+                out << Outputter::LeftPad{"\"\" ", Color::Aqua};
+              } else {
+                out << Outputter::LeftPad{"", Color::White};
+                out << Outputter::BgColor{Color::Revert};
+              }
+            },
+            [&](const td::td_api::textEntityTypeExpandableBlockQuote &e) {
+              if (enable) {
+                out << "\n" << Outputter::BgColorRgb{ColorRGB{0x002000}};
+                out << Outputter::LeftPad{"\"\" ", Color::Aqua};
+              } else {
+                out << Outputter::LeftPad{"", Color::White};
+                out << Outputter::BgColor{Color::Revert};
+              }
+            },
             [&](const td::td_api::textEntityTypeTextUrl &e) {
               out << Outputter::Underline(enable);
               if (!enable) {

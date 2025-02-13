@@ -21,6 +21,9 @@ struct UnicodeWidthBlock {
 #define LEFT_ALIGN_BLOCK_END 0xF00FF
 #define RIGHT_ALIGN_BLOCK_START 0xF0100
 #define RIGHT_ALIGN_BLOCK_END 0xF01FF
+#define SOFT_LINE_BREAK_CP 0xF0200
+
+#define SOFT_LINE_BREAK_STR "\xF3\xB0\x88\x80"
 
 Graphem next_graphem(td::Slice data, size_t pos);
 Graphem prev_graphem(td::Slice data, size_t pos);
