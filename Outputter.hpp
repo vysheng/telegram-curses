@@ -158,7 +158,7 @@ class Outputter {
 
   template <typename T, size_t x>
   Outputter &operator<<(const ChangeBoolImpl<T, x> &el) {
-    bool_stack_[x]->push_arg(*this, sb_.as_cslice().size(), el.type);
+    bool_stack_[x]->push_arg(*this, sb_.as_cslice().size(), markup_idx_++, el.type);
     return *this;
   }
 
@@ -196,11 +196,12 @@ class Outputter {
   td::StringBuilder sb_;
 
   struct Arg {
-    Arg(size_t from_pos, std::function<windows::MarkupElement(size_t, size_t)> create)
-        : from_pos(from_pos), create(std::move(create)) {
+    Arg(size_t from_pos, size_t from_idx, std::function<windows::MarkupElement(size_t, size_t, size_t, size_t)> create)
+        : from_pos(from_pos), from_idx(from_idx), create(std::move(create)) {
     }
     size_t from_pos;
-    std::function<windows::MarkupElement(size_t, size_t)> create;
+    size_t from_idx;
+    std::function<windows::MarkupElement(size_t, size_t, size_t, size_t)> create;
   };
   class ArgList {
    private:
@@ -208,52 +209,57 @@ class Outputter {
 
    public:
     virtual ~ArgList() = default;
-    void push_arg(Outputter &out, size_t pos, std::function<windows::MarkupElement(size_t, size_t)> create) {
+    void push_arg(Outputter &out, size_t pos, size_t idx,
+                  std::function<windows::MarkupElement(size_t, size_t, size_t, size_t)> create) {
       if (args.size() > 0) {
-        out.markup_.push_back(args.back().create(args.back().from_pos, pos));
+        out.markup_.push_back(args.back().create(args.back().from_pos, args.back().from_idx, pos, idx));
       }
-      args.emplace_back(pos, std::move(create));
+      args.emplace_back(pos, idx, std::move(create));
     }
-    void pop_arg(Outputter &out, size_t pos) {
+    void pop_arg(Outputter &out, size_t pos, size_t idx) {
       CHECK(args.size() > 0);
-      out.markup_.push_back(args.back().create(args.back().from_pos, pos));
+      out.markup_.push_back(args.back().create(args.back().from_pos, args.back().from_idx, pos, idx));
       args.pop_back();
     }
-    void flush(Outputter &out, size_t pos) {
+    void flush(Outputter &out, size_t pos, size_t idx) {
       if (args.size() > 0) {
-        out.markup_.push_back(args.back().create(args.back().from_pos, pos));
+        out.markup_.push_back(args.back().create(args.back().from_pos, args.back().from_idx, pos, idx));
         args.back().from_pos = pos;
       }
     }
-    void flush_to(std::vector<windows::MarkupElement> &markup, size_t pos) {
+    void flush_to(std::vector<windows::MarkupElement> &markup, size_t pos, size_t idx) {
       if (args.size() > 0) {
-        markup.push_back(args.back().create(args.back().from_pos, pos));
+        markup.push_back(args.back().create(args.back().from_pos, args.back().from_idx, pos, idx));
       }
     }
   };
 
   class ArgListBool : public ArgList {
    public:
-    virtual void push_arg(Outputter &out, size_t pos, ChangeBool value) = 0;
+    virtual void push_arg(Outputter &out, size_t pos, size_t idx, ChangeBool value) = 0;
   };
 
   template <typename T>
   class ArgListBoolImpl : public ArgListBool {
    public:
-    void push_arg(Outputter &out, size_t pos, ChangeBool value) override {
+    void push_arg(Outputter &out, size_t pos, size_t idx, ChangeBool value) override {
       switch (value) {
         case ChangeBool::Revert:
-          pop_arg(out, pos);
+          pop_arg(out, pos, idx);
           return;
         case ChangeBool::Enable:
-          ArgList::push_arg(out, pos, [](size_t from, size_t to) -> windows::MarkupElement {
-            return std::make_shared<T>(from, to, true);
-          });
+          ArgList::push_arg(out, pos, idx,
+                            [](size_t from, size_t from_idx, size_t to, size_t to_idx) -> windows::MarkupElement {
+                              return std::make_shared<T>(windows::MarkupElementPos(from, from_idx),
+                                                         windows::MarkupElementPos(to, to_idx), true);
+                            });
           return;
         case ChangeBool::Disable:
-          ArgList::push_arg(out, pos, [](size_t from, size_t to) -> windows::MarkupElement {
-            return std::make_shared<T>(from, to, false);
-          });
+          ArgList::push_arg(out, pos, idx,
+                            [](size_t from, size_t from_idx, size_t to, size_t to_idx) -> windows::MarkupElement {
+                              return std::make_shared<T>(windows::MarkupElementPos(from, from_idx),
+                                                         windows::MarkupElementPos(to, to_idx), true);
+                            });
           return;
       }
     }
@@ -263,6 +269,7 @@ class Outputter {
   ArgList bg_colors_stack_;
   ArgList pad_left_stack_;
   std::vector<std::unique_ptr<ArgListBool>> bool_stack_;
+  size_t markup_idx_{100};
 };
 
 }  // namespace tdcurses

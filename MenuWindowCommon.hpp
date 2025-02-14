@@ -111,8 +111,10 @@ class MenuWindowCommon : public MenuWindowPad {
           e->move(-size);
         }
       };
-      markup.push_back(std::make_shared<windows::MarkupElementBold>(0, size, true));
-      markup.push_back(std::make_shared<windows::MarkupElementFgColor>(0, size, windows::Color::White));
+      markup.push_back(std::make_shared<windows::MarkupElementBold>(windows::MarkupElementPos(0, 1),
+                                                                    windows::MarkupElementPos(size, 1), true));
+      markup.push_back(std::make_shared<windows::MarkupElementFgColor>(
+          windows::MarkupElementPos(0, 1), windows::MarkupElementPos(size, 1), windows::Color::White));
       return render_plain_text(rb, text, std::move(markup), width(), std::numeric_limits<td::int32>::max(), is_selected,
                                &dir);
     }

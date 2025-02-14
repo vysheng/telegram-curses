@@ -651,10 +651,12 @@ void PadWindow::render(WindowOutputter &rb, bool force) {
     sb << " ";
     sb << title() << "\n";
     text = sb.as_cslice();
-    TextEdit::render(rb, width(), text, 0,
-                     {std::make_shared<MarkupElementFgColor>(0, text.size() + 1, Color::Grey),
-                      std::make_shared<MarkupElementNoLb>(0, text.size(), true)},
-                     rb.is_active(), false);
+    TextEdit::render(
+        rb, width(), text, 0,
+        {std::make_shared<MarkupElementFgColor>(MarkupElementPos(0, 0), MarkupElementPos(text.size() + 1, 0),
+                                                Color::Grey),
+         std::make_shared<MarkupElementNoLb>(MarkupElementPos(0, 0), MarkupElementPos(text.size(), 0), true)},
+        rb.is_active(), false);
     sb.clear();
 
     rb.translate(height() - 1, 0);
@@ -667,10 +669,12 @@ void PadWindow::render(WindowOutputter &rb, bool force) {
     sb << " ";
     sb << title() << "\n";
     text = sb.as_cslice();
-    TextEdit::render(rb, width(), text, 0,
-                     {std::make_shared<MarkupElementFgColor>(0, text.size() + 1, Color::Grey),
-                      std::make_shared<MarkupElementNoLb>(0, text.size(), true)},
-                     rb.is_active(), false);
+    TextEdit::render(
+        rb, width(), text, 0,
+        {std::make_shared<MarkupElementFgColor>(MarkupElementPos(0, 0), MarkupElementPos(text.size() + 1, 0),
+                                                Color::Grey),
+         std::make_shared<MarkupElementNoLb>(MarkupElementPos(0, 0), MarkupElementPos(text.size(), 0), true)},
+        rb.is_active(), false);
     rb.untranslate(height() - 1, 0);
   }
 

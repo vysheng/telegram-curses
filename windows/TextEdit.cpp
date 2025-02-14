@@ -456,9 +456,9 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
                            const std::vector<MarkupElement> &input_markup, bool is_selected, bool is_password,
                            SavedRenderedImagesDirectory *rendered_images, td::int32 pad_width, std::string pad_char) {
   struct Action {
-    Action(size_t pos, bool enable, MarkupElement el) : pos(pos), enable(enable), el(el) {
+    Action(MarkupElementPos pos, bool enable, MarkupElement el) : pos(pos), enable(enable), el(el) {
     }
-    size_t pos;
+    MarkupElementPos pos;
     bool enable;
     MarkupElement el;
     bool operator<(const Action &other) const {
@@ -467,18 +467,17 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
   };
   std::vector<Action> actions;
   for (auto &m : input_markup) {
-    if (m->first_pos() != m->last_pos()) {
-      actions.emplace_back(m->first_pos(), true, m);
-      actions.emplace_back(m->last_pos(), false, m);
-    }
+    actions.emplace_back(m->first_pos(), true, m);
+    actions.emplace_back(m->last_pos(), false, m);
   }
   if (is_selected) {
-    auto reverse_markup = std::make_shared<MarkupElementReverse>(0, text.size() + 1, true);
-    actions.emplace_back(0, true, reverse_markup);
-    actions.emplace_back(text.size() + 1, false, reverse_markup);
+    auto reverse_markup =
+        std::make_shared<MarkupElementReverse>(MarkupElementPos(0, 0), MarkupElementPos(text.size() + 1, 0), true);
+    actions.emplace_back(reverse_markup->first_pos(), true, reverse_markup);
+    actions.emplace_back(reverse_markup->last_pos(), false, reverse_markup);
   }
 
-  std::stable_sort(actions.begin(), actions.end());
+  std::sort(actions.begin(), actions.end());
   size_t actions_pos = 0;
 
   TextEditBuilder builder(rb, width, is_password, rendered_images);
@@ -486,7 +485,7 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
 
   size_t cur_pos = 0;
   while (cur_pos <= text.size()) {
-    while (actions_pos < actions.size() && actions[actions_pos].pos <= cur_pos) {
+    while (actions_pos < actions.size() && actions[actions_pos].pos.pos <= cur_pos) {
       if (actions[actions_pos].enable) {
         builder.add_markup(actions[actions_pos++].el);
       } else {

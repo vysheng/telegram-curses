@@ -9,9 +9,26 @@ namespace windows {
 
 class TextEditBuilder;
 
+struct MarkupElementPos {
+  size_t pos;
+  size_t idx;
+
+  MarkupElementPos(size_t pos, size_t idx) : pos(pos), idx(idx) {
+  }
+  MarkupElementPos() = default;
+
+  bool operator<(const MarkupElementPos &other) const {
+    return std::tie(pos, idx) < std::tie(other.pos, other.idx);
+  }
+  bool operator==(const MarkupElementPos &other) const {
+    return std::tie(pos, idx) == std::tie(other.pos, other.idx);
+  }
+};
+
 class MarkupElementBase {
  public:
-  MarkupElementBase(size_t first_pos, size_t last_pos) : first_pos_(first_pos), last_pos_(last_pos) {
+  MarkupElementBase(MarkupElementPos first_pos, MarkupElementPos last_pos)
+      : first_pos_(first_pos), last_pos_(last_pos) {
   }
   virtual ~MarkupElementBase() = default;
   virtual void install(WindowOutputter &rb) const = 0;
@@ -27,23 +44,24 @@ class MarkupElementBase {
     return last_pos_;
   }
 
-  void set_last_pos(size_t last_pos) {
+  void set_last_pos(MarkupElementPos last_pos) {
     last_pos_ = last_pos;
   }
 
   void move(size_t offset) {
-    first_pos_ += offset;
-    last_pos_ += offset;
+    first_pos_.pos += offset;
+    last_pos_.pos += offset;
   }
 
  private:
-  size_t first_pos_;
-  size_t last_pos_;
+  MarkupElementPos first_pos_;
+  MarkupElementPos last_pos_;
 };
 
 class MarkupElementTextEdit : public MarkupElementBase {
  public:
-  MarkupElementTextEdit(size_t first_pos, size_t last_pos) : MarkupElementBase(first_pos, last_pos) {
+  MarkupElementTextEdit(MarkupElementPos first_pos, MarkupElementPos last_pos)
+      : MarkupElementBase(first_pos, last_pos) {
   }
   void install(WindowOutputter &rb) const override {
     UNREACHABLE();
@@ -60,7 +78,7 @@ class MarkupElementTextEdit : public MarkupElementBase {
 
 class MarkupElementFgColor : public MarkupElementBase {
  public:
-  MarkupElementFgColor(size_t first_pos, size_t last_pos, Color color)
+  MarkupElementFgColor(MarkupElementPos first_pos, MarkupElementPos last_pos, Color color)
       : MarkupElementBase(first_pos, last_pos), color_(color) {
   }
 
@@ -77,7 +95,7 @@ class MarkupElementFgColor : public MarkupElementBase {
 
 class MarkupElementFgColorRGB : public MarkupElementBase {
  public:
-  MarkupElementFgColorRGB(size_t first_pos, size_t last_pos, ColorRGB color)
+  MarkupElementFgColorRGB(MarkupElementPos first_pos, MarkupElementPos last_pos, ColorRGB color)
       : MarkupElementBase(first_pos, last_pos), color_(color) {
   }
 
@@ -94,7 +112,7 @@ class MarkupElementFgColorRGB : public MarkupElementBase {
 
 class MarkupElementBgColor : public MarkupElementBase {
  public:
-  MarkupElementBgColor(size_t first_pos, size_t last_pos, Color color)
+  MarkupElementBgColor(MarkupElementPos first_pos, MarkupElementPos last_pos, Color color)
       : MarkupElementBase(first_pos, last_pos), color_(color) {
   }
 
@@ -111,7 +129,7 @@ class MarkupElementBgColor : public MarkupElementBase {
 
 class MarkupElementBgColorRGB : public MarkupElementBase {
  public:
-  MarkupElementBgColorRGB(size_t first_pos, size_t last_pos, ColorRGB color)
+  MarkupElementBgColorRGB(MarkupElementPos first_pos, MarkupElementPos last_pos, ColorRGB color)
       : MarkupElementBase(first_pos, last_pos), color_(color) {
   }
 
@@ -128,7 +146,7 @@ class MarkupElementBgColorRGB : public MarkupElementBase {
 
 class MarkupElementBold : public MarkupElementBase {
  public:
-  MarkupElementBold(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementBold(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementBase(first_pos, last_pos), value_(value) {
   }
 
@@ -145,7 +163,7 @@ class MarkupElementBold : public MarkupElementBase {
 
 class MarkupElementUnderline : public MarkupElementBase {
  public:
-  MarkupElementUnderline(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementUnderline(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementBase(first_pos, last_pos), value_(value) {
   }
 
@@ -162,7 +180,7 @@ class MarkupElementUnderline : public MarkupElementBase {
 
 class MarkupElementItalic : public MarkupElementBase {
  public:
-  MarkupElementItalic(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementItalic(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementBase(first_pos, last_pos), value_(value) {
   }
 
@@ -179,7 +197,7 @@ class MarkupElementItalic : public MarkupElementBase {
 
 class MarkupElementReverse : public MarkupElementBase {
  public:
-  MarkupElementReverse(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementReverse(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementBase(first_pos, last_pos), value_(value) {
   }
 
@@ -196,7 +214,7 @@ class MarkupElementReverse : public MarkupElementBase {
 
 class MarkupElementStrike : public MarkupElementBase {
  public:
-  MarkupElementStrike(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementStrike(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementBase(first_pos, last_pos), value_(value) {
   }
 
@@ -213,7 +231,7 @@ class MarkupElementStrike : public MarkupElementBase {
 
 class MarkupElementBlink : public MarkupElementBase {
  public:
-  MarkupElementBlink(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementBlink(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementBase(first_pos, last_pos), value_(value) {
   }
 
@@ -230,7 +248,7 @@ class MarkupElementBlink : public MarkupElementBase {
 
 class MarkupElementNoLb : public MarkupElementTextEdit {
  public:
-  MarkupElementNoLb(size_t first_pos, size_t last_pos, bool value)
+  MarkupElementNoLb(MarkupElementPos first_pos, MarkupElementPos last_pos, bool value)
       : MarkupElementTextEdit(first_pos, last_pos), value_(value) {
   }
 
@@ -243,10 +261,10 @@ class MarkupElementNoLb : public MarkupElementTextEdit {
 
 class MarkupElementLeftPad : public MarkupElementTextEdit {
  public:
-  MarkupElementLeftPad(size_t first_pos, size_t last_pos, std::string pad, Color color)
+  MarkupElementLeftPad(MarkupElementPos first_pos, MarkupElementPos last_pos, std::string pad, Color color)
       : MarkupElementTextEdit(first_pos, last_pos), pad_(pad), color_(color) {
   }
-  MarkupElementLeftPad(size_t first_pos, size_t last_pos, std::string pad, ColorRGB color)
+  MarkupElementLeftPad(MarkupElementPos first_pos, MarkupElementPos last_pos, std::string pad, ColorRGB color)
       : MarkupElementTextEdit(first_pos, last_pos), pad_(pad), color_(color) {
   }
 
@@ -260,8 +278,9 @@ class MarkupElementLeftPad : public MarkupElementTextEdit {
 
 class MarkupElementImage : public MarkupElementTextEdit {
  public:
-  MarkupElementImage(size_t first_pos, size_t last_pos, std::string image_path, td::int32 image_height,
-                     td::int32 image_width, td::int32 rendered_height, td::int32 rendered_width, bool allow_pixel)
+  MarkupElementImage(MarkupElementPos first_pos, MarkupElementPos last_pos, std::string image_path,
+                     td::int32 image_height, td::int32 image_width, td::int32 rendered_height, td::int32 rendered_width,
+                     bool allow_pixel)
       : MarkupElementTextEdit(first_pos, last_pos)
       , image_path_(std::move(image_path))
       , image_height_(image_height)
@@ -285,8 +304,9 @@ class MarkupElementImage : public MarkupElementTextEdit {
 
 class MarkupElementImageData : public MarkupElementTextEdit {
  public:
-  MarkupElementImageData(size_t first_pos, size_t last_pos, std::string image_data, td::int32 image_height,
-                         td::int32 image_width, td::int32 rendered_height, td::int32 rendered_width, bool allow_pixel)
+  MarkupElementImageData(MarkupElementPos first_pos, MarkupElementPos last_pos, std::string image_data,
+                         td::int32 image_height, td::int32 image_width, td::int32 rendered_height,
+                         td::int32 rendered_width, bool allow_pixel)
       : MarkupElementTextEdit(first_pos, last_pos)
       , image_data_(std::move(image_data))
       , image_height_(image_height)
