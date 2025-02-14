@@ -1,4 +1,5 @@
 #include "ComposeWindow.hpp"
+#include "GlobalParameters.hpp"
 #include "ChatWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
@@ -8,6 +9,7 @@
 #include "TdObjectsOutput.h"
 #include "windows/Output.hpp"
 #include "windows/TextEdit.hpp"
+#include "td/telegram/SynchronousRequests.h"
 #include <memory>
 #include <vector>
 
@@ -33,9 +35,15 @@ void ComposeWindow::install_callback() {
 }
 
 void ComposeWindow::send_message(std::string message) {
-  //formattedText text:string entities:vector<textEntity> = FormattedText;
-  auto text =
-      td::make_tl_object<td::td_api::formattedText>(message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
+  td::tl_object_ptr<td::td_api::formattedText> text;
+  if (global_parameters().use_markdown()) {
+    text = run_request_sync(td::make_tl_object<td::td_api::parseTextEntities>(
+        message, td::make_tl_object<td::td_api::textParseModeMarkdown>(2)));
+  } else {
+    //formattedText text:string entities:vector<textEntity> = FormattedText;
+    text = td::make_tl_object<td::td_api::formattedText>(message,
+                                                         std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
+  }
   //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
   auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, true);
   td::tl_object_ptr<td::td_api::inputMessageReplyToMessage> reply;

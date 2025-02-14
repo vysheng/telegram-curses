@@ -1451,6 +1451,10 @@ class TdcursesImpl : public Tdcurses {
       CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
       auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
       global_parameters().set_notifications_enabled(value);
+    } else if (update.name_ == "X-markdown-enabled") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
+      auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
+      global_parameters().set_use_markdown(value);
     }
   }
 
@@ -2360,6 +2364,7 @@ int main(int argc, char **argv) {
   bool use_secret_chats = true;
   bool use_test_dc = false;
   bool vs16_makes_wide = true;
+  bool use_markdown = true;
 
   bool log_window_enabled = true;
   td::int32 dialog_list_window_width = 10;
@@ -2403,6 +2408,7 @@ int main(int argc, char **argv) {
     iface.add("dialog_list_window_width", libconfig::Setting::TypeInt) = dialog_list_window_width;
     iface.add("log_window_height", libconfig::Setting::TypeInt) = log_window_height;
     iface.add("compose_window_height", libconfig::Setting::TypeInt) = compose_window_height;
+    iface.add("use_markdown", libconfig::Setting::TypeBoolean) = use_markdown;
     auto &utf8 = root.add("utf8", libconfig::Setting::Type::TypeGroup);
     utf8.add("vs16_makes_wide", libconfig::Setting::TypeBoolean) = vs16_makes_wide;
     auto &widecode = utf8.add("codepoints_override", libconfig::Setting::TypeList);
@@ -2448,6 +2454,7 @@ int main(int argc, char **argv) {
   config.lookupValue("utf8.vs16_makes_wide", vs16_makes_wide);
   config.lookupValue("backend_type_str", backend_type_str);
 
+  config.lookupValue("iface.use_markdown", use_markdown);
   config.lookupValue("iface.log_window_enabled", log_window_enabled);
   config.lookupValue("iface.dialog_list_window_width", dialog_list_window_width);
   config.lookupValue("iface.log_window_height", log_window_height);
@@ -2555,6 +2562,7 @@ int main(int argc, char **argv) {
   tdcurses::global_parameters().set_link_open_command(link_open_command);
   tdcurses::global_parameters().set_file_open_command(file_open_command);
   tdcurses::global_parameters().set_backend_type(backend_type_str);
+  tdcurses::global_parameters().set_use_markdown(use_markdown);
 
   [&]() -> td::Status {
     TRY_RESULT(from_file, td::FileFd::open("/sys/devices/virtual/dmi/id/product_version", td::FileFd::Read));

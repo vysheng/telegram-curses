@@ -249,6 +249,14 @@ class GlobalParameters {
     return colors[id];
   }
 
+  bool use_markdown() const {
+    return use_markdown_;
+  }
+
+  void set_use_markdown(bool value) {
+    use_markdown_ = value;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -283,6 +291,7 @@ class GlobalParameters {
   td::int64 my_user_id_{0};
 
   bool notifications_enabled_{true};
+  bool use_markdown_;
 
   std::string tdlib_version_;
   std::string backend_type_;

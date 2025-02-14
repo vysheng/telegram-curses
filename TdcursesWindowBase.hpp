@@ -5,6 +5,7 @@
 #include "Tdcurses.hpp"
 #include "td/utils/Promise.h"
 #include "td/utils/Status.h"
+#include "td/telegram/SynchronousRequests.h"
 
 namespace tdcurses {
 
@@ -71,6 +72,14 @@ class TdcursesWindowBase {
     });
     td::send_closure(root_actor_, &Tdcurses::do_send_request,
                      td::move_tl_object_as<td::td_api::Function>(std::move(func)), std::move(Q));
+  }
+  template <class T>
+  typename T::ReturnType run_request_sync(td::tl_object_ptr<T> func) {
+    using RetType = typename T::ReturnType;
+    using RetTlType = typename RetType::element_type;
+    CHECK(td::SynchronousRequests::is_synchronous_request(func.get()));
+    auto res = td::SynchronousRequests::run_request(std::move(func));
+    return td::move_tl_object_as<RetTlType>(std::move(res));
   }
 
   td::int64 window_unique_id() const {
