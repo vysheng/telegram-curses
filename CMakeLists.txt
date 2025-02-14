@@ -207,6 +207,7 @@ add_executable(telegram-curses
   MenuWindowCommon.cpp
   MenuWindowCommon.hpp
   MenuWindowPad.hpp
+  MenuWindowView.hpp
   MessageInfoWindow.cpp
   MessageInfoWindow.hpp
   MessageProcess.cpp
@@ -230,6 +231,8 @@ add_executable(telegram-curses
   TdObjectsOutput.h
   YesNoWindow.hpp
   
+  settings-menu/AboutWindow.cpp
+  settings-menu/AboutWindow.hpp
   settings-menu/AccountSettingsWindow.cpp
   settings-menu/AccountSettingsWindow.hpp
   settings-menu/ActiveSessionsWindow.cpp

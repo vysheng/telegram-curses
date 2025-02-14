@@ -7,6 +7,7 @@
 #include "FoldersSettingsWindow.hpp"
 #include "AdvancedSettingsWindow.hpp"
 #include "PrivacyAndSecuritySettingsWindow.hpp"
+#include "AboutWindow.hpp"
 
 namespace tdcurses {
 
@@ -29,6 +30,7 @@ void MainSettingsWindow::build_menu() {
       add_element("stars owned", "0");
     }
   }
+  add_element("about", "", {}, create_menu_window_spawn_function<AboutWindow>());
 }
 
 void MainSettingsWindow::send_requests() {

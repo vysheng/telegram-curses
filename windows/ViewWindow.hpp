@@ -41,7 +41,7 @@ class ViewWindow : public Window {
     return 10000;
   }
   td::int32 best_height() override {
-    return 10000;
+    return cached_height_ <= 0 ? 1 : cached_height_;
   }
 
   void replace_text(std::string text, std::vector<MarkupElement> markup = {}) {
@@ -56,6 +56,7 @@ class ViewWindow : public Window {
   td::int32 offset_from_top_{0};
   std::unique_ptr<Callback> callback_;
   SavedRenderedImages saved_images_;
+  td::int32 cached_height_{0};
 };
 
 }  // namespace windows

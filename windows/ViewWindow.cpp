@@ -36,6 +36,7 @@ void ViewWindow::render(WindowOutputter &rb, bool force) {
 
   auto &tmp_rb = empty_window_outputter();
   auto h = TextEdit::render(tmp_rb, width(), text_, 0, markup_, false, false, &dir);
+  cached_height_ = h;
 
   if (offset_from_top_ >= h) {
     offset_from_top_ -= height();
