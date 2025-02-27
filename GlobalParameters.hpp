@@ -240,15 +240,6 @@ class GlobalParameters {
     }
   }
 
-  windows::ColorRGB builtin_color(td::int32 id) {
-    CHECK(id >= 0 && id <= 6);
-    static const std::vector<windows::ColorRGB> colors{windows::ColorRGB{0xff0000}, windows::ColorRGB{0xff6600},
-                                                       windows::ColorRGB{0x7f00ff}, windows::ColorRGB{0x00ff00},
-                                                       windows::ColorRGB{0x00ffff}, windows::ColorRGB{0x0000ff},
-                                                       windows::ColorRGB{0xf88379}};
-    return colors[id];
-  }
-
   bool use_markdown() const {
     return use_markdown_;
   }

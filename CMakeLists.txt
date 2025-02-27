@@ -181,6 +181,8 @@ add_executable(telegram-curses
   ChatSearchWindow.hpp
   ChatWindow.cpp
   ChatWindow.hpp
+  ColorScheme.cpp
+  ColorScheme.hpp
   CommandLineWindow.hpp
   CommonGroupsWindow.cpp
   CommonGroupsWindow.hpp

@@ -14,6 +14,7 @@
 #include "TdObjectsOutput.h"
 #include "StickerManager.hpp"
 #include "GlobalParameters.hpp"
+#include "ColorScheme.hpp"
 #include "FileManager.hpp"
 
 #include "utf8proc.h"
@@ -30,38 +31,38 @@ static const std::vector<std::string> month_names{"???",     "January",  "Februa
                                                   "May",     "June",     "July",     "August", "September",
                                                   "October", "November", "December"};
 
-td::Variant<Color, ColorRGB> get_color(td::int32 accent_color) {
+td::Variant<Color, ColorRGB> get_color(td::int32 accent_color, ColorScheme::Mode mode) {
   if (accent_color < 0) {
     return Color::Lime;
   } else if (accent_color <= 6) {
-    return global_parameters().builtin_color(accent_color);
+    return color_scheme().color_info(accent_color, mode);
   } else {
     auto a = global_parameters().get_accent_color(accent_color);
     if (a) {
-      return global_parameters().builtin_color(a->built_in_accent_color_id_);
+      return color_scheme().color_info(a->built_in_accent_color_id_, mode);
     } else {
       return Color::Lime;
     }
   }
 }
 
-td::Variant<Color, ColorRGB> get_color(const td::td_api::MessageSender &x) {
+td::Variant<Color, ColorRGB> get_color(const td::td_api::MessageSender &x, ColorScheme::Mode mode) {
   td::Variant<Color, ColorRGB> res;
   td::td_api::downcast_call(const_cast<td::td_api::MessageSender &>(x),
                             td::overloaded(
                                 [&](const td::td_api::messageSenderUser &u) {
                                   auto user = chat_manager().get_user(u.user_id_);
-                                  res = get_color(user ? user->accent_color_id() : -1);
+                                  res = get_color(user ? user->accent_color_id() : -1, mode);
                                 },
                                 [&](const td::td_api::messageSenderChat &u) {
                                   auto chat = chat_manager().get_chat(u.chat_id_);
-                                  res = get_color(chat ? chat->accent_color_id() : -1);
+                                  res = get_color(chat ? chat->accent_color_id() : -1, mode);
                                 }));
   return res;
 }
 
-void add_color(Outputter &out, const td::td_api::MessageSender &x) {
-  auto r = get_color(x);
+void add_color(Outputter &out, const td::td_api::MessageSender &x, ColorScheme::Mode mode) {
+  auto r = get_color(x, mode);
   out << r;
 }
 
@@ -94,7 +95,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
       out << Color::Green;
     }
   } else {
-    add_color(out, *message.sender_id_);
+    add_color(out, *message.sender_id_, ColorScheme::Mode::NormalForeground);
   }
 
   out << Outputter::Date{message.date_} << " ";
@@ -140,15 +141,16 @@ Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
             [&](const td::td_api::messageReplyToMessage &r) {
               auto reply_msg = out.get_message(r.chat_id_, r.message_id_);
               if (reply_msg) {
-                auto col = get_color(*reply_msg->sender_id_);
+                auto col = get_color(*reply_msg->sender_id_, ColorScheme::Mode::NormalForeground);
+                auto bg_col = get_color(*reply_msg->sender_id_, ColorScheme::Mode::DarkBackground);
                 out << col;
                 out << "reply " << Outputter::NoLb{true};
                 out << reply_msg->sender_id_ << " " << reply_msg->content_;
                 out << Color::Revert;
                 out << Outputter::NoLb{false} << "\n";
                 if (r.quote_) {
-                  col.visit(td::overloaded([&](const Color &c) { out << Outputter::BgColor{c}; },
-                                           [&](const ColorRGB &c) { out << Outputter::BgColorRgb{c}; }));
+                  bg_col.visit(td::overloaded([&](const Color &c) { out << Outputter::BgColor{c}; },
+                                              [&](const ColorRGB &c) { out << Outputter::BgColorRgb{c}; }));
                   out << Outputter::LeftPad{"\"\" ", Color::White};
                   out << *r.quote_->text_;
                   out << Outputter::LeftPad{"", Color::Revert} << Outputter::BgColor{Color::Revert};
@@ -405,7 +407,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatAddMembers &c
     auto user = chat_manager().get_user(member);
     if (user) {
       out << " ";
-      out << get_color(user->accent_color_id());
+      out << get_color(user->accent_color_id(), ColorScheme::Mode::NormalForeground);
       out << user << Color::Revert;
     } else {
       out << " ???";
