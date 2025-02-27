@@ -13,7 +13,7 @@ void ChatSettingsWindow::build_menu() {
     } else {
       out << "disabled" << Outputter::RightPad{"<enable>"};
     }
-    enabled_el_ = add_element("desktop notifications", out.as_str(), out.markup(), [](MenuWindowCommon &w) {
+    enabled_el_ = add_element("parse markdown", out.as_str(), out.markup(), [](MenuWindowCommon &w) {
       bool enabled = !global_parameters().notifications_enabled();
       loading_window_send_request(
           w, "changing settings", {},
