@@ -44,6 +44,10 @@ if (NOT HAVE_STD17)
   message(FATAL_ERROR "No C++17 support in the compiler. Please upgrade the compiler.")
 endif()
 
+if (NOT DEFINED USE_LIBTICKIT)
+  set(USE_LIBTICKIT OFF)
+endif()
+
 set(CMAKE_THREAD_PREFER_PTHREAD ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -134,14 +138,13 @@ if (HAVE_PWD_H)
 endif (HAVE_PWD_H)
 
 add_subdirectory(td)
-add_subdirectory(third-party/libtickit)
 add_subdirectory(third-party/notcurses)
 
-add_executable(telegram-curses 
+add_executable(telegram-curses) 
+
+target_sources(telegram-curses PRIVATE 
   windows/BackendNotcurses.cpp
   windows/BackendNotcurses.h
-  windows/BackendTickit.cpp
-  windows/BackendTickit.h  
   windows/BorderedWindow.hpp
   windows/BorderedWindow.cpp
   windows/BorderedWindow.hpp
@@ -263,7 +266,7 @@ add_executable(telegram-curses
 
   third-party/qrcodegen/qrcodegen.cpp 
 )
-target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ tickit utf8proc notcurses-core notcurses notify jpeg ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} )
+target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ utf8proc notcurses-core notcurses notify jpeg ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} )
 target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${GDKPIXBUF_INCLUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}
@@ -277,6 +280,16 @@ target_include_directories(telegram-curses PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/notcurses/include/>
   )
+
+if (USE_LIBTICKIT)
+  target_compile_options(telegram-curses PRIVATE -DUSE_LIBTICKIT=1)
+  add_subdirectory(third-party/libtickit)
+  target_sources(telegram-curses PRIVATE
+    windows/BackendTickit.cpp
+    windows/BackendTickit.h ) 
+  target_link_libraries(telegram-curses PUBLIC tickit) 
+endif (USE_LIBTICKIT)
+
 set_target_properties(telegram-curses PROPERTIES
   VERSION ${PROJECT_VERSION}
 )

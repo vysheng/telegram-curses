@@ -9,7 +9,9 @@
 
 #include <notcurses/notcurses.h>
 #include <libconfig.h++>
+#if USE_LIBTICKIT
 #include "tickit.h"
+#endif
 
 namespace tdcurses {
 
@@ -19,9 +21,11 @@ std::string DebugCounters::to_str() const {
   sb << td::tag("tdlib_version", global_parameters().tdlib_version()) << "\n";
   sb << td::tag("mtproto_layer", td::MTPROTO_LAYER) << "\n";
   sb << td::tag("notcurses_version", notcurses_version()) << "\n";
+#if USE_LIBTICKIT
   sb << td::tag("libtickit_version",
                 PSTRING() << TICKIT_VERSION_MAJOR << "." << TICKIT_VERSION_MINOR << "." << TICKIT_VERSION_PATCH)
      << "\n";
+#endif
   sb << td::tag("libconfig_version",
                 PSTRING() << LIBCONFIGXX_VER_MAJOR << "." << LIBCONFIGXX_VER_MINOR << "." << LIBCONFIGXX_VER_REVISION)
      << "\n";

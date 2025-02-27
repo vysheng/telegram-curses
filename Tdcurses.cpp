@@ -1940,7 +1940,12 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   auto backend_type_str = global_parameters().backend_type();
   windows::Screen::BackendType backend_type = windows::Screen::BackendType::Auto;
   if (backend_type_str == "Tickit") {
+#if USE_LIBTICKIT
     backend_type = windows::Screen::BackendType::Tickit;
+#else
+    LOG(ERROR) << "libtickit backend is disabled";
+    _Exit(1);
+#endif
   } else if (backend_type_str == "Notcurses") {
     backend_type = windows::Screen::BackendType::Notcurses;
   } else if (backend_type_str == "auto") {

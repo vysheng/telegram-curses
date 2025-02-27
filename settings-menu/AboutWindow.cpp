@@ -4,7 +4,9 @@
 
 #include <notcurses/notcurses.h>
 #include <libconfig.h++>
+#if USE_LIBTICKIT
 #include "tickit.h"
+#endif
 
 namespace tdcurses {
 
@@ -20,9 +22,11 @@ void AboutWindow::build() {
       << "https://github.com/tdlib/td" << Outputter::Underline{false} << "\n";
   out << "    Notcurses version " << notcurses_version() << " " << Outputter::Underline{true}
       << "https://github.com/dankamongmen/notcurses" << Outputter::Underline{false} << "\n";
+#if USE_LIBTICKIT
   out << "    Libtickit version " << TICKIT_VERSION_MAJOR << "." << TICKIT_VERSION_MINOR << "." << TICKIT_VERSION_PATCH
       << " " << Outputter::Underline{true} << "https://github.com/leonerd/libtickit" << Outputter::Underline{false}
       << "\n";
+#endif
   out << "    Libconfig version " << LIBCONFIGXX_VER_MAJOR << "." << LIBCONFIGXX_VER_MINOR << "."
       << LIBCONFIGXX_VER_REVISION << " " << Outputter::Underline{true} << "https://github.com/hyperrealm/libconfig"
       << Outputter::Underline{false} << "\n";

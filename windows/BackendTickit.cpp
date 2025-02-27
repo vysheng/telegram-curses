@@ -10,6 +10,38 @@ td::int32 color_to_tickit(Color color) {
   return (td::int32)color;
 }
 
+void set_tickit_wrap() {
+#if USE_LIBTICKIT
+  set_tickit_utf8_ncountmore_fn(
+      [](const char *str, size_t len, TickitStringPos *pos, const TickitStringPos *_limit) -> size_t {
+        td::Slice S;
+        if (len >= 0) {
+          S = td::Slice(str, (size_t)len);
+        } else {
+          S = td::CSlice(str);
+        }
+        S.remove_prefix(pos->bytes);
+        UnicodeCounter r{};
+        UnicodeCounter limit{};
+        if (_limit) {
+          limit.bytes = _limit->bytes - pos->bytes;
+          limit.codepoints = _limit->codepoints >= 0 ? (size_t)(_limit->codepoints - pos->codepoints)
+                                                     : std::numeric_limits<size_t>::max();
+          limit.graphemes = _limit->graphemes >= 0 ? (size_t)(_limit->graphemes - pos->graphemes)
+                                                   : std::numeric_limits<size_t>::max();
+          limit.columns =
+              _limit->columns >= 0 ? (size_t)(_limit->columns - pos->columns) : std::numeric_limits<size_t>::max();
+        }
+        auto res = utf8_count(S, r, &limit, false);
+        pos->bytes += r.bytes;
+        pos->codepoints += (int)r.codepoints;
+        pos->graphemes += (int)r.graphemes;
+        pos->columns += (int)r.columns;
+        return res;
+      });
+#endif
+}
+
 class WindowOutputterTickit : public WindowOutputter {
  public:
   WindowOutputterTickit(TickitRenderBuffer *rb, int y_offset, int x_offset, int height, int width, bool is_active)
@@ -380,6 +412,34 @@ struct BackendTickit : public Backend {
     return 0;
   }
 };
+
+std::unique_ptr<InputEvent> parse_tickit_input_event(td::CSlice utf8, bool is_special) {
+  if (!is_special) {
+    return std::make_unique<CommonInputEvent>(false, false, false, utf8);
+  }
+
+  bool alt = false, ctrl = false;
+  while (true) {
+    if (utf8.size() <= 1) {
+      break;
+    }
+    if (utf8[1] != '-') {
+      break;
+    }
+    if (utf8[0] == 'C') {
+      ctrl = true;
+      utf8.remove_prefix(2);
+      continue;
+    }
+    if (utf8[0] == 'M') {
+      alt = true;
+      utf8.remove_prefix(2);
+      continue;
+    }
+    break;
+  }
+  return std::make_unique<CommonInputEvent>(utf8.size() >= 2, alt, ctrl, utf8);
+}
 
 void init_tickit_backend(Screen *screen) {
   set_tickit_wrap();

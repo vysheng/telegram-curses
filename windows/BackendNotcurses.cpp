@@ -241,23 +241,8 @@ class WindowOutputterNotcurses : public WindowOutputter {
     fg_channels_.push_back(default_fg_channel);
     bg_channels_.push_back(default_bg_channel);
     set_channels();
-    /*if (rb_) {
-      pen_ = tickit_pen_new();
-      tickit_renderbuffer_save(rb_);
-      auto rect0 = TickitRect{.top = y_offset, .left = x_offset, .lines = height, .cols = width};
-      tickit_renderbuffer_clip(rb_, &rect0);
-    }*/
   }
   ~WindowOutputterNotcurses() {
-    /*if (pen_) {
-      tickit_pen_unref(pen_);
-      pen_ = nullptr;
-    }
-    if (rb_) {
-      tickit_renderbuffer_restore(rb_);
-      auto rect0 = TickitRect{.top = y_offset_, .left = x_offset_, .lines = height_, .cols = width_};
-      tickit_renderbuffer_mask(rb_, &rect0);
-    }*/
   }
   td::int32 putstr_yx(td::int32 y, td::int32 x, const char *s, size_t len) override {
     if (y + y_offset_ < base_y_offset_ || y + y_offset_ >= base_y_offset_ + height_) {
@@ -270,8 +255,6 @@ class WindowOutputterNotcurses : public WindowOutputter {
       len = strlen(s);
     }
     if (rb_) {
-      //tickit_renderbuffer_setpen(rb_, pen_);
-
       char *tmp = strndup(s, len);
 
       ncplane_putstr_yx(rb_, y + y_offset_, x + x_offset_, tmp);
@@ -807,6 +790,70 @@ std::unique_ptr<WindowOutputter> notcurses_window_outputter(void *notcurses, voi
                                                             td::int32 height, td::int32 width) {
   return std::make_unique<WindowOutputterNotcurses>((struct notcurses *)notcurses, (struct ncplane *)renderplane, 0, 0,
                                                     height, width, 0xdddddd, 0x000000, true);
+}
+
+std::unique_ptr<InputEvent> parse_notcurses_input_event(td::int32 code, td::MutableCSlice utf8, bool alt, bool ctrl,
+                                                        bool shift) {
+  if (code >= 'A' && code <= 'Z' && !shift) {
+    CHECK(utf8[0] == code);
+    code += 'a' - 'A';
+    utf8[0] += 'a' - 'A';
+  }
+  switch (code) {
+    case NCKEY_UP:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Up");
+    case NCKEY_RIGHT:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Right");
+    case NCKEY_DOWN:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Down");
+    case NCKEY_LEFT:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Left");
+    case NCKEY_INS:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Insert");
+    case NCKEY_DEL:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Delete");
+    case NCKEY_BACKSPACE:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Backspace");
+    case NCKEY_PGDOWN:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "PageDown");
+    case NCKEY_PGUP:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "PageUp");
+    case NCKEY_HOME:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Home");
+    case NCKEY_END:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "End");
+    case NCKEY_F00 ... NCKEY_F09: {
+      static char s[3];
+      s[0] = 'F';
+      s[1] = (char)('0' + (code - NCKEY_F00));
+      s[2] = 0;
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, td::CSlice(s, s + 2));
+    }
+    case NCKEY_F10 ... NCKEY_F40: {
+      static char s[4];
+      s[0] = 'F';
+      auto v = (code - NCKEY_F00);
+      s[1] = (char)('0' + (v / 10));
+      s[2] = (char)('0' + (v % 10));
+      s[3] = 0;
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, td::CSlice(s, s + 3));
+    }
+    case NCKEY_ENTER:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Enter");
+    case NCKEY_TAB:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Tab");
+    case NCKEY_ESC:
+      return std::make_unique<CommonInputEvent>(true, alt, ctrl, "Escape");
+  }
+
+  LOG(DEBUG) << "code=" << code << " utf8=" << utf8.data();
+
+  if (!nckey_pua_p(code) && !nckey_supppuaa_p(code) && !nckey_supppuab_p(code) &&
+      code <= 1114112 /* beyond plane 17 */) {
+    return std::make_unique<CommonInputEvent>(false, alt, ctrl, utf8);
+  }
+
+  return nullptr;
 }
 
 struct BackendNotcurses : public Backend {

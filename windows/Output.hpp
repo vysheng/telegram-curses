@@ -48,7 +48,6 @@ class RenderedImage {
 class WindowOutputter {
  public:
   enum class CursorShape { None, Underscore, Block, LeftBar };
-  enum class Mode { Tickit, Notcurses };
   WindowOutputter() {
   }
   virtual ~WindowOutputter() = default;

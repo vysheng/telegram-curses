@@ -31,6 +31,7 @@ NotificationManager::Notification::Notification(td::int64 chat_id, const td::td_
   }
 
   notification_ = notification;
+  LOG(ERROR) << "allocated notification " << notification_;
 }
 
 NotificationManager::Notification::~Notification() {
@@ -69,6 +70,7 @@ void NotificationManager::Notification::delete_notification() {
   if (!notification_) {
     return;
   }
+  LOG(ERROR) << "freeing notification " << notification_;
   auto ptr = static_cast<::NotifyNotification *>(notification_);
   GError *error = nullptr;
   notify_notification_close(ptr, &error);

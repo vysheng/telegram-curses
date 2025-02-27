@@ -1,6 +1,7 @@
 #include "unicode.h"
+#include "td/utils/Slice-decl.h"
 #include "td/utils/utf8.h"
-#include <tickit.h>
+#include <limits>
 #include <utf8proc.h>
 #include <algorithm>
 #include "td/utils/int_types.h"
@@ -202,38 +203,34 @@ Graphem prev_graphem(td::Slice data, size_t pos) {
   return Graphem{.data = td::Slice(cur, first), .width = cur_width, .unicode_codepoints = cur_codepoints};
 }
 
-size_t tickit_utf8_ncountmore_override(const char *str_tr, size_t len, TickitStringPos *pos,
-                                       const TickitStringPos *limit, bool tickit_compatible) {
-  TickitStringPos here = *pos;
-  size_t start_bytes = pos->bytes;
+size_t utf8_count(td::Slice S, UnicodeCounter &res, const UnicodeCounter *limit, bool advance_on_error) {
+  UnicodeCounter here{};
 
-  auto S = td::Slice(str_tr, len == (size_t)-1 ? strlen(str_tr) : len);
-
-  size_t cur_pos = start_bytes;
+  size_t cur_pos = 0;
 
   while (cur_pos < S.size() && S[cur_pos] != 0) {
     auto g = next_graphem(S, cur_pos);
     if (g.width < 0) {
-      if (!tickit_compatible) {
-        *pos = here;
+      if (advance_on_error) {
+        res = here;
       }
       return -1;
     }
 
     CHECK(g.data.size() > 0);
 
-    *pos = here;
+    res = here;
 
     if (limit && limit->bytes != (size_t)-1 && cur_pos + g.data.size() > limit->bytes) {
       break;
     }
-    if (limit && limit->codepoints != -1 && here.codepoints + g.unicode_codepoints > limit->codepoints) {
+    if (limit && here.codepoints + g.unicode_codepoints > limit->codepoints) {
       break;
     }
-    if (limit && limit->graphemes != -1 && here.graphemes + 1 > limit->graphemes) {
+    if (limit && here.graphemes + 1 > limit->graphemes) {
       break;
     }
-    if (limit && limit->columns != -1 && here.columns + g.width > limit->columns) {
+    if (limit && here.columns + g.width > limit->columns) {
       break;
     }
 
@@ -244,36 +241,30 @@ size_t tickit_utf8_ncountmore_override(const char *str_tr, size_t len, TickitStr
     here.columns += g.width;
   }
 
-  *pos = here;
+  res = here;
 
-  return pos->bytes - start_bytes;
-}
-
-void set_tickit_wrap() {
-  set_tickit_utf8_ncountmore_fn(
-      [](const char *str, size_t len, TickitStringPos *pos, const TickitStringPos *limit) -> size_t {
-        return tickit_utf8_ncountmore_override(str, len, pos, limit, true);
-      });
-}
-
-size_t utf8_string_advance(const char *str, size_t len, TickitStringPos *pos, const TickitStringPos *limit) {
-  return tickit_utf8_ncountmore_override(str, len, pos, limit, false);
+  return res.bytes;
 }
 
 Graphem next_graphems(td::Slice data, size_t pos, size_t limit_bytes, td::int32 limit_width, td::int32 limit_graphems,
                       td::int32 limit_codepoints) {
   limit_bytes = std::min<size_t>(data.size() - pos, limit_bytes);
-  TickitStringPos p = {.bytes = 0, .codepoints = 0, .graphemes = 0, .columns = 0};
-  TickitStringPos lim = {
-      .bytes = limit_bytes, .codepoints = limit_codepoints, .graphemes = limit_graphems, .columns = limit_width};
+  UnicodeCounter p = {.bytes = 0, .codepoints = 0, .graphemes = 0, .columns = 0};
+  UnicodeCounter lim = {
+      .bytes = limit_bytes,
+      .codepoints = limit_codepoints >= 0 ? (size_t)limit_codepoints : std::numeric_limits<size_t>::max(),
+      .graphemes = limit_graphems >= 0 ? (size_t)limit_graphems : std::numeric_limits<size_t>::max(),
+      .columns = limit_width >= 0 ? (size_t)limit_width : std::numeric_limits<size_t>::max()};
 
-  auto r = tickit_utf8_ncountmore_override(data.data() + pos, data.size() - pos, &p, &lim, false);
+  auto r = utf8_count(data.copy().remove_prefix(pos), p, &lim, true);
   if (r == (size_t)-1) {
     return Graphem{.data = data.remove_prefix(pos).truncate(1), .width = 0, .unicode_codepoints = 1};
   } else if (r == (size_t)-2) {
     return Graphem{.data = td::Slice(), .width = 0, .unicode_codepoints = 0};
   } else {
-    return Graphem{.data = data.remove_prefix(pos).truncate(r), .width = p.columns, .unicode_codepoints = p.codepoints};
+    return Graphem{.data = data.remove_prefix(pos).truncate(r),
+                   .width = (td::int32)p.columns,
+                   .unicode_codepoints = (td::int32)p.codepoints};
   }
 }
 

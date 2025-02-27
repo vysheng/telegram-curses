@@ -4,7 +4,9 @@
 #include "td/actor/Timeout.h"
 #include "td/utils/Slice-decl.h"
 #include "unicode.h"
+#if USE_LIBTICKIT
 #include "BackendTickit.h"
+#endif
 #include "BackendNotcurses.h"
 
 #include <memory>
@@ -138,7 +140,11 @@ Screen::Screen(std::unique_ptr<Callback> callback, BackendType backend_type)
 void Screen::init() {
   base_window_ = std::make_shared<BaseWindow>();
   if (backend_type_ == BackendType::Tickit) {
+#if USE_LIBTICKIT
     init_tickit_backend(this);
+#else
+    UNREACHABLE();
+#endif
   } else {
     init_notcurses_backend(this);
   }
