@@ -74,12 +74,17 @@ class TdcursesWindowBase {
                      td::move_tl_object_as<td::td_api::Function>(std::move(func)), std::move(Q));
   }
   template <class T>
-  typename T::ReturnType run_request_sync(td::tl_object_ptr<T> func) {
+  typename td::Result<typename T::ReturnType> run_request_sync(td::tl_object_ptr<T> func) {
     using RetType = typename T::ReturnType;
     using RetTlType = typename RetType::element_type;
     CHECK(td::SynchronousRequests::is_synchronous_request(func.get()));
     auto res = td::SynchronousRequests::run_request(std::move(func));
-    return td::move_tl_object_as<RetTlType>(std::move(res));
+    if (res->get_id() == td::td_api::error::ID) {
+      auto err = td::move_tl_object_as<td::td_api::error>(std::move(res));
+      return td::Status::Error(err->code_, err->message_);
+    } else {
+      return td::move_tl_object_as<RetTlType>(std::move(res));
+    }
   }
 
   td::int64 window_unique_id() const {
