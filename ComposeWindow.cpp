@@ -37,8 +37,9 @@ void ComposeWindow::install_callback() {
 void ComposeWindow::send_message(std::string message) {
   td::tl_object_ptr<td::td_api::formattedText> text;
   if (global_parameters().use_markdown()) {
-    auto R = run_request_sync(td::make_tl_object<td::td_api::parseTextEntities>(
-        message, td::make_tl_object<td::td_api::textParseModeMarkdown>(0)));
+    auto R =
+        run_request_sync(td::make_tl_object<td::td_api::parseMarkdown>(td::make_tl_object<td::td_api::formattedText>(
+            message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>{})));
     if (R.is_error()) {
       root()->spawn_popup_view_window(PSTRING() << "failed to parse markdown: " << R.move_as_error(), 3);
       return;
