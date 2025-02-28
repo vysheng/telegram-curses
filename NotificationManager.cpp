@@ -1,6 +1,7 @@
 #include "NotificationManager.hpp"
 #include "td/telegram/TdDb.h"
 #include "td/telegram/td_api.h"
+#include <libnotify/notification.h>
 #include <libnotify/notify.h>
 #include <memory>
 #include "GlobalParameters.hpp"
@@ -26,12 +27,11 @@ NotificationManager::Notification::Notification(td::int64 chat_id, const td::td_
     if (error) {
       g_error_free(error);
     }
-    g_free(notification);
+    g_object_unref(G_OBJECT(notification));
     return;
   }
 
   notification_ = notification;
-  LOG(ERROR) << "allocated notification " << notification_;
 }
 
 NotificationManager::Notification::~Notification() {
@@ -70,11 +70,10 @@ void NotificationManager::Notification::delete_notification() {
   if (!notification_) {
     return;
   }
-  LOG(ERROR) << "freeing notification " << notification_;
   auto ptr = static_cast<::NotifyNotification *>(notification_);
   GError *error = nullptr;
   notify_notification_close(ptr, &error);
-  g_free(ptr);
+  g_object_unref(G_OBJECT(ptr));
   if (error) {
     g_error_free(error);
   }
@@ -94,7 +93,6 @@ void NotificationManager::process_update(td::td_api::updateNotification &update)
   }
   it->second->process_update(*update.notification_);
 }
-
 void NotificationManager::process_update(td::td_api::updateNotificationGroup &update) {
   if (!global_parameters().notifications_enabled()) {
     return;
