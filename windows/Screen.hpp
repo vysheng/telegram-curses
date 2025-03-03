@@ -44,7 +44,7 @@ class Screen {
     }
   };
 
-  Screen(std::unique_ptr<Callback> callback, BackendType backend_type);
+  Screen(std::unique_ptr<Callback> callback, BackendType backend_type, std::string control_key);
   ~Screen();
   void init();
   void init_notcurses();
@@ -79,6 +79,8 @@ class Screen {
   bool finished_{false};
 
   BackendType backend_type_;
+  std::string control_key_;
+  bool in_control_mode_{false};
 };
 
 }  // namespace windows

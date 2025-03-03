@@ -41,7 +41,6 @@ class WindowLayout : public Window {
   }
 
  private:
-  bool window_edit_mode_{false};
 };
 
 }  // namespace windows

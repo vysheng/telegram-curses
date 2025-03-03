@@ -146,28 +146,30 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
     return;
   }
   windows::PadWindow::handle_input(info);
-  {
-    auto els = get_visible_elements();
-    if (els.size() > 0) {
-      std::vector<td::int64> ids;
-      td::int64 last_chat_id = 0;
-      for (auto &el : els) {
-        auto &e = static_cast<Element &>(*el);
-        if (!last_chat_id) {
-          last_chat_id = e.message->chat_id_;
-        } else if (last_chat_id != e.message->chat_id_) {
-          CHECK(ids.size() > 0);
-          auto req = td::make_tl_object<td::td_api::viewMessages>(last_chat_id, std::move(ids), nullptr, false);
-          send_request(std::move(req), {});
-          last_chat_id = e.message->chat_id_;
-          ids.clear();
-        }
-        ids.push_back(e.message->id_);
-      }
-      if (ids.size() > 0) {
+  update_visible();
+}
+
+void ChatWindow::update_visible() {
+  auto els = get_visible_elements();
+  if (els.size() > 0) {
+    std::vector<td::int64> ids;
+    td::int64 last_chat_id = 0;
+    for (auto &el : els) {
+      auto &e = static_cast<Element &>(*el);
+      if (!last_chat_id) {
+        last_chat_id = e.message->chat_id_;
+      } else if (last_chat_id != e.message->chat_id_) {
+        CHECK(ids.size() > 0);
         auto req = td::make_tl_object<td::td_api::viewMessages>(last_chat_id, std::move(ids), nullptr, false);
         send_request(std::move(req), {});
+        last_chat_id = e.message->chat_id_;
+        ids.clear();
       }
+      ids.push_back(e.message->id_);
+    }
+    if (ids.size() > 0) {
+      auto req = td::make_tl_object<td::td_api::viewMessages>(last_chat_id, std::move(ids), nullptr, false);
+      send_request(std::move(req), {});
     }
   }
 }

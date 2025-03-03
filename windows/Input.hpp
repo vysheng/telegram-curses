@@ -16,6 +16,9 @@ class InputEvent {
   virtual bool is_text_key() const = 0;
   virtual const char *get_utf8_str() const = 0;
   bool operator==(const char *s) const;
+  bool operator==(td::CSlice s) const {
+    return *this == s.data();
+  }
 };
 
 class CommonInputEvent : public InputEvent {

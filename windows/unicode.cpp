@@ -168,6 +168,7 @@ Graphem prev_graphem(td::Slice data, size_t pos) {
   auto last = data.ubegin();
   td::int32 cur_width = 0;
   td::int32 cur_codepoints = 0;
+  td::int32 first_codepoint = 0;
   while (cur > last) {
     cur--;
 
@@ -178,13 +179,15 @@ Graphem prev_graphem(td::Slice data, size_t pos) {
     td::uint32 code;
     next_utf8(cur, first, code);
     if (code == 0) {
-      return Graphem{.data = td::Slice(first, cur), .width = -2, .unicode_codepoints = 1};
+      return Graphem{
+          .data = td::Slice(first, cur), .width = -2, .unicode_codepoints = 1, .first_codepoint = (td::int32)code};
     }
     bool is_first = cur_codepoints == 0;
     auto width = my_wcwidth(code);
     if (width < 0) {
       if (is_first) {
-        return Graphem{.data = td::Slice(cur, first), .width = -1, .unicode_codepoints = 1};
+        return Graphem{
+            .data = td::Slice(cur, first), .width = -1, .unicode_codepoints = 1, .first_codepoint = (td::int32)code};
       } else {
         break;
       }
@@ -196,11 +199,16 @@ Graphem prev_graphem(td::Slice data, size_t pos) {
     } else {
       cur_width += width;
       cur_codepoints++;
+      first_codepoint = code;
       break;
     }
+    first_codepoint = code;
   }
 
-  return Graphem{.data = td::Slice(cur, first), .width = cur_width, .unicode_codepoints = cur_codepoints};
+  return Graphem{.data = td::Slice(cur, first),
+                 .width = cur_width,
+                 .unicode_codepoints = cur_codepoints,
+                 .first_codepoint = first_codepoint};
 }
 
 size_t utf8_count(td::Slice S, UnicodeCounter &res, const UnicodeCounter *limit, bool advance_on_error) {
@@ -352,4 +360,36 @@ td::int32 utf8_string_width(td::Slice data) {
     data.remove_prefix(x.data.size());
   }
   return res;
+}
+
+bool Graphem::is_whitespace() const {
+  auto r = utf8proc_category(first_codepoint);
+
+  return r == UTF8PROC_CATEGORY_ZS;
+}
+bool Graphem::is_whitespace_or_linebreak() const {
+  auto r = utf8proc_category(first_codepoint);
+
+  return r == UTF8PROC_CATEGORY_ZS || r == UTF8PROC_CATEGORY_ZL || r == UTF8PROC_CATEGORY_ZP ||
+         first_codepoint == '\n' || first_codepoint == '\r';
+}
+
+bool Graphem::is_alpha() const {
+  auto r = utf8proc_category(first_codepoint);
+
+  return r == UTF8PROC_CATEGORY_LU || r == UTF8PROC_CATEGORY_LL || r == UTF8PROC_CATEGORY_LT ||
+         r == UTF8PROC_CATEGORY_LM || r == UTF8PROC_CATEGORY_LO;
+}
+
+bool Graphem::is_num() const {
+  auto r = utf8proc_category(first_codepoint);
+
+  return r == UTF8PROC_CATEGORY_ND;
+}
+
+bool Graphem::is_alphanum() const {
+  auto r = utf8proc_category(first_codepoint);
+
+  return r == UTF8PROC_CATEGORY_LU || r == UTF8PROC_CATEGORY_LL || r == UTF8PROC_CATEGORY_LT ||
+         r == UTF8PROC_CATEGORY_LM || r == UTF8PROC_CATEGORY_LO || r == UTF8PROC_CATEGORY_ND;
 }

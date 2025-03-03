@@ -234,6 +234,8 @@ class ChatWindow
     selected_messages_.clear();
   }
 
+  void update_visible();
+
  private:
   const td::int64 main_chat_id_;
 

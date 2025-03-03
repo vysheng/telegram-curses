@@ -53,6 +53,8 @@ class TextEdit {
   bool move_cursor_right(td::int32 cnt, bool allow_change_line);
   void move_cursor_down();
   void move_cursor_up();
+  bool move_cursor_next_word(bool allow_change_line);
+  bool move_cursor_prev_word(bool allow_change_line);
 
   td::int32 go_to_beginning_of_line();
   td::int32 go_to_end_of_line();
@@ -62,6 +64,10 @@ class TextEdit {
   std::string export_data();
   void remove_prev_char();
   void remove_next_char();
+  void clear_before_cursor(bool allow_change_line);
+  void clear_after_cursor(bool allow_change_line);
+  void clear_word_before_cursor(bool allow_change_line);
+  void clear_word_after_cursor(bool allow_change_line);
 
   static td::int32 render(WindowOutputter &rb, td::int32 width, td::Slice text, size_t pos,
                           const std::vector<MarkupElement> &markup, bool is_selected, bool is_password,

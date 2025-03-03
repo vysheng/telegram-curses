@@ -8,6 +8,12 @@ struct Graphem {
   td::int32 width{0};
   td::int32 unicode_codepoints{0};
   td::int32 first_codepoint{0};
+
+  bool is_whitespace() const;
+  bool is_whitespace_or_linebreak() const;
+  bool is_alpha() const;
+  bool is_num() const;
+  bool is_alphanum() const;
 };
 
 struct UnicodeWidthBlock {

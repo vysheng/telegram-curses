@@ -248,6 +248,10 @@ class GlobalParameters {
     use_markdown_ = value;
   }
 
+  td::CSlice control_key() {
+    return "C-a";
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};

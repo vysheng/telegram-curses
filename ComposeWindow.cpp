@@ -101,4 +101,12 @@ void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
   }
 }
 
+void ComposeWindow::handle_input(const windows::InputEvent &info) {
+  editor_window_->handle_input(info);
+  auto chat_window = root()->chat_window();
+  if (chat_window) {
+    chat_window->update_visible();
+  }
+}
+
 }  // namespace tdcurses

@@ -1968,7 +1968,7 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
     td::ActorId<Tdcurses> self_;
   };
   auto cb = std::make_unique<Cb>(self_);
-  screen_ = std::make_unique<windows::Screen>(std::move(cb), backend_type);
+  screen_ = std::make_unique<windows::Screen>(std::move(cb), backend_type, "C-a");
   screen_->init();
   auto poll_fd = screen_->poll_fd();
   poll_fd_.set_native_fd(td::NativeFd{poll_fd});

@@ -56,9 +56,7 @@ class ComposeWindow
     }
     return t;
   }
-  void handle_input(const windows::InputEvent &info) override {
-    editor_window_->handle_input(info);
-  }
+  void handle_input(const windows::InputEvent &info) override;
   void set_reply_message_id(td::int64 reply_message_id) {
     reply_message_id_ = reply_message_id;
     editor_window_->resize(reply_message_id_ ? height() - 1 : height(), width());

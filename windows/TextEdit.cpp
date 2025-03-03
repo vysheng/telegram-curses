@@ -121,6 +121,61 @@ void TextEdit::move_cursor_up() {
   move_cursor_right(c, false);
 }
 
+bool TextEdit::move_cursor_prev_word(bool allow_change_line) {
+  if (pos_ == 0) {
+    return false;
+  }
+  bool is_first = true;
+  do {
+    auto c = prev_graphem(td::Slice(text_), pos_);
+    if (!allow_change_line && (c.first_codepoint == '\n' || c.first_codepoint == '\r')) {
+      return true;
+    }
+    if (!is_first && c.is_alphanum()) {
+      break;
+    }
+    is_first = false;
+  } while (move_cursor_left(true));
+  do {
+    auto c = prev_graphem(td::Slice(text_), pos_);
+    if (!allow_change_line && (c.first_codepoint == '\n' || c.first_codepoint == '\r')) {
+      return true;
+    }
+    if (!c.is_alphanum()) {
+      break;
+    }
+  } while (move_cursor_left(true));
+  return true;
+}
+
+bool TextEdit::move_cursor_next_word(bool allow_change_line) {
+  if (pos_ == text_.size()) {
+    return false;
+  }
+  do {
+    auto c = next_graphem(td::Slice(text_), pos_);
+    if (!allow_change_line && (c.first_codepoint == '\n' || c.first_codepoint == '\r')) {
+      return true;
+    }
+    if (c.is_alphanum()) {
+      break;
+    }
+  } while (move_cursor_right(true));
+  if (pos_ == text_.size()) {
+    return true;
+  }
+  do {
+    auto c = next_graphem(td::Slice(text_), pos_);
+    if (!allow_change_line && (c.first_codepoint == '\n' || c.first_codepoint == '\r')) {
+      return true;
+    }
+    if (!c.is_alphanum()) {
+      break;
+    }
+  } while (move_cursor_right(true));
+  return true;
+}
+
 void TextEdit::insert_char(const char *ch) {
   text_.insert(pos_, ch);
   pos_ += strlen(ch);
@@ -142,6 +197,50 @@ void TextEdit::remove_prev_char() {
   }
   text_.erase(pos_, old_pos - pos_);
 }
+
+void TextEdit::clear_before_cursor(bool allow_change_line) {
+  if (allow_change_line) {
+    text_ = text_.substr(pos_);
+    pos_ = 0;
+    return;
+  }
+  auto saved_pos = pos_;
+  while (pos_ > 0 && (text_[pos_ - 1] != '\n' && text_[pos_ - 1] != '\r')) {
+    pos_--;
+  }
+  text_ = text_.substr(0, pos_) + text_.substr(saved_pos);
+}
+
+void TextEdit::clear_after_cursor(bool allow_change_line) {
+  if (allow_change_line) {
+    text_ = text_.substr(0, pos_);
+    return;
+  }
+  auto saved_pos = pos_;
+  while (pos_ < text_.size() && (text_[pos_] != '\n' && text_[pos_] != '\r')) {
+    pos_++;
+  }
+  text_ = text_.substr(0, saved_pos) + text_.substr(pos_);
+  pos_ = saved_pos;
+}
+
+void TextEdit::clear_word_before_cursor(bool allow_change_line) {
+  auto saved_pos = pos_;
+  move_cursor_prev_word(allow_change_line);
+  if (pos_ != saved_pos) {
+    text_ = text_.substr(0, pos_) + text_.substr(saved_pos);
+  }
+}
+
+void TextEdit::clear_word_after_cursor(bool allow_change_line) {
+  auto saved_pos = pos_;
+  move_cursor_next_word(allow_change_line);
+  if (pos_ != saved_pos) {
+    text_ = text_.substr(0, saved_pos) + text_.substr(pos_);
+    pos_ = saved_pos;
+  }
+}
+
 std::string TextEdit::export_data() {
   return text_;
 }

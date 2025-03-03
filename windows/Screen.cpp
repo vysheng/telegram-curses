@@ -133,8 +133,8 @@ class BaseWindow : public Window {
   std::list<std::pair<td::int32, std::shared_ptr<Window>>> popup_windows_;
 };
 
-Screen::Screen(std::unique_ptr<Callback> callback, BackendType backend_type)
-    : callback_(std::move(callback)), backend_type_(backend_type) {
+Screen::Screen(std::unique_ptr<Callback> callback, BackendType backend_type, std::string control_key)
+    : callback_(std::move(callback)), backend_type_(backend_type), control_key_(control_key) {
 }
 
 void Screen::init() {
@@ -240,7 +240,41 @@ void Screen::handle_input(const InputEvent &info) {
     return;
   }
 
-  static_cast<BaseWindow &>(*base_window_).handle_input(info);
+  if (info == td::CSlice(control_key_)) {
+    if (in_control_mode_) {
+      in_control_mode_ = false;
+    } else {
+      in_control_mode_ = true;
+      return;
+    }
+  }
+
+  if (in_control_mode_) {
+    bool continue_in_control_mode = false;
+    const char *key = nullptr;
+    if (info == "h") {
+      key = "SWITCH_WINDOW_LEFT";
+    } else if (info == "j") {
+      key = "SWITCH_WINDOW_DOWN";
+    } else if (info == "k") {
+      key = "SWITCH_WINDOW_UP";
+    } else if (info == "l") {
+      key = "SWITCH_WINDOW_RIGHT";
+    } else if (info == "w") {
+      key = "SWITCH_WINDOW_NEXT";
+    } else if (info == "W") {
+      key = "SWITCH_WINDOW_PREV";
+    }
+    if (key) {
+      CommonInputEvent ev(true, false, false, td::CSlice(key));
+      static_cast<BaseWindow &>(*base_window_).handle_input(ev);
+    }
+    if (!continue_in_control_mode) {
+      in_control_mode_ = false;
+    }
+  } else {
+    static_cast<BaseWindow &>(*base_window_).handle_input(info);
+  }
 
   refresh();
 }
