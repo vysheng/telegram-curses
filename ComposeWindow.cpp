@@ -36,7 +36,7 @@ void ComposeWindow::install_callback() {
 
 void ComposeWindow::send_message(std::string message) {
   td::tl_object_ptr<td::td_api::formattedText> text;
-  if (global_parameters().use_markdown()) {
+  if (enabled_markdown_) {
     auto R =
         run_request_sync(td::make_tl_object<td::td_api::parseMarkdown>(td::make_tl_object<td::td_api::formattedText>(
             message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>{})));
@@ -87,7 +87,18 @@ void ComposeWindow::set_draft(std::string message) {
 }
 
 void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
+  {
+    Outputter out;
+    out << Outputter::NoLb(true);
+    if (enabled_markdown_) {
+      out << Outputter::Bold{true} << "[+MARKDOWN] " << Outputter::Bold{Outputter::ChangeBool::Revert};
+    } else {
+      out << "[-MARKDOWN] ";
+    }
+    windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
+  }
   if (reply_message_id_) {
+    rb.translate(1, 0);
     auto msg = chat_window_->get_message_as_message(chat_id_, reply_message_id_);
     if (!msg) {
       rb.erase_yx(0, 0, width());
@@ -98,10 +109,16 @@ void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
           << msg->content_;
       windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
     }
+    rb.untranslate(1, 0);
   }
 }
 
 void ComposeWindow::handle_input(const windows::InputEvent &info) {
+  if (info == "M-m") {
+    enabled_markdown_ = !enabled_markdown_;
+    set_need_refresh();
+    return;
+  }
   editor_window_->handle_input(info);
   auto chat_window = root()->chat_window();
   if (chat_window) {

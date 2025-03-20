@@ -7,6 +7,7 @@
 #include "TdcursesWindowBase.hpp"
 #include "windows/Output.hpp"
 #include "windows/Window.hpp"
+#include "GlobalParameters.hpp"
 #include <memory>
 
 namespace tdcurses {
@@ -16,25 +17,20 @@ class ComposeWindow
     , public TdcursesWindowBase {
  public:
   ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 thread_id,
-                std::string text, ChatWindow *chat_window)
-      : TdcursesWindowBase(root, std::move(root_actor))
-      , chat_id_(chat_id)
-      , thread_id_(thread_id)
-      , chat_window_(chat_window) {
-    editor_window_ = std::make_shared<windows::EditorWindow>(std::move(text), nullptr);
-    add_subwindow(editor_window_, 0, 0);
-    install_callback();
-  }
-  ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 thread_id,
                 std::string text, td::int64 reply_message_id, ChatWindow *chat_window)
       : TdcursesWindowBase(root, std::move(root_actor))
       , chat_id_(chat_id)
       , thread_id_(thread_id)
       , reply_message_id_(reply_message_id)
       , chat_window_(chat_window) {
+    enabled_markdown_ = global_parameters().use_markdown();
     editor_window_ = std::make_shared<windows::EditorWindow>(std::move(text), nullptr);
-    add_subwindow(editor_window_, 0, 0);
+    add_subwindow(editor_window_, 1, 0);
     install_callback();
+  }
+  ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 thread_id,
+                std::string text, ChatWindow *chat_window)
+      : ComposeWindow(root, std::move(root_actor), chat_id, thread_id, std::move(text), 0, chat_window) {
   }
 
   void install_callback();
@@ -44,7 +40,8 @@ class ComposeWindow
 
   void render(windows::WindowOutputter &rb, bool force) override;
   void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
-    editor_window_->resize(reply_message_id_ ? height() - 1 : height(), width());
+    editor_window_->resize(reply_message_id_ ? new_height - 2 : new_height, new_width);
+    editor_window_->move_yx(reply_message_id_ ? 2 : 1, 0);
   }
   bool need_refresh() override {
     return Window::need_refresh() || (editor_window_ && editor_window_->need_refresh());
@@ -59,9 +56,13 @@ class ComposeWindow
   void handle_input(const windows::InputEvent &info) override;
   void set_reply_message_id(td::int64 reply_message_id) {
     reply_message_id_ = reply_message_id;
-    editor_window_->resize(reply_message_id_ ? height() - 1 : height(), width());
-    editor_window_->move_yx(reply_message_id_ ? 1 : 0, 0);
+    editor_window_->resize(reply_message_id_ ? height() - 2 : height() - 1, width());
+    editor_window_->move_yx(reply_message_id_ ? 2 : 1, 0);
     set_need_refresh();
+  }
+
+  td::int32 min_height() override {
+    return 4;
   }
 
  private:
@@ -70,6 +71,7 @@ class ComposeWindow
   td::int64 reply_message_id_{0};
   ChatWindow *chat_window_{nullptr};
   std::shared_ptr<windows::EditorWindow> editor_window_;
+  bool enabled_markdown_;
 };
 
 }  // namespace tdcurses
