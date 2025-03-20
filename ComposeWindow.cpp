@@ -51,6 +51,11 @@ void ComposeWindow::send_message(std::string message) {
     text = td::make_tl_object<td::td_api::formattedText>(message,
                                                          std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
   }
+
+  //messageSendOptions disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
+  auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(!no_sound_, false, false, false, 0, false,
+                                                                         nullptr, 0, 0, false);
+
   //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
   auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, true);
   td::tl_object_ptr<td::td_api::inputMessageReplyToMessage> reply;
@@ -58,8 +63,8 @@ void ComposeWindow::send_message(std::string message) {
     reply = td::make_tl_object<td::td_api::inputMessageReplyToMessage>(reply_message_id_, nullptr);
   }
   //sendMessage chat_id:int53 message_thread_id:int53 reply_to:MessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
-  auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, thread_id_, std::move(reply), nullptr, nullptr,
-                                                         std::move(content));
+  auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, thread_id_, std::move(reply),
+                                                         std::move(send_options), nullptr, std::move(content));
 
   chat_window_->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::message>> R) {
     if (R.is_ok()) {
@@ -95,6 +100,11 @@ void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
     } else {
       out << "[-MARKDOWN] ";
     }
+    if (!no_sound_) {
+      out << Outputter::Bold{true} << "[+SOUND] " << Outputter::Bold{Outputter::ChangeBool::Revert};
+    } else {
+      out << "[-SOUND] ";
+    }
     windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
   }
   if (reply_message_id_) {
@@ -116,6 +126,11 @@ void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
 void ComposeWindow::handle_input(const windows::InputEvent &info) {
   if (info == "M-m") {
     enabled_markdown_ = !enabled_markdown_;
+    set_need_refresh();
+    return;
+  }
+  if (info == "M-s") {
+    no_sound_ = !no_sound_;
     set_need_refresh();
     return;
   }

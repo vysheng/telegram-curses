@@ -72,6 +72,7 @@ class ComposeWindow
   ChatWindow *chat_window_{nullptr};
   std::shared_ptr<windows::EditorWindow> editor_window_;
   bool enabled_markdown_;
+  bool no_sound_{false};
 };
 
 }  // namespace tdcurses
