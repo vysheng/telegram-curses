@@ -40,7 +40,7 @@ class ComposeWindow
 
   void render(windows::WindowOutputter &rb, bool force) override;
   void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
-    editor_window_->resize(reply_message_id_ ? new_height - 2 : new_height, new_width);
+    editor_window_->resize(reply_message_id_ ? new_height - 2 : new_height - 1, new_width);
     editor_window_->move_yx(reply_message_id_ ? 2 : 1, 0);
   }
   bool need_refresh() override {
