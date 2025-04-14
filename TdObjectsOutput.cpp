@@ -340,7 +340,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageInvoice &content) {
-  return out << "[invoice " << content.total_amount_ << content.currency_ << "]";
+  return out << "[invoice " << (content.total_amount_ / 100) << "." << (content.total_amount_ % 100)
+             << content.currency_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageCall &content) {
@@ -486,11 +487,12 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageCustomServiceActi
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageGameScore &content) {
-  return out << "[gamescore]";
+  return out << "[gamescore " << content.score_ << " points]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentSuccessful &content) {
-  return out << "[payment success]";
+  return out << "[payment success " << (content.total_amount_ / 100) << "." << (content.total_amount_ % 100)
+             << content.currency_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentSuccessfulBot &content) {
@@ -498,7 +500,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentSuccessful
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentRefunded &content) {
-  return out << "[payment refunded]";
+  return out << "[payment refunded " << (content.total_amount_ / 100) << "." << (content.total_amount_ % 100)
+             << content.currency_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedPremium &content) {
@@ -538,7 +541,16 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGift &con
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageRefundedUpgradedGift &content) {
-  return out << "[refunden upgraded gift]";
+  return out << "[refunded upgraded gift]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMessagesRefunded &content) {
+  return out << "[refunded paid messages: refunded " << content.star_count_ << " from " << content.message_count_
+             << " messages]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMessagePriceChanged &content) {
+  return out << "[paid message price changed to " << content.paid_message_star_count_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {

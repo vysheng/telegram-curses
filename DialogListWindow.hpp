@@ -102,6 +102,15 @@ class DialogListWindow
   }
 
   template <typename T>
+  void process_update(td::int64 chat_id, T &upd) {
+    chat_manager().process_update(chat_id, upd);
+    auto chat = chat_manager().get_chat(chat_id);
+    if (chat) {
+      change_element(static_cast<Element *>(chat.get()));
+    }
+  }
+
+  template <typename T>
   void process_user_update(T &upd) {
     chat_manager().process_update(upd);
   }

@@ -382,6 +382,13 @@ class TdcursesImpl : public Tdcurses {
     //request_phone_number();
   }
 
+  void process_auth_state(td::td_api::authorizationStateWaitPremiumPurchase &state) {
+    Outputter out;
+    out << "USER MUST BUY PREMIUM TO LOG IN (CAN'T BE DONE IN THIS APP)";
+    out << "STORE PRODUCT ID: " << state.store_product_id_;
+    spawn_popup_view_window(out.as_str(), out.markup(), 3);
+  }
+
   void received_code(td::Result<td::BufferSlice> res) {
     if (res.is_error()) {
       request_code();
@@ -1103,7 +1110,18 @@ class TdcursesImpl : public Tdcurses {
   //@info New information about the topic
   //updateForumTopicInfo chat_id:int53 info:forumTopicInfo = Update;
   void process_update(td::td_api::updateForumTopicInfo &update) {
-    dialog_list_window()->process_update(update);
+    dialog_list_window()->process_update(update.info_->chat_id_, update);
+  }
+
+  //@description Information about a topic in a forum chat was changed
+  //@chat_id Chat identifier
+  //@message_thread_id Message thread identifier of the topic
+  //@is_pinned True, if the topic is pinned in the topic list
+  //@last_read_outbox_message_id Identifier of the last read outgoing message
+  //@notification_settings Notification settings for the topic
+  //updateForumTopic chat_id:int53 message_thread_id:int53 is_pinned:Bool last_read_outbox_message_id:int53 notification_settings:chatNotificationSettings = Update;
+  void process_update(td::td_api::updateForumTopic &update) {
+    //dialog_list_window()->process_update(update);
   }
 
   //@description Notification settings for some type of chats were updated
@@ -1557,6 +1575,25 @@ class TdcursesImpl : public Tdcurses {
   //updateConnectionState state:ConnectionState = Update;
   void process_update(td::td_api::updateConnectionState &update) {
     global_parameters().process_update(update);
+    update_status_line();
+  }
+
+  //@description The freeze state of the current user's account has changed
+  //@is_frozen True, if the account is frozen
+  //@freezing_date Point in time (Unix timestamp) when the account was frozen; 0 if the account isn't frozen
+  //@deletion_date Point in time (Unix timestamp) when the account will be deleted and can't be unfrozen; 0 if the account isn't frozen
+  //@appeal_link The link to open to send an appeal to unfreeze the account
+  //updateFreezeState is_frozen:Bool freezing_date:int32 deletion_date:int32 appeal_link:string = Update;
+  void process_update(td::td_api::updateFreezeState &update) {
+    if (update.is_frozen_) {
+      Outputter out;
+      out << "ACCOUNT IS FROZEN ON " << Outputter::Date{update.freezing_date_} << "\n";
+      out << "ACCOUNT WILL BE DELETED ON " << Outputter::Date{update.deletion_date_} << "\n";
+      out << "APPEAL LINK: " << Outputter::Underline{true} << update.appeal_link_
+          << Outputter::Underline{Outputter::ChangeBool::Revert} << "\n";
+      spawn_popup_view_window(out.as_str(), out.markup(), 3);
+    }
+    //global_parameters().process_update(update);
     update_status_line();
   }
 

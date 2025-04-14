@@ -218,6 +218,8 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageGiveawayPrizeStars &content) {},
             [&](const td::td_api::messageGift &content) {}, [&](const td::td_api::messageUpgradedGift &content) {},
             [&](const td::td_api::messageRefundedUpgradedGift &content) {},
+            [&](const td::td_api::messagePaidMessagesRefunded &content) {},
+            [&](const td::td_api::messagePaidMessagePriceChanged &content) {},
             [&](const td::td_api::messageGiftedStars &content) {},
             [&](const td::td_api::messageContactRegistered &content) {},
             [&](const td::td_api::messageUsersShared &content) {}, [&](const td::td_api::messageChatShared &content) {},

@@ -1,6 +1,7 @@
 #include "ChatWindow.hpp"
 #include "ChatSearchWindow.hpp"
 #include "ErrorWindow.hpp"
+#include "ReactionSelectionWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -109,12 +110,15 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
     set_mode(Mode{ModeDefault{}});
     return;
   } else if (info == "i") {
-    mode_.visit(td::overloaded([&](const ModeDefault &) { root()->open_compose_window(main_chat_id_, 0, 0); },
-                               [&](const ModeSearch &) { root()->open_compose_window(main_chat_id_, 0, 0); },
-                               [&](const ModeComments &m) {
-                                 root()->open_compose_window(m.message_id.chat_id, m.thread_id,
-                                                             m.message_id.message_id);
-                               }));
+    auto chat = chat_manager().get_chat(main_chat_id_);
+    if (chat && chat->permissions() && chat->permissions()->can_send_basic_messages_) {
+      mode_.visit(td::overloaded([&](const ModeDefault &) { root()->open_compose_window(main_chat_id_, 0, 0); },
+                                 [&](const ModeSearch &) { root()->open_compose_window(main_chat_id_, 0, 0); },
+                                 [&](const ModeComments &m) {
+                                   root()->open_compose_window(m.message_id.chat_id, m.thread_id,
+                                                               m.message_id.message_id);
+                                 }));
+    }
     return;
   } else if (info == "q" || info == "Q") {
     if (multi_message_selection_mode_) {
@@ -692,6 +696,9 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
   } else if (info == "I") {
     create_menu_window<MessageInfoWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
                                           message->id_);
+  } else if (info == "L") {
+    create_menu_window<ReactionSelectionWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
+                                                message->id_);
   } else if (info == "y" || info == "Y") {
     if (!chat_window.multi_message_selection_mode()) {
       auto text = message_get_formatted_text(*message);

@@ -774,6 +774,14 @@ class ChatManager {
     }
   }
 
+  template <typename T>
+  void process_update(td::int64 chat_id, T &upd) {
+    auto chat = get_chat(chat_id);
+    if (chat) {
+      chat->process_update(upd);
+    }
+  }
+
   void process_update(td::td_api::updateUser &upd) {
     auto it = users_.find(upd.user_->id_);
     if (it != users_.end()) {
