@@ -455,8 +455,7 @@ class TdcursesImpl : public Tdcurses {
           } else {
             out << Outputter::FgColor{windows::Color::White};
           }
-          out << "\xe2\x96\x88"
-              << "\xe2\x96\x88";
+          out << "\xe2\x96\x88" << "\xe2\x96\x88";
           out << Outputter::FgColor{windows::Color::Revert};
         }
         out << "\n";
@@ -467,7 +466,7 @@ class TdcursesImpl : public Tdcurses {
     class QrWindow : public windows::ViewWindow {
      public:
       QrWindow(std::string text, std::vector<windows::MarkupElement> markup, td::int32 size)
-          : windows::ViewWindow(std::move(text), std::move(markup), nullptr), size_(size) {};
+          : windows::ViewWindow(std::move(text), std::move(markup), nullptr), size_(size){};
 
       td::int32 min_width() override {
         return 2 * size_ + 4;
@@ -2408,7 +2407,7 @@ int main(int argc, char **argv) {
   bool vs16_makes_wide = true;
   bool use_markdown = true;
 
-  bool log_window_enabled = true;
+  bool log_window_enabled = false;
   td::int32 dialog_list_window_width = 10;
   td::int32 log_window_height = 10;
   td::int32 compose_window_height = 10;

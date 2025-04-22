@@ -122,6 +122,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 pkg_search_module(GDKPIXBUF REQUIRED gdk-pixbuf-2.0)
+pkg_search_module(LIBNOTIFY REQUIRED libnotify)
+pkg_search_module(LIBCONFIG REQUIRED libconfig++)
+pkg_search_module(LIBUTF8PROC REQUIRED libutf8proc)
+pkg_search_module(LIBJPEG REQUIRED libjpeg)
+pkg_search_module(LIBICU REQUIRED icu-io icu-uc)
 
 #Compilation database
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -139,6 +144,7 @@ endif (HAVE_PWD_H)
 
 add_subdirectory(td)
 add_subdirectory(third-party/notcurses)
+
 
 add_executable(telegram-curses) 
 
@@ -266,8 +272,8 @@ target_sources(telegram-curses PRIVATE
 
   third-party/qrcodegen/qrcodegen.cpp 
 )
-target_link_libraries(telegram-curses PUBLIC TdStatic tdutils icuio icui18n icuuc icudata config++ utf8proc notcurses-core notcurses notify jpeg ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} )
-target_include_directories(telegram-curses PRIVATE ${CURSES_INCUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${GDKPIXBUF_INCLUDE_DIRS})
+target_link_libraries(telegram-curses PUBLIC TdStatic tdutils notcurses-core notcurses ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} ${LIBNOTIFY_LDFLAGS} ${LIBCONFIG_LDFLAGS} ${LIBUTF8PROC_LDFLAGS} ${LIBJPEG_LDFLAGS} ${LIBICU_LDFLAGS})
+target_include_directories(telegram-curses PRIVATE  ${GDKPIXBUF_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${LIBNOTIFY_INCLUDE_DIRS} ${LIBCONFIG_INCLUDE_DIRS} ${LIBUTF8PROC_INCLUDE_DIRS} ${LIBJPEG_INCLUDE_DIRS} ${LIBICU_INCLUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
