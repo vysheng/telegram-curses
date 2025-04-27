@@ -60,7 +60,7 @@ class RenderedImageNotcurses : public RenderedImage {
     }
     struct ncvgeom geom;
     memset(&geom, 0, sizeof(geom));
-    ncvisual_geom(nc, visual_, nullptr, &geom);
+    CHECK(ncvisual_geom(nc, visual_, nullptr, &geom) >= 0);
     CHECK(geom.cdimy > 0 && geom.cdimx > 0);
 
     struct ncplane *tmp_plane = nullptr;
@@ -113,7 +113,7 @@ class RenderedImageNotcurses : public RenderedImage {
         if (y != (unsigned int)slice_height) {
           memset(&geom, 0, sizeof(geom));
           struct ncvgeom geom;
-          ncvisual_geom(nc, visual_, &opts, &geom);
+          CHECK(ncvisual_geom(nc, visual_, &opts, &geom) >= 0);
           LOG(ERROR) << "opts: origin=" << opts.begy << "x" << opts.begx << " size=" << opts.leny << "x" << opts.lenx;
           LOG(ERROR) << "geom: origin=" << geom.begy << "x" << geom.begx << " size=" << geom.leny << "x" << geom.lenx
                      << " rpix=" << geom.rpixy << "x" << geom.rpixx << " rcell=" << geom.rcelly << "x" << geom.rcellx;
@@ -449,7 +449,7 @@ class WindowOutputterNotcurses : public WindowOutputter {
 
     struct ncvgeom geom;
 
-    ncvisual_geom(nc_, v, &opts, &geom);
+    CHECK(ncvisual_geom(nc_, v, &opts, &geom) >= 0);
 
     if (!image_height || !image_width) {
       if (!geom.pixx || !geom.pixy) {
@@ -499,7 +499,7 @@ class WindowOutputterNotcurses : public WindowOutputter {
 
     struct ncvgeom geom;
 
-    ncvisual_geom(nc_, v, &opts, &geom);
+    CHECK(ncvisual_geom(nc_, v, &opts, &geom) >= 0);
 
     if (!geom.pixx || !geom.pixy) {
       return nullptr;
