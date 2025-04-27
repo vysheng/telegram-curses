@@ -107,7 +107,11 @@ td::tl_object_ptr<td::td_api::file> *message_get_file_object_ref(td::td_api::mes
           [&](td::td_api::messageExpiredVideoNote &content) {}, [&](td::td_api::messageExpiredVoiceNote &content) {},
           [&](td::td_api::messageLocation &content) {}, [&](td::td_api::messageVenue &content) {},
           [&](td::td_api::messageContact &content) {},
-          [&](td::td_api::messageAnimatedEmoji &content) { res = &content.animated_emoji_->sticker_->sticker_; },
+          [&](td::td_api::messageAnimatedEmoji &content) {
+            if (content.animated_emoji_->sticker_) {
+              res = &content.animated_emoji_->sticker_->sticker_;
+            }
+          },
           [&](td::td_api::messageDice &content) {}, [&](td::td_api::messageGame &content) {},
           [&](td::td_api::messagePoll &content) {}, [&](td::td_api::messageStory &content) {},
           [&](td::td_api::messageInvoice &content) {}, [&](td::td_api::messageCall &content) {},

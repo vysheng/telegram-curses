@@ -16,13 +16,13 @@ inline bool eq_source(const td::td_api::ChatList &l, const td::td_api::ChatList 
   }
 
   bool res = false;
-  td::td_api::downcast_call(
+  CHECK(td::td_api::downcast_call(
       const_cast<td::td_api::ChatList &>(l),
       td::overloaded([&](td::td_api::chatListMain &s) { res = true; },
                      [&](td::td_api::chatListArchive &s) { res = true; },
                      [&](td::td_api::chatListFolder &s) {
                        res = (s.chat_folder_id_ == static_cast<const td::td_api::chatListFolder &>(r).chat_folder_id_);
-                     }));
+                     })));
   return res;
 }
 
@@ -39,30 +39,32 @@ class Chat {
     if (!chat_ || !chat_->type_) {
       return ChatType::Unknown;
     }
-    ChatType r;
-    td::td_api::downcast_call(const_cast<td::td_api::ChatType &>(*chat_->type_),
-                              td::overloaded([&](const td::td_api::chatTypePrivate &p) { r = ChatType::User; },
-                                             [&](const td::td_api::chatTypeSecret &p) { r = ChatType::SecretChat; },
-                                             [&](const td::td_api::chatTypeBasicGroup &p) { r = ChatType::Basicgroup; },
-                                             [&](const td::td_api::chatTypeSupergroup &p) {
-                                               if (p.is_channel_) {
-                                                 r = ChatType::Channel;
-                                               } else {
-                                                 r = ChatType::Supergroup;
-                                               }
-                                             }));
+    ChatType r = ChatType::Unknown;
+    CHECK(td::td_api::downcast_call(
+        const_cast<td::td_api::ChatType &>(*chat_->type_),
+        td::overloaded([&](const td::td_api::chatTypePrivate &p) { r = ChatType::User; },
+                       [&](const td::td_api::chatTypeSecret &p) { r = ChatType::SecretChat; },
+                       [&](const td::td_api::chatTypeBasicGroup &p) { r = ChatType::Basicgroup; },
+                       [&](const td::td_api::chatTypeSupergroup &p) {
+                         if (p.is_channel_) {
+                           r = ChatType::Channel;
+                         } else {
+                           r = ChatType::Supergroup;
+                         }
+                       })));
     return r;
   }
   td::int64 chat_base_id() const {
     if (!chat_ || !chat_->type_) {
       return 0;
     }
-    td::int64 r;
-    td::td_api::downcast_call(const_cast<td::td_api::ChatType &>(*chat_->type_),
-                              td::overloaded([&](const td::td_api::chatTypePrivate &p) { r = p.user_id_; },
-                                             [&](const td::td_api::chatTypeSecret &p) { r = p.user_id_; },
-                                             [&](const td::td_api::chatTypeBasicGroup &p) { r = p.basic_group_id_; },
-                                             [&](const td::td_api::chatTypeSupergroup &p) { r = p.supergroup_id_; }));
+    td::int64 r = 0;
+    CHECK(td::td_api::downcast_call(
+        const_cast<td::td_api::ChatType &>(*chat_->type_),
+        td::overloaded([&](const td::td_api::chatTypePrivate &p) { r = p.user_id_; },
+                       [&](const td::td_api::chatTypeSecret &p) { r = p.user_id_; },
+                       [&](const td::td_api::chatTypeBasicGroup &p) { r = p.basic_group_id_; },
+                       [&](const td::td_api::chatTypeSupergroup &p) { r = p.supergroup_id_; })));
     return r;
   }
 

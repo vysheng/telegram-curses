@@ -65,16 +65,16 @@ class RenderedImageNotcurses : public RenderedImage {
 
     struct ncplane *tmp_plane = nullptr;
     if (true) {
-      struct ncplane_options plane_opts{.y = 0,
-                                        .x = 0,
-                                        .rows = (unsigned int)slice_height,
-                                        .cols = (unsigned int)width_,
-                                        .userptr = nullptr,
-                                        .name = nullptr,
-                                        .resizecb = nullptr,
-                                        .flags = NCPLANE_OPTION_FIXED,
-                                        .margin_b = 0,
-                                        .margin_r = 0};
+      struct ncplane_options plane_opts = {.y = 0,
+                                           .x = 0,
+                                           .rows = (unsigned int)slice_height,
+                                           .cols = (unsigned int)width_,
+                                           .userptr = nullptr,
+                                           .name = nullptr,
+                                           .resizecb = nullptr,
+                                           .flags = NCPLANE_OPTION_FIXED,
+                                           .margin_b = 0,
+                                           .margin_r = 0};
       tmp_plane = ncplane_create(baseplane, &plane_opts);
       CHECK(tmp_plane);
       struct ncvisual_options opts = {.n = tmp_plane,
@@ -137,16 +137,16 @@ class RenderedImageNotcurses : public RenderedImage {
                                       .pxoffx = 0};
       plane_ = ncvisual_blit(nc, visual_, &opts);
     } else {
-      struct ncplane_options plane_opts{.y = 0,
-                                        .x = 0,
-                                        .rows = (unsigned int)slice_height,
-                                        .cols = (unsigned int)width_,
-                                        .userptr = nullptr,
-                                        .name = nullptr,
-                                        .resizecb = nullptr,
-                                        .flags = NCPLANE_OPTION_FIXED,
-                                        .margin_b = 0,
-                                        .margin_r = 0};
+      struct ncplane_options plane_opts = {.y = 0,
+                                           .x = 0,
+                                           .rows = (unsigned int)slice_height,
+                                           .cols = (unsigned int)width_,
+                                           .userptr = nullptr,
+                                           .name = nullptr,
+                                           .resizecb = nullptr,
+                                           .flags = NCPLANE_OPTION_FIXED,
+                                           .margin_b = 0,
+                                           .margin_r = 0};
       plane_ = ncplane_create(baseplane, &plane_opts);
       CHECK(plane_);
     }
@@ -451,7 +451,7 @@ class WindowOutputterNotcurses : public WindowOutputter {
 
     ncvisual_geom(nc_, v, &opts, &geom);
 
-    if (!image_height && !image_width) {
+    if (!image_height || !image_width) {
       if (!geom.pixx || !geom.pixy) {
         return {0, 0};
       }
@@ -746,9 +746,11 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
 
     struct ncvgeom geom;
 
-    ncvisual_geom(nc_, v, &opts, &geom);
+    CHECK(ncvisual_geom(nc_, v, &opts, &geom) >= 0);
 
-    if (!image_height && !image_width) {
+    LOG(ERROR) << geom.pixy << " " << geom.pixx << " " << geom.scaley << " " << geom.scalex;
+
+    if (!image_height || !image_width) {
       if (!geom.pixx || !geom.pixy) {
         return {0, 0};
       }
@@ -972,16 +974,16 @@ struct BackendNotcurses : public Backend {
   }
 
   void create_backend_window(std::shared_ptr<Window> window) override {
-    struct ncplane_options plane_opts{.y = 0,
-                                      .x = 0,
-                                      .rows = 1,
-                                      .cols = 1,
-                                      .userptr = nullptr,
-                                      .name = nullptr,
-                                      .resizecb = nullptr,
-                                      .flags = NCPLANE_OPTION_FIXED,
-                                      .margin_b = 0,
-                                      .margin_r = 0};
+    struct ncplane_options plane_opts = {.y = 0,
+                                         .x = 0,
+                                         .rows = 1,
+                                         .cols = 1,
+                                         .userptr = nullptr,
+                                         .name = nullptr,
+                                         .resizecb = nullptr,
+                                         .flags = NCPLANE_OPTION_FIXED,
+                                         .margin_b = 0,
+                                         .margin_r = 0};
     auto plane = ncplane_create(baseplane_, &plane_opts);
     auto bw = std::make_unique<WindowOutputterNotcurses::BackendWindowNotcurses>(plane);
     window->set_backend_window(std::move(bw));
@@ -995,28 +997,25 @@ struct BackendNotcurses : public Backend {
 void init_notcurses_backend(Screen *screen) {
   auto backend = std::make_unique<BackendNotcurses>();
 
-  struct notcurses_options curses_opts{.termtype = NULL,
-                                       .loglevel = NCLOGLEVEL_WARNING,
-                                       .margin_t = 0,
-                                       .margin_r = 0,
-                                       .margin_b = 0,
-                                       .margin_l = 0,
-                                       .flags = NCOPTION_NO_QUIT_SIGHANDLERS};
+  struct notcurses_options curses_opts {
+    .termtype = NULL, .loglevel = NCLOGLEVEL_WARNING, .margin_t = 0, .margin_r = 0, .margin_b = 0, .margin_l = 0,
+    .flags = NCOPTION_NO_QUIT_SIGHANDLERS
+  };
 
   backend->screen_ = screen;
   backend->nc_ = notcurses_init(&curses_opts, NULL);
   backend->baseplane_ = notcurses_stdplane(backend->nc_);
 
-  struct ncplane_options plane_opts{.y = 0,
-                                    .x = 0,
-                                    .rows = (unsigned int)backend->height(),
-                                    .cols = (unsigned int)backend->width(),
-                                    .userptr = nullptr,
-                                    .name = nullptr,
-                                    .resizecb = nullptr,
-                                    .flags = NCPLANE_OPTION_FIXED,
-                                    .margin_b = 0,
-                                    .margin_r = 0};
+  struct ncplane_options plane_opts = {.y = 0,
+                                       .x = 0,
+                                       .rows = (unsigned int)backend->height(),
+                                       .cols = (unsigned int)backend->width(),
+                                       .userptr = nullptr,
+                                       .name = nullptr,
+                                       .resizecb = nullptr,
+                                       .flags = NCPLANE_OPTION_FIXED,
+                                       .margin_b = 0,
+                                       .margin_r = 0};
 
   backend->renderplane_ = ncplane_create(backend->baseplane_, &plane_opts);
   create_empty_window_outputter_notcurses(backend->nc_, backend->baseplane_, backend->renderplane_);
