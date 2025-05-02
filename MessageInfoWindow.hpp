@@ -97,6 +97,7 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_reactions(td::int64 chat_id, td::int64 message_id);
   void add_action_delete_message(td::int64 chat_id, td::int64 message_id);
   void add_action_view_thread(td::int64 chat_id, td::int64 message_id, td::int64 thread_id);
+  void add_action_recognize_speech(td::int64 chat_id, td::int64 messag_id);
 
   void handle_file_update(const td::td_api::updateFile &);
 

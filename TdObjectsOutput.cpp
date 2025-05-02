@@ -790,11 +790,41 @@ Outputter &operator<<(Outputter &out, const td::td_api::video &content) {
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::videoNote &content) {
-  return out << "videonote " << content.video_;
+  out << "videonote " << content.video_;
+
+  if (content.speech_recognition_result_) {
+    out << "\n";
+    td::td_api::downcast_call(
+        const_cast<td::td_api::SpeechRecognitionResult &>(*content.speech_recognition_result_),
+        td::overloaded([&](const td::td_api::speechRecognitionResultText &t) { out << "[ " << t.text_ << " ]"; },
+                       [&](const td::td_api::speechRecognitionResultError &t) {
+                         out << "[ failed to recognize: " << t.error_->message_ << " ]";
+                       },
+                       [&](const td::td_api::speechRecognitionResultPending &t) {
+                         out << "[ " << t.partial_text_ << " ....... " << " ]";
+                       }));
+  }
+
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::voiceNote &content) {
-  return out << "voicenote " << content.voice_;
+  out << "voicenote " << content.voice_;
+
+  if (content.speech_recognition_result_) {
+    out << "\n";
+    td::td_api::downcast_call(
+        const_cast<td::td_api::SpeechRecognitionResult &>(*content.speech_recognition_result_),
+        td::overloaded([&](const td::td_api::speechRecognitionResultText &t) { out << t.text_ << " "; },
+                       [&](const td::td_api::speechRecognitionResultError &t) {
+                         out << "failed to recognize: " << t.error_->message_ << " ";
+                       },
+                       [&](const td::td_api::speechRecognitionResultPending &t) {
+                         out << t.partial_text_ << " ....... " << " ";
+                       }));
+  }
+
+  return out;
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::location &content) {

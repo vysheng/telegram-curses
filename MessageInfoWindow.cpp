@@ -238,6 +238,10 @@ void MessageInfoWindow::process_message() {
                            message_thread_info_->message_thread_id_);
   }
 
+  if (message_properties_->can_recognize_speech_) {
+    add_action_recognize_speech(message_->chat_id_, message_->id_);
+  }
+
   set_need_refresh();
 }
 
@@ -556,6 +560,19 @@ void MessageInfoWindow::add_action_view_thread(td::int64 chat_id, td::int64 mess
     if (w) {
       w->set_comments_mode(ChatWindow::MessageId{chat_id, message_id}, thread_id);
     }
+    return true;
+  });
+}
+
+void MessageInfoWindow::add_action_recognize_speech(td::int64 chat_id, td::int64 message_id) {
+  add_element("recognize audio", "recognize audio", {}, [chat_id, message_id, self = this]() {
+    self->send_request(td::make_tl_object<td::td_api::recognizeSpeech>(chat_id, message_id),
+                       [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                         DROP_IF_DELETED(R);
+                         if (R.is_error()) {
+                           LOG(ERROR) << "failed to start recognizing speech: " << R.move_as_error();
+                         }
+                       });
     return true;
   });
 }
