@@ -166,7 +166,7 @@ void MessageInfoWindow::process_message() {
               }
             },
             [&](const td::td_api::messageStory &content) {}, [&](const td::td_api::messageInvoice &content) {},
-            [&](const td::td_api::messageCall &content) {},
+            [&](const td::td_api::messageCall &content) {}, [&](const td::td_api::messageGroupCall &content) {},
             [&](const td::td_api::messageVideoChatScheduled &content) {},
             [&](const td::td_api::messageVideoChatStarted &content) {},
             [&](const td::td_api::messageVideoChatEnded &content) {},

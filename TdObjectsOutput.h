@@ -48,6 +48,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePoll &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageInvoice &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageCall &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGroupCall &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageVideoChatScheduled &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageVideoChatStarted &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageVideoChatEnded &content);

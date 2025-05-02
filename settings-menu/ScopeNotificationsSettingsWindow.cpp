@@ -12,7 +12,7 @@ namespace tdcurses {
 td::tl_object_ptr<td::td_api::scopeNotificationSettings> ScopeNotificationsSettingsWindow::settings_tl() {
   return td::make_tl_object<td::td_api::scopeNotificationSettings>(
       settings_->mute_for_, settings_->sound_id_, settings_->show_preview_, settings_->use_default_mute_stories_,
-      settings_->mute_stories_, settings_->story_sound_id_, settings_->show_story_sender_,
+      settings_->mute_stories_, settings_->story_sound_id_, settings_->show_story_poster_,
       settings_->disable_pinned_message_notifications_, settings_->disable_mention_notifications_);
 }
 
@@ -150,18 +150,18 @@ void ScopeNotificationsSettingsWindow::build_menu() {
     td::int32 ex = 0;
     for (auto &c : exceptions_->chat_ids_) {
       auto C = chat_manager().get_chat(c);
-      if (C && !C->notification_settins()->use_default_show_story_sender_) {
+      if (C && !C->notification_settins()->use_default_show_story_poster_) {
         ex++;
       }
     }
     Outputter out;
-    out << (settings_->show_story_sender_ ? "YES" : "NO");
+    out << (settings_->show_story_poster_ ? "YES" : "NO");
     out << " (" << ex << " exceptions)";
     add_element("show story sender", out.as_str(), out.markup(),
                 create_menu_window_spawn_function<ChangeScopeNotificationsSettingsWindowBool>(
-                    scope_, &td::td_api::scopeNotificationSettings::show_story_sender_,
-                    &td::td_api::chatNotificationSettings::use_default_show_story_sender_,
-                    &td::td_api::chatNotificationSettings::show_story_sender_));
+                    scope_, &td::td_api::scopeNotificationSettings::show_story_poster_,
+                    &td::td_api::chatNotificationSettings::use_default_show_story_poster_,
+                    &td::td_api::chatNotificationSettings::show_story_poster_));
   }
   {
     td::int32 ex = 0;

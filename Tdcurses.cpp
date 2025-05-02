@@ -1368,6 +1368,22 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateGroupCallParticipant &update) {
   }
 
+  //@description The list of group call participants that can send and receive encrypted call data has changed; for group calls not bound to a chat only
+  //@group_call_id Identifier of the group call
+  //@participant_user_ids New list of group call participant user identifiers. The identifiers may be invalid or the corresponding users may be unknown.
+  //-The participants must be shown in the list of group call participants even there is no information about them
+  //updateGroupCallParticipants group_call_id:int32 participant_user_ids:vector<int64> = Update;
+  void process_update(td::td_api::updateGroupCallParticipants &update) {
+  }
+
+  //@description The verification state of an encrypted group call has changed; for group calls not bound to a chat only
+  //@group_call_id Identifier of group call
+  //@generation The call state generation to which the emoji corresponds
+  //@emojis Group call state fingerprint represented as 4 emoji; may be empty if the state isn't verified yet
+  //updateGroupCallVerificationState group_call_id:int32 generation:int32 emojis:vector<string> = Update;
+  void process_update(td::td_api::updateGroupCallVerificationState &update) {
+  }
+
   //@description New call signaling data arrived
   //@call_id The call identifier
   //@data The data
@@ -1417,19 +1433,17 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateStoryDeleted &update) {
   }
 
-  //@description A story has been successfully sent
-  //@story The sent story
-  //@old_story_id The previous temporary story identifier
-  //updateStorySendSucceeded story:story old_story_id:int32 = Update;
-  void process_update(td::td_api::updateStorySendSucceeded &update) {
+  //@description A story has been successfully posted @story The posted story @old_story_id The previous temporary story identifier
+  //updateStoryPostSucceeded story:story old_story_id:int32 = Update;
+  void process_update(td::td_api::updateStoryPostSucceeded &update) {
   }
 
-  //@description A story failed to send. If the story sending is canceled, then updateStoryDeleted will be received instead of this update
-  //@story The failed to send story
-  //@error The cause of the story sending failure
+  //@description A story failed to post. If the story posting is canceled, then updateStoryDeleted will be received instead of this update
+  //@story The failed to post story
+  //@error The cause of the story posting failure
   //@error_type Type of the error; may be null if unknown
-  //updateStorySendFailed story:story error:error error_type:CanSendStoryResult = Update;
-  void process_update(td::td_api::updateStorySendFailed &update) {
+  //updateStoryPostFailed story:story error:error error_type:CanPostStoryResult = Update;
+  void process_update(td::td_api::updateStoryPostFailed &update) {
   }
 
   //@description The list of active stories posted by a specific chat has changed

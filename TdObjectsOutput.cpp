@@ -358,10 +358,15 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageCall &content) {
                                 [&](const td::td_api::callDiscardReasonHungUp &) {
                                   out << "[call " << td::format::as_time(content.duration_) << "]";
                                 },
-                                [&](const td::td_api::callDiscardReasonAllowGroupCall &) {
+                                [&](const td::td_api::callDiscardReasonUpgradeToGroupCall &) {
                                   out << "[call " << td::format::as_time(content.duration_)
                                       << ", converted to group call]";
                                 }));
+  return out;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageGroupCall &content) {
+  out << "[group call]";
   return out;
 }
 

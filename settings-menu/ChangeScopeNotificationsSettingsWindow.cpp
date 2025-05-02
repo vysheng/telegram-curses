@@ -11,7 +11,7 @@ namespace tdcurses {
 td::tl_object_ptr<td::td_api::scopeNotificationSettings> ChangeScopeNotificationsSettingsWindow::settings_tl() {
   return td::make_tl_object<td::td_api::scopeNotificationSettings>(
       settings_->mute_for_, settings_->sound_id_, settings_->show_preview_, settings_->use_default_mute_stories_,
-      settings_->mute_stories_, settings_->story_sound_id_, settings_->show_story_sender_,
+      settings_->mute_stories_, settings_->story_sound_id_, settings_->show_story_poster_,
       settings_->disable_pinned_message_notifications_, settings_->disable_mention_notifications_);
 }
 
@@ -21,7 +21,7 @@ ChangeScopeNotificationsSettingsWindow::clone_chat_notification_settings(
   return td::make_tl_object<td::td_api::chatNotificationSettings>(
       tl.use_default_mute_for_, tl.mute_for_, tl.use_default_sound_, tl.sound_id_, tl.use_default_show_preview_,
       tl.show_preview_, tl.use_default_mute_stories_, tl.mute_stories_, tl.use_default_story_sound_, tl.story_sound_id_,
-      tl.use_default_show_story_sender_, tl.show_story_sender_, tl.use_default_disable_pinned_message_notifications_,
+      tl.use_default_show_story_poster_, tl.show_story_poster_, tl.use_default_disable_pinned_message_notifications_,
       tl.disable_pinned_message_notifications_, tl.use_default_disable_mention_notifications_,
       tl.disable_mention_notifications_);
 }
