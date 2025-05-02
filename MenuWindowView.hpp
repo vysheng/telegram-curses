@@ -1,3 +1,5 @@
+#pragma once
+
 #include "MenuWindow.hpp"
 #include "windows/ViewWindow.hpp"
 

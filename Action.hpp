@@ -10,6 +10,7 @@
 #include <vector>
 #include "YesNoWindow.hpp"
 #include "LoadingWindow.hpp"
+#include "MenuWindowView.hpp"
 
 namespace tdcurses {
 
@@ -36,30 +37,6 @@ void spawn_yes_no_window_and_loading_windows(T &cur_window, std::string yes_no_t
       },
       yes_no_default_value);
 }
-
-class MenuWindowView
-    : public MenuWindow
-    , public windows::ViewWindow {
- public:
-  MenuWindowView(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::string text,
-                 std::vector<windows::MarkupElement> markup)
-      : MenuWindow(root, root_actor), windows::ViewWindow(std::move(text), std::move(markup), nullptr) {
-    class Cb : public windows::ViewWindow::Callback {
-     public:
-      void on_answer(ViewWindow *window) override {
-        static_cast<MenuWindowView *>(window)->rollback();
-      }
-      void on_abort(ViewWindow *window) override {
-        static_cast<MenuWindowView *>(window)->exit();
-      }
-    };
-    auto cb = std::make_unique<Cb>();
-    set_callback(std::move(cb));
-  }
-  std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow> value) override {
-    return std::static_pointer_cast<MenuWindowView>(std::move(value));
-  }
-};
 
 template <typename T>
 std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<MenuWindowView>> spawn_view_window(

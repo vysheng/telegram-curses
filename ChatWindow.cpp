@@ -2,6 +2,7 @@
 #include "ChatSearchWindow.hpp"
 #include "ErrorWindow.hpp"
 #include "ReactionSelectionWindow.hpp"
+#include "ReactionSelectionWindowNew.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -697,8 +698,8 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
     create_menu_window<MessageInfoWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
                                           message->id_);
   } else if (info == "L") {
-    create_menu_window<ReactionSelectionWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
-                                                message->id_);
+    create_menu_window<ReactionSelectionWindowNew>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
+                                                   message->id_);
   } else if (info == "y" || info == "Y") {
     if (!chat_window.multi_message_selection_mode()) {
       auto text = message_get_formatted_text(*message);

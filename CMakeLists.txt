@@ -229,6 +229,8 @@ target_sources(telegram-curses PRIVATE
   Outputter.hpp
   ReactionSelectionWindow.cpp
   ReactionSelectionWindow.hpp
+  ReactionSelectionWindowNew.cpp
+  ReactionSelectionWindowNew.hpp
   StatusLineWindow.hpp
   StickerManager.cpp
   StickerManager.hpp
