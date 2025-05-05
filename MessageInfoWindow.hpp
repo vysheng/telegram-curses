@@ -5,7 +5,6 @@
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
 #include <memory>
-#include <set>
 
 namespace tdcurses {
 
@@ -14,16 +13,52 @@ class MessageInfoWindow : public MenuWindowCommon {
   MessageInfoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 message_id)
       : MenuWindowCommon(root, std::move(root_actor)), chat_id_(chat_id), message_id_(message_id) {
     request_message();
+    request_message_properties();
   }
 
   ~MessageInfoWindow();
 
   void request_message() {
+    reqs_waiting_++;
     auto req = td::make_tl_object<td::td_api::getMessage>(chat_id_, message_id_);
     send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::message>> R) mutable {
       DROP_IF_DELETED(R);
       self->got_message(std::move(R));
     });
+  }
+
+  void request_message_properties() {
+    reqs_waiting_++;
+    auto req = td::make_tl_object<td::td_api::getMessageProperties>(chat_id_, message_id_);
+    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageProperties>> R) mutable {
+      DROP_IF_DELETED(R);
+      self->got_message_properties(std::move(R));
+    });
+  }
+
+  void request_message_thread() {
+    reqs_waiting_++;
+    auto req = td::make_tl_object<td::td_api::getMessageThread>(chat_id_, message_id_);
+    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageThreadInfo>> R) mutable {
+      DROP_IF_DELETED(R);
+      self->got_message_thread_info(std::move(R));
+    });
+  }
+
+  void request_message_read_date() {
+    reqs_waiting_++;
+    auto req = td::make_tl_object<td::td_api::getMessageReadDate>(chat_id_, message_id_);
+    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::MessageReadDate>> R) mutable {
+      DROP_IF_DELETED(R);
+      self->got_message_read_date(std::move(R));
+    });
+  }
+
+  void req_completed() {
+    reqs_waiting_--;
+    if (!reqs_waiting_) {
+      process_message();
+    }
   }
 
   void got_message(td::Result<td::tl_object_ptr<td::td_api::message>> R) {
@@ -32,11 +67,7 @@ class MessageInfoWindow : public MenuWindowCommon {
       return;
     }
     message_ = R.move_as_ok();
-    auto req = td::make_tl_object<td::td_api::getMessageProperties>(chat_id_, message_id_);
-    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageProperties>> R) mutable {
-      DROP_IF_DELETED(R);
-      self->got_message_properties(std::move(R));
-    });
+    req_completed();
   }
 
   void got_message_properties(td::Result<td::tl_object_ptr<td::td_api::messageProperties>> R) {
@@ -47,15 +78,13 @@ class MessageInfoWindow : public MenuWindowCommon {
 
     message_properties_ = R.move_as_ok();
 
-    if (!message_properties_->can_get_message_thread_) {
-      process_message();
-      return;
+    if (message_properties_->can_get_message_thread_) {
+      request_message_thread();
     }
-    auto req = td::make_tl_object<td::td_api::getMessageThread>(chat_id_, message_id_);
-    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageThreadInfo>> R) mutable {
-      DROP_IF_DELETED(R);
-      self->got_message_thread_info(std::move(R));
-    });
+    if (message_properties_->can_get_read_date_) {
+      request_message_read_date();
+    }
+    req_completed();
   }
 
   void got_message_thread_info(td::Result<td::tl_object_ptr<td::td_api::messageThreadInfo>> R) {
@@ -63,7 +92,15 @@ class MessageInfoWindow : public MenuWindowCommon {
       message_thread_info_ = R.move_as_ok();
     }
 
-    process_message();
+    req_completed();
+  }
+
+  void got_message_read_date(td::Result<td::tl_object_ptr<td::td_api::MessageReadDate>> R) {
+    if (R.is_ok()) {
+      message_read_date_ = R.move_as_ok();
+    }
+
+    req_completed();
   }
 
   void process_message();
@@ -97,15 +134,18 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_reactions(td::int64 chat_id, td::int64 message_id);
   void add_action_delete_message(td::int64 chat_id, td::int64 message_id);
   void add_action_view_thread(td::int64 chat_id, td::int64 message_id, td::int64 thread_id);
-  void add_action_recognize_speech(td::int64 chat_id, td::int64 messag_id);
+  void add_action_recognize_speech(td::int64 chat_id, td::int64 message_id);
+  void add_action_read_date(td::int64 chat_id, td::int64 message_id);
 
   void handle_file_update(const td::td_api::updateFile &);
 
+  td::int32 reqs_waiting_{0};
   td::int64 chat_id_;
   td::int64 message_id_;
   td::tl_object_ptr<td::td_api::message> message_;
   td::tl_object_ptr<td::td_api::messageProperties> message_properties_;
   td::tl_object_ptr<td::td_api::messageThreadInfo> message_thread_info_;
+  td::tl_object_ptr<td::td_api::MessageReadDate> message_read_date_;
   std::map<td::int64, std::pair<td::int64, std::shared_ptr<ElInfo>>> subscription_ids_;
   std::shared_ptr<ElInfo> open_file_el_;
 };

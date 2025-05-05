@@ -8,8 +8,10 @@
 #include "FileManager.hpp"
 #include "TdObjectsOutput.h"
 #include "td/telegram/td_api.h"
+#include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
+#include "td/utils/overloaded.h"
 #include "windows/Markup.hpp"
 #include "windows/unicode.h"
 #include "YesNoWindow.hpp"
@@ -240,6 +242,10 @@ void MessageInfoWindow::process_message() {
 
   if (message_properties_->can_recognize_speech_) {
     add_action_recognize_speech(message_->chat_id_, message_->id_);
+  }
+
+  if (message_read_date_) {
+    add_action_read_date(message_->chat_id_, message_->id_);
   }
 
   set_need_refresh();
@@ -575,6 +581,23 @@ void MessageInfoWindow::add_action_recognize_speech(td::int64 chat_id, td::int64
                        });
     return true;
   });
+}
+
+void MessageInfoWindow::add_action_read_date(td::int64 chat_id, td::int64 message_id) {
+  if (message_read_date_) {
+    Outputter out;
+    td::td_api::downcast_call(
+        *message_read_date_,
+        td::overloaded(
+            [&](td::td_api::messageReadDateRead &f) { out << "read at " << Outputter::Date{f.read_date_}; },
+            [&](td::td_api::messageReadDateTooOld &f) { out << "read long time ago"; },
+            [&](td::td_api::messageReadDateUnread &f) { out << "not yet read"; },
+            [&](td::td_api::messageReadDateUserPrivacyRestricted &f) {
+              out << "restricted by user's privacy settings";
+            },
+            [&](td::td_api::messageReadDateMyPrivacyRestricted &f) { out << "restricted by our privacy settings"; }));
+    add_element("readstate", out.as_str(), out.markup());
+  }
 }
 
 void MessageInfoWindow::handle_file_update(const td::td_api::updateFile &f) {
