@@ -30,6 +30,11 @@ class ChatWindow;
 
 class Outputter {
  public:
+  struct SoftTab {
+    explicit SoftTab(int size) : size(size) {
+    }
+    int size;
+  };
   Outputter() {
     //args_.resize(windows::MarkupElement::Attr::Max);
     bool_stack_.push_back(std::make_unique<ArgListBoolImpl<windows::MarkupElementUnderline>>());
@@ -124,6 +129,8 @@ class Outputter {
     td::td_api::downcast_call(const_cast<T &>(*X), [&](const auto &obj) { *this << obj; });
     return *this;
   }
+
+  Outputter &operator<<(const SoftTab &c);
 
   operator td::CSlice() {
     return sb_.as_cslice();

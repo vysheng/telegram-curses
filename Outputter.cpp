@@ -163,4 +163,11 @@ Outputter &Outputter::operator<<(const UserpicPhotoData &obj) {
   return *this;
 }
 
+Outputter &Outputter::operator<<(const SoftTab &c) {
+  char buf[6];
+  td::uint32 cp = SOFT_TAB_START_CP + (c.size & 0x1f);
+  td::uint32 r = utf8_code_to_str(cp, buf);
+  return *this << td::Slice(buf, buf + r);
+}
+
 }  // namespace tdcurses

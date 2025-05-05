@@ -1,5 +1,5 @@
 #include "MessageInfoWindow.hpp"
-#include "ReactionSelectionWindow.hpp"
+#include "ReactionSelectionWindowNew.hpp"
 #include "ChatManager.hpp"
 #include "ChatWindow.hpp"
 #include "ChatInfoWindow.hpp"
@@ -508,7 +508,7 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
     }
   }
   add_element("reactions", out.as_str(), out.markup(),
-              create_menu_window_spawn_function<ReactionSelectionWindow>(message_->chat_id_, message_->id_));
+              create_menu_window_spawn_function<ReactionSelectionWindowNew>(message_->chat_id_, message_->id_));
 }
 
 void MessageInfoWindow::add_action_reply(td::int64 chat_id, td::int64 message_id) {

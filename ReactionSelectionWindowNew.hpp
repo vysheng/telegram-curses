@@ -40,6 +40,9 @@ class ReactionTypePaid {
   bool operator<(const ReactionTypePaid &other) const {
     return false;
   }
+  bool operator==(const ReactionTypePaid &other) const {
+    return true;
+  }
 };
 
 class ReactionTypeEmoji {
@@ -57,6 +60,9 @@ class ReactionTypeEmoji {
   bool operator<(const ReactionTypeEmoji &other) const {
     return emoji_ < other.emoji_;
   }
+  bool operator==(const ReactionTypeEmoji &other) const {
+    return emoji_ == other.emoji_;
+  }
 
  private:
   std::string emoji_;
@@ -67,6 +73,7 @@ class ReactionTypeCustomEmoji {
   ReactionTypeCustomEmoji(td::int64 emoji_id) : emoji_id_(emoji_id) {
   }
   ReactionTypeCustomEmoji(const td::td_api::reactionTypeCustomEmoji &emoji) : emoji_id_(emoji.custom_emoji_id_) {
+    auto e = sticker_manager().get_custom_emoji(emoji_id_);
   }
   void output(Outputter &out) const {
     auto e = sticker_manager().get_custom_emoji(emoji_id_);
@@ -81,6 +88,9 @@ class ReactionTypeCustomEmoji {
   }
   bool operator<(const ReactionTypeCustomEmoji &other) const {
     return emoji_id_ < other.emoji_id_;
+  }
+  bool operator==(const ReactionTypeCustomEmoji &other) const {
+    return emoji_id_ == other.emoji_id_;
   }
 
  private:
@@ -122,6 +132,18 @@ class ReactionType {
     bool res = false;
 
     value_.visit([&](const auto &f) { res = f < other.value_.get<decltype(f)>(); });
+    return res;
+  }
+
+  bool operator==(const ReactionType &other) const {
+    auto of1 = value_.get_offset();
+    auto of2 = other.value_.get_offset();
+    if (of1 != of2) {
+      return false;
+    }
+    bool res = false;
+
+    value_.visit([&](const auto &f) { res = f == other.value_.get<decltype(f)>(); });
     return res;
   }
 
@@ -171,6 +193,13 @@ class ReactionSelectionWindowNew : public MenuWindowView {
       is_chosen_ = value;
     }
 
+    auto incr_count() {
+      count_++;
+    }
+    auto decr_count() {
+      count_--;
+    }
+
    private:
     ReactionType reaction_;
     td::int32 count_;
@@ -180,9 +209,12 @@ class ReactionSelectionWindowNew : public MenuWindowView {
   std::vector<std::vector<ReactionElement>> elements_;
 
   size_t y_pos_{0}, x_pos_{0};
+  td::uint32 reactions_in_one_row_{1};
 
  private:
   ChatWindow::MessageId message_id_;
+  const td::int32 pad_size = 6;
+  bool has_active_reactions_{false};
 
  public:
   ReactionSelectionWindowNew(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, td::int64 message_id)
@@ -203,6 +235,7 @@ class ReactionSelectionWindowNew : public MenuWindowView {
 
     if (message.interaction_info_ && message.interaction_info_->reactions_ &&
         message.interaction_info_->reactions_->reactions_.size() > 0) {
+      has_active_reactions_ = true;
       elements_.emplace_back();
       for (const auto &reaction : message.interaction_info_->reactions_->reactions_) {
         elements_.back().emplace_back(*reaction->type_, reaction->total_count_, reaction->is_chosen_);
@@ -254,9 +287,14 @@ class ReactionSelectionWindowNew : public MenuWindowView {
   }
 
   void update_text() {
+    reactions_in_one_row_ = std::max(1, width() / pad_size);
     Outputter out;
     for (size_t i = 0; i < elements_.size(); i++) {
       for (size_t j = 0; j < elements_[i].size(); j++) {
+        if (j != 0 && j % reactions_in_one_row_ == 0) {
+          out << "\n";
+        }
+        out << Outputter::SoftTab{pad_size};
         if (i == y_pos_ && j == x_pos_) {
           out << Outputter::Reverse{Outputter::ChangeBool::Enable};
         }
@@ -279,19 +317,22 @@ class ReactionSelectionWindowNew : public MenuWindowView {
       toggle();
       return;
     } else if (info == "h" || info == "T-Left" || info == "C-b") {
-      if (x_pos_ > 0) {
+      if (x_pos_ % reactions_in_one_row_ != 0) {
         x_pos_--;
         update_text();
       }
       return;
     } else if (info == "l" || info == "T-Right" || info == "C-f") {
-      if (x_pos_ + 1 < elements_[y_pos_].size()) {
+      if (x_pos_ + 1 < elements_[y_pos_].size() && (x_pos_ + 1) % reactions_in_one_row_ != 0) {
         x_pos_++;
         update_text();
       }
       return;
     } else if (info == "k" || info == "T-Up") {
-      if (y_pos_ > 0) {
+      if (x_pos_ >= reactions_in_one_row_) {
+        x_pos_ -= reactions_in_one_row_;
+        update_text();
+      } else if (y_pos_ > 0) {
         y_pos_--;
         if (x_pos_ >= elements_[y_pos_].size()) {
           x_pos_ = elements_[y_pos_].size() - 1;
@@ -300,7 +341,10 @@ class ReactionSelectionWindowNew : public MenuWindowView {
       }
       return;
     } else if (info == "j" || info == "T-Down") {
-      if (y_pos_ + 1 < elements_.size()) {
+      if (x_pos_ + reactions_in_one_row_ < elements_[y_pos_].size()) {
+        x_pos_ += reactions_in_one_row_;
+        update_text();
+      } else if (y_pos_ + 1 < elements_.size()) {
         y_pos_++;
         if (x_pos_ >= elements_[y_pos_].size()) {
           x_pos_ = elements_[y_pos_].size() - 1;
@@ -313,16 +357,38 @@ class ReactionSelectionWindowNew : public MenuWindowView {
   }
 
   void toggle() {
-    auto tl = elements_[y_pos_][x_pos_].get_tl();
-    bool is_chosen = elements_[y_pos_][x_pos_].is_chosen();
+    auto &el = elements_[y_pos_][x_pos_];
+    auto tl = el.get_tl();
+    bool is_chosen = el.is_chosen();
     if (!is_chosen) {
       auto req = td::make_tl_object<td::td_api::addMessageReaction>(message_id_.chat_id, message_id_.message_id,
                                                                     std::move(tl), false, true);
       send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
       for (auto &e_l : elements_) {
         for (auto &e : e_l) {
-          e.set_chosen(true);
+          if (e.reaction() == el.reaction()) {
+            e.set_chosen(true);
+          }
         }
+      }
+
+      if (!has_active_reactions_) {
+        elements_.insert(elements_.begin(), {});
+        has_active_reactions_ = true;
+        y_pos_++;
+      }
+
+      bool found = false;
+      for (auto &e : elements_[0]) {
+        if (e.reaction() == el.reaction()) {
+          found = true;
+          e.incr_count();
+          break;
+        }
+      }
+
+      if (!found) {
+        elements_[0].emplace_back(*el.get_tl(), 1, true);
       }
     } else {
       auto req = td::make_tl_object<td::td_api::removeMessageReaction>(message_id_.chat_id, message_id_.message_id,
@@ -330,10 +396,26 @@ class ReactionSelectionWindowNew : public MenuWindowView {
       send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
       for (auto &e_l : elements_) {
         for (auto &e : e_l) {
-          e.set_chosen(true);
+          if (e.reaction() == elements_[y_pos_][x_pos_].reaction()) {
+            e.set_chosen(false);
+          }
         }
       }
+
+      CHECK(has_active_reactions_);
+      bool found = false;
+      for (auto &e : elements_[0]) {
+        if (e.reaction() == el.reaction()) {
+          found = true;
+          e.decr_count();
+          break;
+        }
+      }
+
+      CHECK(found);
     }
+
+    update_text();
   }
 };
 
