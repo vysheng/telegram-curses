@@ -16,6 +16,7 @@
 #include "windows/unicode.h"
 #include "YesNoWindow.hpp"
 #include "LoadingWindow.hpp"
+#include "MenuWindowView.hpp"
 #include <utility>
 #include <vector>
 
@@ -248,6 +249,9 @@ void MessageInfoWindow::process_message() {
     add_action_read_date(message_->chat_id_, message_->id_);
   }
 
+  if (message_viewers_) {
+    add_action_message_viewers(message_->chat_id_, message_->id_);
+  }
   set_need_refresh();
 }
 
@@ -597,6 +601,25 @@ void MessageInfoWindow::add_action_read_date(td::int64 chat_id, td::int64 messag
             },
             [&](td::td_api::messageReadDateMyPrivacyRestricted &f) { out << "restricted by our privacy settings"; }));
     add_element("readstate", out.as_str(), out.markup());
+  }
+}
+
+void MessageInfoWindow::add_action_message_viewers(td::int64 chat_id, td::int64 message_id) {
+  if (message_viewers_) {
+    Outputter out;
+    for (auto &v : message_viewers_->viewers_) {
+      auto U = chat_manager().get_user(v->user_id_);
+      if (U) {
+        out << Color::Red << U << Color::Revert << " viewed at " << Outputter::Date{v->view_date_} << TLBR;
+      }
+    }
+    Outputter out2;
+    out2 << message_viewers_->viewers_.size() << " members" << Outputter::RightPad{"<view>"};
+    add_element("viewed_by", out2.as_str(), out2.markup(),
+                [str = out.as_str(), markup = out.markup(), self = this]() -> bool {
+                  self->spawn_submenu<MenuWindowView>(str, markup);
+                  return false;
+                });
   }
 }
 

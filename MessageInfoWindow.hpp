@@ -54,6 +54,15 @@ class MessageInfoWindow : public MenuWindowCommon {
     });
   }
 
+  void request_message_viewers() {
+    reqs_waiting_++;
+    auto req = td::make_tl_object<td::td_api::getMessageViewers>(chat_id_, message_id_);
+    send_request(std::move(req), [self = this](td::Result<td::tl_object_ptr<td::td_api::messageViewers>> R) mutable {
+      DROP_IF_DELETED(R);
+      self->got_message_viewers(std::move(R));
+    });
+  }
+
   void req_completed() {
     reqs_waiting_--;
     if (!reqs_waiting_) {
@@ -84,6 +93,9 @@ class MessageInfoWindow : public MenuWindowCommon {
     if (message_properties_->can_get_read_date_) {
       request_message_read_date();
     }
+    if (message_properties_->can_get_viewers_) {
+      request_message_viewers();
+    }
     req_completed();
   }
 
@@ -98,6 +110,14 @@ class MessageInfoWindow : public MenuWindowCommon {
   void got_message_read_date(td::Result<td::tl_object_ptr<td::td_api::MessageReadDate>> R) {
     if (R.is_ok()) {
       message_read_date_ = R.move_as_ok();
+    }
+
+    req_completed();
+  }
+
+  void got_message_viewers(td::Result<td::tl_object_ptr<td::td_api::messageViewers>> R) {
+    if (R.is_ok()) {
+      message_viewers_ = R.move_as_ok();
     }
 
     req_completed();
@@ -136,6 +156,7 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_view_thread(td::int64 chat_id, td::int64 message_id, td::int64 thread_id);
   void add_action_recognize_speech(td::int64 chat_id, td::int64 message_id);
   void add_action_read_date(td::int64 chat_id, td::int64 message_id);
+  void add_action_message_viewers(td::int64 chat_id, td::int64 message_id);
 
   void handle_file_update(const td::td_api::updateFile &);
 
@@ -146,6 +167,7 @@ class MessageInfoWindow : public MenuWindowCommon {
   td::tl_object_ptr<td::td_api::messageProperties> message_properties_;
   td::tl_object_ptr<td::td_api::messageThreadInfo> message_thread_info_;
   td::tl_object_ptr<td::td_api::MessageReadDate> message_read_date_;
+  td::tl_object_ptr<td::td_api::messageViewers> message_viewers_;
   std::map<td::int64, std::pair<td::int64, std::shared_ptr<ElInfo>>> subscription_ids_;
   std::shared_ptr<ElInfo> open_file_el_;
 };

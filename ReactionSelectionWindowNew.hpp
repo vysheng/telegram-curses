@@ -73,7 +73,6 @@ class ReactionTypeCustomEmoji {
   ReactionTypeCustomEmoji(td::int64 emoji_id) : emoji_id_(emoji_id) {
   }
   ReactionTypeCustomEmoji(const td::td_api::reactionTypeCustomEmoji &emoji) : emoji_id_(emoji.custom_emoji_id_) {
-    auto e = sticker_manager().get_custom_emoji(emoji_id_);
   }
   void output(Outputter &out) const {
     auto e = sticker_manager().get_custom_emoji(emoji_id_);

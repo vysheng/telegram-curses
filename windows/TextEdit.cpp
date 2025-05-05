@@ -549,6 +549,10 @@ class TextEditBuilder {
     }
   }
 
+  void soft_lb() {
+    soft_lb_ = true;
+  }
+
  private:
   WindowOutputter &rb_;
   td::int32 width_;
@@ -619,6 +623,8 @@ td::int32 TextEdit::render(WindowOutputter &rb, td::int32 width, td::Slice text,
       builder.pad_right(x.first_codepoint - RIGHT_ALIGN_BLOCK_START, cur_pos == pos);
     } else if (x.first_codepoint == SOFT_LINE_BREAK_CP) {
       builder.cond_start_new_line();
+    } else if (x.first_codepoint == TRIMMABLE_LINE_BREAK_CP) {
+      builder.soft_lb();
     } else if (x.first_codepoint >= SOFT_TAB_START_CP && x.first_codepoint <= SOFT_TAB_END_CP) {
       builder.soft_tab(x.first_codepoint - SOFT_TAB_START_CP);
     } else if (x.width >= 0) {
