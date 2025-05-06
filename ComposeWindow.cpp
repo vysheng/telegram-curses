@@ -52,6 +52,20 @@ void ComposeWindow::send_message(std::string message) {
                                                          std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
   }
 
+  if (edit_message_id_) {
+    //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
+    auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, true);
+    auto req = td::make_tl_object<td::td_api::editMessageText>(chat_id_, edit_message_id_, nullptr, std::move(content));
+    chat_window_->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::message>> R) {
+      if (R.is_ok()) {
+        chat_window_->process_update_sent_message(R.move_as_ok());
+      }
+    });
+    editor_window_->clear();
+    edit_message_id_ = 0;
+    return;
+  }
+
   //messageSendOptions disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
   auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(!no_sound_, false, false, false, 0, false,
                                                                          nullptr, 0, 0, false);

@@ -694,6 +694,10 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
     }
   } else if (info == "r") {
     chat_window.root()->open_compose_window(chat_window.main_chat_id(), 0, message_id().message_id);
+  } else if (info == "e") {
+    if (message->is_outgoing_ && message->content_->get_id() == td::td_api::messageText::ID) {
+      chat_window.root()->open_edit_window(message_id().chat_id, message_id().message_id);
+    }
   } else if (info == "I") {
     create_menu_window<MessageInfoWindow>(chat_window.root(), chat_window.root_actor_id(), message->chat_id_,
                                           message->id_);

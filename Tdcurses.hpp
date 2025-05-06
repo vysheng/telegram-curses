@@ -10,6 +10,7 @@
 #include "td/generate/auto/td/telegram/td_api.h"
 #include "td/actor/PromiseFuture.h"
 #include "td/tl/TlObject.h"
+#include "td/telegram/SynchronousRequests.h"
 
 #include <memory>
 #include <vector>
@@ -71,6 +72,20 @@ class TdcursesInterface : public td::Actor {
     auto Q = create_promise<RetTlType>(std::move(P));
     td::send_closure(aid, &TdcursesInterface::do_send_request,
                      td::move_tl_object_as<td::td_api::Function>(std::move(func)), std::move(Q));
+  }
+
+  template <class T>
+  typename td::Result<typename T::ReturnType> run_request_sync(td::tl_object_ptr<T> func) {
+    using RetType = typename T::ReturnType;
+    using RetTlType = typename RetType::element_type;
+    CHECK(td::SynchronousRequests::is_synchronous_request(func.get()));
+    auto res = td::SynchronousRequests::run_request(std::move(func));
+    if (res->get_id() == td::td_api::error::ID) {
+      auto err = td::move_tl_object_as<td::td_api::error>(std::move(res));
+      return td::Status::Error(err->code_, err->message_);
+    } else {
+      return td::move_tl_object_as<RetTlType>(std::move(res));
+    }
   }
 
   virtual void do_send_request(td::tl_object_ptr<td::td_api::Function> func,
@@ -179,6 +194,7 @@ class Tdcurses : public TdcursesInterface {
   void open_chat(td::int64 chat_id);
   void seek_chat(td::int64 chat_id, td::int64 message_id);
   void open_compose_window(td::int64 chat_id, td::int64 thread_id, td::int64 message_id);
+  void open_edit_window(td::int64 chat_id, td::int64 message_id);
   void close_compose_window();
 
   void show_config_window();

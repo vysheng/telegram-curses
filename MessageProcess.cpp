@@ -1,4 +1,5 @@
 #include "MessageProcess.hpp"
+#include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/overloaded.h"
@@ -164,6 +165,43 @@ const td::td_api::file *message_get_file(const td::td_api::message &message) {
   } else {
     return nullptr;
   }
+}
+
+td::tl_object_ptr<td::td_api::textEntityTypePreCode> clone_tl_object(const td::td_api::textEntityTypePreCode &obj) {
+  //textEntityTypePreCode language:string = TextEntityType;
+  return td::make_tl_object<td::td_api::textEntityTypePreCode>(obj.language_);
+}
+
+td::tl_object_ptr<td::td_api::textEntityTypeTextUrl> clone_tl_object(const td::td_api::textEntityTypeTextUrl &obj) {
+  //textEntityTypeTextUrl url:string = TextEntityType;
+  return td::make_tl_object<td::td_api::textEntityTypeTextUrl>(obj.url_);
+}
+td::tl_object_ptr<td::td_api::textEntityTypeMentionName> clone_tl_object(
+    const td::td_api::textEntityTypeMentionName &obj) {
+  //textEntityTypeMentionName user_id:int53 = TextEntityType;
+  return td::make_tl_object<td::td_api::textEntityTypeMentionName>(obj.user_id_);
+}
+
+td::tl_object_ptr<td::td_api::textEntityTypeCustomEmoji> clone_tl_object(
+    const td::td_api::textEntityTypeCustomEmoji &obj) {
+  //textEntityTypeCustomEmoji custom_emoji_id:int64 = TextEntityType;
+  return td::make_tl_object<td::td_api::textEntityTypeCustomEmoji>(obj.custom_emoji_id_);
+}
+
+td::tl_object_ptr<td::td_api::textEntityTypeMediaTimestamp> clone_tl_object(
+    const td::td_api::textEntityTypeMediaTimestamp &obj) {
+  //textEntityTypeMediaTimestamp media_timestamp:int32 = TextEntityType;
+  return td::make_tl_object<td::td_api::textEntityTypeMediaTimestamp>(obj.media_timestamp_);
+}
+
+td::tl_object_ptr<td::td_api::textEntity> clone_tl_object(const td::td_api::textEntity &obj) {
+  //textEntity offset:int32 length:int32 type:TextEntityType = TextEntity;
+  return td::make_tl_object<td::td_api::textEntity>(obj.offset_, obj.length_, clone_tl_object(*obj.type_));
+}
+
+td::tl_object_ptr<td::td_api::formattedText> clone_tl_object(const td::td_api::formattedText &obj) {
+  //formattedText text:string entities:vector<textEntity> = FormattedText;
+  return td::make_tl_object<td::td_api::formattedText>(obj.text_, clone_tl_object(obj.entities_));
 }
 
 }  // namespace tdcurses

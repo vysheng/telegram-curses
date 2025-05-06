@@ -56,6 +56,7 @@
 #include "FileSelectionWindow.hpp"
 #include "YesNoWindow.hpp"
 #include "NotificationManager.hpp"
+#include "MessageProcess.hpp"
 
 #include "qrcodegen/qrcodegen.hpp"
 
@@ -2132,8 +2133,44 @@ void Tdcurses::open_compose_window(td::int64 chat_id, td::int64 thread_id, td::i
 
   //ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text)
   compose_window_ =
-      std::make_shared<ComposeWindow>(this, actor_id(this), chat_id, thread_id, chat_window_->draft_message_text(),
-                                      reply_message_id, chat_window_.get());
+      std::make_shared<ComposeWindow>(this, actor_id(this), ComposeWindow::ComposeMode{}, chat_id, thread_id,
+                                      chat_window_->draft_message_text(), reply_message_id, chat_window_.get());
+  layout_->replace_compose_window(compose_window_);
+  layout_->activate_subwindow(compose_window_);
+}
+
+void Tdcurses::open_edit_window(td::int64 chat_id, td::int64 message_id) {
+  if (!chat_window_) {
+    return;
+  }
+
+  auto m = chat_window_->get_message(ChatWindow::MessageId(chat_id, message_id));
+  if (!m) {
+    return;
+  }
+
+  if (!m->message->content_ || m->message->content_->get_id() != td::td_api::messageText::ID) {
+    return;
+  }
+
+  auto ftext = clone_tl_object(*static_cast<const td::td_api::messageText &>(*m->message->content_).text_);
+
+  auto R = run_request_sync(td::make_tl_object<td::td_api::getMarkdownText>(std::move(ftext)));
+
+  if (R.is_error()) {
+    return;
+  }
+
+  auto text = R.move_as_ok()->text_;
+
+  /*if (chat_window_->main_chat_id() != chat_id) {
+    chat_id = 0;
+    reply_message_id = 0;
+  }*/
+
+  //ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, td::int64 chat_id, std::string text)
+  compose_window_ = std::make_shared<ComposeWindow>(this, actor_id(this), ComposeWindow::EditMode{}, chat_id,
+                                                    message_id, text, chat_window_.get());
   layout_->replace_compose_window(compose_window_);
   layout_->activate_subwindow(compose_window_);
 }
