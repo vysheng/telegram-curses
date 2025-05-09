@@ -74,6 +74,7 @@ class ChatInfoWindow : public MenuWindowCommon {
   void add_bot_info_option(const td::tl_object_ptr<td::td_api::botInfo> &info);
   void add_common_groups_option(td::int32 count);
   void add_chat_photo_option(const td::tl_object_ptr<td::td_api::chatPhoto> &photo);
+  void add_user_photo_option(td::int64 user_id);
   void add_personal_chat_option(td::int64 chat_id);
   void add_birthdate_option(const td::tl_object_ptr<td::td_api::birthdate> &birthdate);
   void add_chat_member_status_option(const td::tl_object_ptr<td::td_api::ChatMemberStatus> &status);

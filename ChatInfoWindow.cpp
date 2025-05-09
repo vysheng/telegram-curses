@@ -3,6 +3,7 @@
 #include "ChatInfoWindow.hpp"
 #include "CommonGroupsWindow.hpp"
 #include "ChatPhotoWindow.hpp"
+#include "ChatPhotoListWindow.hpp"
 #include "GroupMembersWindow.hpp"
 #include "FieldEditWindow.hpp"
 #include "GlobalParameters.hpp"
@@ -316,13 +317,25 @@ void ChatInfoWindow::add_chat_photo_option(const td::tl_object_ptr<td::td_api::c
   }
   auto &photo_size = photo->sizes_.back();
   Outputter out;
-  out << *photo << Outputter::RightPad{"<view>"};
+  out << "photo" << Outputter::RightPad{"<view>"};
   add_element("photo", out.as_str(), out.markup(),
               [photo = photo_size->photo_.get(), height = photo_size->height_,
                width = photo_size->width_](MenuWindowCommon &w) -> bool {
                 w.spawn_submenu<ChatPhotoWindow>(clone_td_file(*photo), height, width);
                 return false;
               });
+}
+
+void ChatInfoWindow::add_user_photo_option(td::int64 user_id) {
+  if (!user_id) {
+    return;
+  }
+  Outputter out;
+  out << "all user photos" << Outputter::RightPad{"<view>"};
+  add_element("photos", out.as_str(), out.markup(), [user_id](MenuWindowCommon &w) -> bool {
+    w.spawn_submenu<ChatPhotoListWindow>(user_id, 200, 200);
+    return false;
+  });
 }
 
 void ChatInfoWindow::add_personal_chat_option(td::int64 chat_id) {
@@ -477,6 +490,7 @@ void ChatInfoWindow::generate_info() {
         add_bot_info_option(user_full_->bot_info_);
         add_common_groups_option(user_full_->group_in_common_count_);
         add_chat_photo_option(user_full_->photo_);
+        add_user_photo_option(user->user_id());
         add_personal_chat_option(user_full_->personal_chat_id_);
         add_birthdate_option(user_full_->birthdate_);
       }
