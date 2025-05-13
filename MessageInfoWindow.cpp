@@ -252,6 +252,11 @@ void MessageInfoWindow::process_message() {
   if (message_viewers_) {
     add_action_message_viewers(message_->chat_id_, message_->id_);
   }
+
+  if (message_properties_ && message_properties_->can_get_link_) {
+    add_action_get_message_link(message_->chat_id_, message_->id_);
+  }
+
   set_need_refresh();
 }
 
@@ -621,6 +626,27 @@ void MessageInfoWindow::add_action_message_viewers(td::int64 chat_id, td::int64 
                   return false;
                 });
   }
+}
+
+void MessageInfoWindow::add_action_get_message_link(td::int64 chat_id, td::int64 message_id) {
+  Outputter out;
+  out << "generate link" << Outputter::RightPad{"<view>"};
+  add_element("link", out.as_str(), out.markup(), [chat_id, message_id, self = this]() -> bool {
+    self->send_request(td::make_tl_object<td::td_api::getMessageLink>(chat_id, message_id, 0, false, false),
+                       [self](td::Result<td::tl_object_ptr<td::td_api::messageLink>> R) {
+                         DROP_IF_DELETED(R);
+                         if (R.is_error()) {
+                           LOG(ERROR) << "failed to get link: " << R.move_as_error();
+                         } else {
+                           auto r = R.move_as_ok();
+                           Outputter out;
+                           out << "link: " << Outputter::Underline{true} << r->link_ << Outputter::Underline{false}
+                               << " is_public: " << r->is_public_;
+                           self->spawn_submenu<MenuWindowView>(out.as_str(), out.markup());
+                         }
+                       });
+    return false;
+  });
 }
 
 void MessageInfoWindow::handle_file_update(const td::td_api::updateFile &f) {

@@ -157,6 +157,7 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_recognize_speech(td::int64 chat_id, td::int64 message_id);
   void add_action_read_date(td::int64 chat_id, td::int64 message_id);
   void add_action_message_viewers(td::int64 chat_id, td::int64 message_id);
+  void add_action_get_message_link(td::int64 chat_id, td::int64 message_id);
 
   void handle_file_update(const td::td_api::updateFile &);
 
