@@ -227,6 +227,8 @@ target_sources(telegram-curses PRIVATE
   NotificationManager.hpp
   Outputter.cpp
   Outputter.hpp
+  PollWindow.cpp
+  PollWindow.hpp
   ReactionSelectionWindow.cpp
   ReactionSelectionWindow.hpp
   ReactionSelectionWindowNew.cpp

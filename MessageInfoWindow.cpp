@@ -17,6 +17,7 @@
 #include "YesNoWindow.hpp"
 #include "LoadingWindow.hpp"
 #include "MenuWindowView.hpp"
+#include "PollWindow.hpp"
 #include <utility>
 #include <vector>
 
@@ -162,11 +163,12 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageContact &content) {}, [&](const td::td_api::messageAnimatedEmoji &content) {},
             [&](const td::td_api::messageDice &content) {}, [&](const td::td_api::messageGame &content) {},
             [&](const td::td_api::messagePoll &content) {
-              td::int32 idx = 0;
+              add_action_poll(message_->chat_id_, message_->id_);
+              /*td::int32 idx = 0;
               for (const auto &opt : content.poll_->options_) {
                 add_action_poll(message_->chat_id_, message_->id_, *opt->text_,
                                 opt->is_chosen_ || opt->is_being_chosen_, idx++);
-              }
+              }*/
             },
             [&](const td::td_api::messageStory &content) {}, [&](const td::td_api::messageInvoice &content) {},
             [&](const td::td_api::messageCall &content) {}, [&](const td::td_api::messageGroupCall &content) {},
@@ -417,6 +419,15 @@ void MessageInfoWindow::add_action_message_goto(td::int64 chat_id, td::int64 mes
       self->root()->chat_window()->seek(message_full_id);
     }
     return true;
+  });
+}
+
+void MessageInfoWindow::add_action_poll(td::int64 chat_id, td::int64 message_id) {
+  Outputter out;
+  out << "answer" << Outputter::RightPad{"<view>"};
+  add_element("poll", out.as_str(), out.markup(), [chat_id, message_id, self = this]() {
+    self->spawn_submenu<PollWindow>(chat_id, message_id);
+    return false;
   });
 }
 

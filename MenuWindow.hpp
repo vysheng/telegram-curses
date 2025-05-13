@@ -83,6 +83,19 @@ class MenuWindow : public TdcursesWindowBase {
     return res;
   }
 
+  std::shared_ptr<MenuWindow> replace_submenu(std::shared_ptr<MenuWindow> res) {
+    auto self_ref = history_.back();
+    history_.pop_back();
+    history_.push_back(res);
+    res->update_history(std::move(history_));
+    auto boxed = create_boxed_window(res);
+    res->on_install();
+    res->root()->add_popup_window(boxed, 3);
+    res->root()->del_popup_window(bordered_.get());
+    bordered_ = nullptr;
+    return res;
+  }
+
   bool menu_window_handle_input(const windows::InputEvent &info) {
     if (info == "T-Escape") {
       handle_rollback();
@@ -108,6 +121,13 @@ class MenuWindow : public TdcursesWindowBase {
   std::shared_ptr<T> spawn_submenu(ArgsT &&...args) {
     auto res = std::make_shared<T>(root(), root_actor_id(), std::forward<ArgsT>(args)...);
     spawn_submenu(res);
+    return res;
+  }
+
+  template <typename T, typename... ArgsT>
+  std::shared_ptr<T> replace_submenu(ArgsT &&...args) {
+    auto res = std::make_shared<T>(root(), root_actor_id(), std::forward<ArgsT>(args)...);
+    replace_submenu(res);
     return res;
   }
 

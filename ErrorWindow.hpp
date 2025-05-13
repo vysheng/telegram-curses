@@ -67,6 +67,32 @@ std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<ErrorWin
 }
 
 template <typename T>
+std::enable_if_t<std::is_base_of<MenuWindow, T>::value, std::shared_ptr<ErrorWindow>> spawn_replace_error_window(
+    T &cur_window, std::string text, std::vector<windows::MarkupElement> markup = {}) {
+  class Cb : public ErrorWindow::Callback {
+   public:
+    Cb(T *win) : self_(win), self_id_(win->window_unique_id()) {
+    }
+    void on_abort(ErrorWindow &w) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+      }
+    }
+    void on_answer(ErrorWindow &w) override {
+      if (w.root()->window_exists(self_id_)) {
+        w.rollback();
+      }
+    }
+
+   private:
+    T *self_;
+    td::int64 self_id_;
+  };
+  auto callback = std::make_unique<Cb>(&cur_window);
+  return cur_window.template spawn_submenu<ErrorWindow>(text, markup, std::move(callback));
+}
+
+template <typename T>
 std::enable_if_t<!std::is_base_of<MenuWindow, T>::value && std::is_base_of<TdcursesWindowBase, T>::value,
                  std::shared_ptr<ErrorWindow>>
 spawn_error_window(T &cur_window, std::string text, std::vector<windows::MarkupElement> markup) {

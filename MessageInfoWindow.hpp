@@ -136,6 +136,7 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_search_pattern(std::string pattern);
   void add_action_message_goto(td::int64 chat_id, td::int64 message_id, const td::td_api::message *message);
   void add_action_message_debug_info(td::int64 chat_id, td::int64 message_id, const td::td_api::message *message);
+  void add_action_poll(td::int64 chat_id, td::int64 message_id);
   void add_action_poll(td::int64 chat_id, td::int64 message_id, const td::td_api::formattedText &text, bool is_selected,
                        td::int32 idx);
   void add_action_forward(td::int64 chat_id, td::int64 message_id);
