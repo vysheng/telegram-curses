@@ -252,6 +252,14 @@ class GlobalParameters {
     return "C-a";
   }
 
+  void set_default_dir(std::string default_dir) {
+    default_dir_ = std::move(default_dir);
+  }
+
+  const auto &default_dir() const {
+    return default_dir_;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -290,6 +298,8 @@ class GlobalParameters {
 
   std::string tdlib_version_;
   std::string backend_type_;
+
+  std::string default_dir_;
 };
 
 extern GlobalParameters &global_parameters();

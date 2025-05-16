@@ -748,14 +748,10 @@ class WindowOutputterEmptyNotcurses : public WindowOutputter {
 
     CHECK(ncvisual_geom(nc_, v, &opts, &geom) >= 0);
 
-    LOG(ERROR) << geom.pixy << " " << geom.pixx << " " << geom.scaley << " " << geom.scalex;
-
     if (!image_height || !image_width) {
-      if (!geom.pixx || !geom.pixy) {
-        return {0, 0};
-      }
-      image_height = geom.pixy;
-      image_width = geom.pixx;
+      /* we do not want to open file here */
+      image_height = 10;
+      image_width = 10;
     }
 
     max_height *= geom.scaley;

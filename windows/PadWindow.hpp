@@ -13,6 +13,10 @@ namespace windows {
 
 class PadWindow;
 
+static constexpr td::int32 max_item_height() {
+  return 10000;
+}
+
 class PadWindowElement {
  public:
   virtual ~PadWindowElement() = default;

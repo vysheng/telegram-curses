@@ -4,7 +4,7 @@
 #include "GlobalParameters.hpp"
 #include "td/telegram/PromoDataManager.h"
 #include "td/utils/Promise.h"
-#include "td/utils/Slice-decl.h"
+#include "td/utils/Slice.h"
 #include "td/utils/Status.h"
 #include "td/utils/format.h"
 #include "td/utils/port/path.h"
@@ -23,11 +23,14 @@ class FileSelectionWindow : public MenuWindowPad {
     virtual ~Callback() = default;
     virtual void on_abort(FileSelectionWindow &) = 0;
     virtual void on_answer(FileSelectionWindow &, std::string answer) = 0;
+    virtual bool allow_file(td::Slice path, const FileInfo &info) {
+      return true;
+    }
   };
 
   FileSelectionWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::shared_ptr<Callback> callback = nullptr)
       : MenuWindowPad(root, root_actor), callback_(std::move(callback)) {
-    change_folder("/");
+    change_folder(global_parameters().default_dir());
   }
   class Element : public windows::PadWindowElement {
    public:
@@ -98,9 +101,62 @@ class FileSelectionWindow : public MenuWindowPad {
     SortMode sort_mode_;
   };
 
+  std::string uniformize_path(std::string path) {
+    auto S = td::Slice(path);
+    td::int32 back = 0;
+    while (true) {
+      if (S == "") {
+        S = "./";
+        break;
+      }
+      if (S == "/") {
+        return "/";
+      }
+      if (S.back() == '/') {
+        S.remove_suffix(1);
+        continue;
+      }
+      auto x = S.rfind('/');
+      if (x == td::Slice::npos) {
+        if (back > 0) {
+          back--;
+          S = "./";
+          break;
+        } else {
+          return S.str();
+        }
+      }
+      auto f = S.copy().remove_prefix(x + 1);
+      if (f == ".") {
+        S.remove_suffix(1);
+        continue;
+      }
+      if (f == "..") {
+        back++;
+        S.remove_suffix(2);
+        continue;
+      }
+      if (back > 0) {
+        S.truncate(x + 1);
+        back--;
+        continue;
+      }
+      return S.str();
+    }
+    auto v = S.str();
+    for (td::int32 i = 0; i < back; i++) {
+      v += "/..";
+    }
+    return v;
+  }
+
   void add_file(std::string path, const FileInfo &info) {
     auto x = path.rfind('/');
     std::string display_path = (x == std::string::npos) ? path : path.substr(x + 1);
+    path = uniformize_path(path);
+    if (callback_ && !callback_->allow_file(path, info)) {
+      return;
+    }
     auto e = std::make_shared<Element>(std::move(path), std::move(display_path), info, sort_mode_);
     add_element(std::move(e));
   }

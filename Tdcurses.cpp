@@ -113,6 +113,24 @@ std::string detect_home_dir() {
 #endif
 }
 
+std::string detect_default_dir() {
+  auto env = ::getenv("HOME");
+  if (env && *env) {
+    return env;
+  }
+
+#if HAVE_PWD_H
+  uid_t uid = getuid();
+  struct passwd *pw = getpwuid(uid);
+
+  if (pw != NULL) {
+    return pw->pw_dir;
+  }
+#endif
+
+  return "/";
+}
+
 std::string detect_config_name() {
   auto env = ::getenv("XDG_CONFIG_HOME");
   if (env && *env) {
@@ -2655,6 +2673,7 @@ int main(int argc, char **argv) {
   tdcurses::global_parameters().set_file_open_command(file_open_command);
   tdcurses::global_parameters().set_backend_type(backend_type_str);
   tdcurses::global_parameters().set_use_markdown(use_markdown);
+  tdcurses::global_parameters().set_default_dir(tdcurses::detect_default_dir());
 
   [&]() -> td::Status {
     TRY_RESULT(from_file, td::FileFd::open("/sys/devices/virtual/dmi/id/product_version", td::FileFd::Read));

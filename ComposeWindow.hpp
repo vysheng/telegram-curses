@@ -8,7 +8,9 @@
 #include "windows/Output.hpp"
 #include "windows/Window.hpp"
 #include "GlobalParameters.hpp"
+#include "AttachType.h"
 #include <memory>
+#include <vector>
 
 namespace tdcurses {
 
@@ -80,6 +82,12 @@ class ComposeWindow
     return 4;
   }
 
+  void update_attach(AttachType attach_type, std::vector<std::string> attach_files) {
+    attach_type_ = attach_type;
+    attach_files_ = std::move(attach_files);
+    set_need_refresh();
+  }
+
  private:
   td::int64 chat_id_;
   td::int64 thread_id_;
@@ -89,6 +97,9 @@ class ComposeWindow
   std::shared_ptr<windows::EditorWindow> editor_window_;
   bool enabled_markdown_;
   bool no_sound_{false};
+
+  AttachType attach_type_{AttachType::None};
+  std::vector<std::string> attach_files_;
 };
 
 }  // namespace tdcurses

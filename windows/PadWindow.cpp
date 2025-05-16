@@ -381,6 +381,7 @@ void PadWindow::add_element(std::shared_ptr<PadWindowElement> element) {
   el.element->change_width(width());
 
   el.height = el.element->render_fake(*this, empty_window_outputter(), cur_element_ == nullptr);
+  LOG_CHECK(el.height >= 0 && el.height <= max_item_height()) << el.height;
 
   auto new_height = it->second->height;
 
@@ -693,11 +694,14 @@ void PadWindow::render_body(WindowOutputter &rb, bool force) {
   auto it = elements_.find(cur_element_->element.get());
   CHECK(it != elements_.end());
 
+  CHECK(offset >= -max_item_height() && offset <= max_item_height());
+
   while (offset > 0) {
     if (it == elements_.begin()) {
       break;
     }
     it--;
+    LOG_CHECK(it->second->height >= 0 && it->second->height <= max_item_height()) << it->second->height;
     offset -= it->second->height;
   }
 
@@ -711,6 +715,7 @@ void PadWindow::render_body(WindowOutputter &rb, bool force) {
     auto x = it->second->element->render(*this, rb, dir, it->second.get() == cur_element_);
     rb.untranslate(offset, 0);
 
+    CHECK(x >= 0 && x <= max_item_height());
     offset += x;
 
     if (x != it->second->height) {

@@ -72,7 +72,7 @@ bool supported_image(td::CSlice path) {
     return false;
   }
   auto ext = path.remove_prefix(p);
-  return ext == ".jpg" || ext == ".webp" || ext == ".png";
+  return ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".png";
 }
 
 bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {

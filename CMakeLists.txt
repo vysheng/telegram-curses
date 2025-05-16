@@ -182,6 +182,10 @@ target_sources(telegram-curses PRIVATE
   windows/WindowLayout.cpp
   windows/WindowLayout.hpp
 
+  AttachMenu.cpp
+  AttachMenu.hpp
+  AttachDocumentMenu.cpp
+  AttachDocumentMenu.hpp
   ChatInfoWindow.cpp
   ChatInfoWindow.hpp
   ChatManager.cpp
