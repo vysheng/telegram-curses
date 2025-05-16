@@ -796,7 +796,7 @@ std::unique_ptr<WindowOutputter> notcurses_window_outputter(void *notcurses, voi
 
 std::unique_ptr<InputEvent> parse_notcurses_input_event(td::int32 code, td::MutableCSlice utf8, bool alt, bool ctrl,
                                                         bool shift) {
-  if (code >= 'A' && code <= 'Z' && !shift) {
+  if (code >= 'A' && code <= 'Z' && (!shift && (alt || ctrl))) {
     CHECK(utf8[0] == code);
     code += 'a' - 'A';
     utf8[0] += 'a' - 'A';
