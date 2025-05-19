@@ -7,3 +7,6 @@
 [submodule "third-party/notcurses"]
 	path = third-party/notcurses
 	url = https://github.com/vysheng/notcurses.git
+[submodule "third-party/rlottie"]
+	path = third-party/rlottie
+	url = https://github.com/vysheng/rlottie

@@ -1,12 +1,17 @@
 #include "BackendNotcurses.h"
 #include "Window.hpp"
 #include "Output.hpp"
+#include "td/utils/SharedSlice.h"
+#include "td/utils/filesystem.h"
 #include "unicode.h"
+
+#include "rlottie/inc/rlottie.h"
 
 #include <memory>
 #include <notcurses/notcurses.h>
 #include <jpeglib.h>
 #include <vector>
+#include <zlib.h>
 
 namespace windows {
 
@@ -532,6 +537,44 @@ class WindowOutputterNotcurses : public WindowOutputter {
 
   std::unique_ptr<RenderedImage> render_image(td::int32 max_height, td::int32 max_width, bool allow_pixel,
                                               std::string path) override {
+    if (path.size() >= 4 && td::Slice(path).remove_prefix(path.size() - 4) == ".tgs") {
+      auto f = gzopen(path.c_str(), "rb");
+      if (!f) {
+        LOG(ERROR) << "failed to read tgs";
+        return nullptr;
+      }
+      SCOPE_EXIT {
+        gzclose_r(f);
+      };
+
+      td::UniqueSlice buf(1 << 20);
+      auto r = gzread(f, buf.as_mutable_slice().data(), (unsigned int)buf.size());
+      if (r < 0) {
+        LOG(ERROR) << "failed to uncompress tgs: " << r;
+        return nullptr;
+      }
+      if ((unsigned int)r >= buf.size()) {
+        LOG(ERROR) << "uncompressed sticker is bigger than " << buf.size();
+        return nullptr;
+      }
+
+      auto animation = rlottie::Animation::loadFromData(buf.as_slice().truncate(r).str(), path);
+      if (!animation) {
+        LOG(ERROR) << "failed to parse animation";
+        return nullptr;
+      }
+
+      td::uint32 buffer[512 * 512];
+      rlottie::Surface surface(buffer, 512, 512, 512 * 4);
+      animation->renderSync(0, surface);
+
+      auto v = ncvisual_from_rgba(buffer, 512, 512 * 4, 512);
+      if (!v) {
+        LOG(ERROR) << "failed to create ncvisual";
+        return nullptr;
+      }
+      return render_image_common(max_height, max_width, allow_pixel, v);
+    }
     auto v = ncvisual_from_file(path.c_str());
     if (!v) {
       return nullptr;

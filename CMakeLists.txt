@@ -144,6 +144,7 @@ endif (HAVE_PWD_H)
 
 add_subdirectory(td)
 add_subdirectory(third-party/notcurses)
+add_subdirectory(third-party/rlottie)
 
 
 add_executable(telegram-curses) 
@@ -280,7 +281,7 @@ target_sources(telegram-curses PRIVATE
 
   third-party/qrcodegen/qrcodegen.cpp 
 )
-target_link_libraries(telegram-curses PUBLIC TdStatic tdutils notcurses-core notcurses ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} ${LIBNOTIFY_LDFLAGS} ${LIBCONFIG_LDFLAGS} ${LIBUTF8PROC_LDFLAGS} ${LIBJPEG_LDFLAGS} ${LIBICU_LDFLAGS})
+target_link_libraries(telegram-curses PUBLIC TdStatic tdutils notcurses-core notcurses rlottie ${GDKPIXBUF_LDFLAGS} ${GLIB_LDFLAGS} ${LIBNOTIFY_LDFLAGS} ${LIBCONFIG_LDFLAGS} ${LIBUTF8PROC_LDFLAGS} ${LIBJPEG_LDFLAGS} ${LIBICU_LDFLAGS})
 target_include_directories(telegram-curses PRIVATE  ${GDKPIXBUF_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${LIBNOTIFY_INCLUDE_DIRS} ${LIBCONFIG_INCLUDE_DIRS} ${LIBUTF8PROC_INCLUDE_DIRS} ${LIBJPEG_INCLUDE_DIRS} ${LIBICU_INCLUDE_DIRS})
 target_include_directories(telegram-curses PRIVATE
   ${TL_TD_AUTO_INCLUDES}

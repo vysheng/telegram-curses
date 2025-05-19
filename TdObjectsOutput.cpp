@@ -72,7 +72,7 @@ bool supported_image(td::CSlice path) {
     return false;
   }
   auto ext = path.remove_prefix(p);
-  return ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".png";
+  return ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".png" || ext == ".tgs";
 }
 
 bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {
@@ -775,7 +775,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::photoSize &content) {
 
 Outputter &operator<<(Outputter &out, const td::td_api::sticker &content) {
   out << "sticker " << content.emoji_ << " " << content.sticker_;
-  if (content.format_->get_id() == td::td_api::stickerFormatWebp::ID && show_image(content.sticker_)) {
+  if (show_image(content.sticker_)) {
     Outputter::Photo r;
     r.path = content.sticker_->local_->path_;
     r.width = content.width_;
