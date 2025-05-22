@@ -57,6 +57,7 @@
 #include "YesNoWindow.hpp"
 #include "NotificationManager.hpp"
 #include "MessageProcess.hpp"
+#include "MenuWindowView.hpp"
 
 #include "qrcodegen/qrcodegen.hpp"
 
@@ -2337,31 +2338,7 @@ void Tdcurses::unregister_alive_window(TdcursesWindowBase *window) {
 
 void Tdcurses::spawn_popup_view_window(std::string text, std::vector<windows::MarkupElement> markup,
                                        td::int32 priority) {
-  class Callback : public windows::ViewWindow::Callback {
-   public:
-    Callback(Tdcurses *ptr, std::shared_ptr<windows::Window> to_close) : ptr_(ptr), to_close_(std::move(to_close)) {
-    }
-    void on_answer(windows::ViewWindow *window) override {
-      if (to_close_) {
-        ptr_->del_popup_window(to_close_.get());
-        to_close_ = nullptr;
-      }
-    }
-    void on_abort(windows::ViewWindow *window) override {
-      if (to_close_) {
-        ptr_->del_popup_window(to_close_.get());
-        to_close_ = nullptr;
-      }
-    }
-
-   private:
-    Tdcurses *ptr_;
-    std::shared_ptr<windows::Window> to_close_;
-  };
-  auto window = std::make_shared<windows::ViewWindow>(std::move(text), std::move(markup), nullptr);
-  auto box = std::make_shared<windows::BorderedWindow>(window, windows::BorderType::Double);
-  window->set_callback(std::make_unique<Callback>(this, box));
-  add_popup_window(box, priority);
+  create_menu_window<MenuWindowView>(this, self_, std::move(text), std::move(markup));
 }
 
 void Tdcurses::run_exit() {

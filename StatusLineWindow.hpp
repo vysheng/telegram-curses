@@ -18,7 +18,7 @@ class StatusLineWindow : public windows::ViewWindow {
   };
 
  public:
-  StatusLineWindow() : windows::ViewWindow("", std::make_unique<Cb>()) {
+  StatusLineWindow() : windows::ViewWindow(windows::ViewWindow::no_progress{}, "", std::make_unique<Cb>()) {
   }
 };
 

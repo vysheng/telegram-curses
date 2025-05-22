@@ -218,6 +218,8 @@ target_sources(telegram-curses PRIVATE
   GlobalParameters.hpp
   GroupMembersWindow.cpp
   GroupMembersWindow.hpp
+  HelpWindow.cpp
+  HelpWindow.hpp
   MenuWindow.cpp
   MenuWindow.hpp
   MenuWindowCommon.cpp

@@ -72,7 +72,8 @@ bool supported_image(td::CSlice path) {
     return false;
   }
   auto ext = path.remove_prefix(p);
-  return ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".png" || ext == ".tgs";
+  return ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".webm" || ext == ".png" || ext == ".tgs" ||
+         ext == ".mp4";
 }
 
 bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {
@@ -276,7 +277,11 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageSticker &content)
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageVideo &content) {
-  out << "[" << content.video_ << "]";
+  out << "[" << content.video_;
+  if (content.cover_) {
+    out << " " << *content.cover_;
+  }
+  out << "]";
   if (content.caption_) {
     out << " " << content.caption_;
   }

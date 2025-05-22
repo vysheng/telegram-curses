@@ -1,6 +1,7 @@
 #include "AboutWindow.hpp"
 #include "Outputter.hpp"
 #include "GlobalParameters.hpp"
+#include "rlottie/inc/rlottie.h"
 
 #include <notcurses/notcurses.h>
 #include <libconfig.h++>
@@ -31,6 +32,8 @@ void AboutWindow::build() {
       << LIBCONFIGXX_VER_REVISION << " " << Outputter::Underline{true} << "https://github.com/hyperrealm/libconfig"
       << Outputter::Underline{false} << "\n";
   out << "    QR-Code-generator " << Outputter::Underline{true} << "https://github.com/nayuki/QR-Code-generator"
+      << Outputter::Underline{false} << "\n";
+  out << "    Rlottie " << Outputter::Underline{true} << "https://github.com/TelegramMessenger/rlottie"
       << Outputter::Underline{false} << "\n";
   replace_text(out.as_str(), out.markup());
 }

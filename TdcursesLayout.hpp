@@ -5,6 +5,7 @@
 #include "windows/BorderedWindow.hpp"
 #include "TdcursesWindowBase.hpp"
 #include "ConfigWindow.hpp"
+#include "HelpWindow.hpp"
 #include "Debug.hpp"
 #include "settings-menu/MainSettingsWindow.hpp"
 #include "ChatInfoWindow.hpp"
@@ -128,9 +129,14 @@ class TdcursesLayout
     } else if (info == "T-F7") {
       create_menu_window<MainSettingsWindow>(root(), root_actor_id());
       return;
-    } else if (info == "T-F1") {
+    } else if (info == "T-F12") {
       auto s = debug_counters().to_str();
       root()->spawn_popup_view_window(s, 1);
+      return;
+    } else if (info == "T-F1") {
+      Outputter out;
+      generate_help_info(out);
+      root()->spawn_popup_view_window(out.as_str(), out.markup(), 1);
       return;
     }
 

@@ -227,7 +227,7 @@ void DialogListWindow::handle_input(const windows::InputEvent &info) {
       create_menu_window<ChatInfoWindow>(root(), root_actor_id(), el);
     }
     return;
-  } else if (info == "s" || info == "S") {
+  } else if (info == "s") {
     spawn_chat_search_window(*this, ChatSearchWindow::Mode::Both,
                              [curses = root()](td::Result<std::shared_ptr<Chat>> R) {
                                if (R.is_ok()) {
