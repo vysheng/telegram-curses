@@ -3,6 +3,7 @@
 #include "ErrorWindow.hpp"
 #include "ReactionSelectionWindow.hpp"
 #include "ReactionSelectionWindowNew.hpp"
+#include "td/telegram/files/ResourceState.h"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -14,6 +15,7 @@
 #include "FileManager.hpp"
 #include "MessageInfoWindow.hpp"
 #include "MessageProcess.hpp"
+#include "MenuWindowEdit.hpp"
 #include "CommandLineWindow.hpp"
 #include "GlobalParameters.hpp"
 #include "LoadingWindow.hpp"
@@ -102,7 +104,7 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
   } else if (info == "T-Enter") {
     show_message_actions();
     return;
-  } else if (info == "C-q" || info == "C-Q") {
+  } else if (info == "C-q" || info == "C-Q" || info == "Q") {
     if (multi_message_selection_mode_) {
       multi_message_selection_mode_ = false;
       selected_messages_.clear();
@@ -113,21 +115,13 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
   } else if (info == "i") {
     auto chat = chat_manager().get_chat(main_chat_id_);
     if (chat && chat->permissions() && chat->permissions()->can_send_basic_messages_) {
-      mode_.visit(td::overloaded([&](const ModeDefault &) { root()->open_compose_window(main_chat_id_, 0, 0); },
-                                 [&](const ModeSearch &) { root()->open_compose_window(main_chat_id_, 0, 0); },
+      mode_.visit(td::overloaded([&](const ModeDefault &) { root()->open_compose_window(main_chat_id_, 0, 0, ""); },
+                                 [&](const ModeSearch &) { root()->open_compose_window(main_chat_id_, 0, 0, ""); },
                                  [&](const ModeComments &m) {
                                    root()->open_compose_window(m.message_id.chat_id, m.thread_id,
-                                                               m.message_id.message_id);
+                                                               m.message_id.message_id, "");
                                  }));
     }
-    return;
-  } else if (info == "q" || info == "Q") {
-    if (multi_message_selection_mode_) {
-      multi_message_selection_mode_ = false;
-      selected_messages_.clear();
-      return;
-    }
-    set_mode(Mode{ModeDefault{}});
     return;
   } else if (info == "/" || info == ":") {
     root()->command_line_window()->handle_input(info);
@@ -693,7 +687,27 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
                                [](td::Result<td::tl_object_ptr<td::td_api::file>> R) {});
     }
   } else if (info == "r") {
-    chat_window.root()->open_compose_window(chat_window.main_chat_id(), 0, message_id().message_id);
+    chat_window.root()->open_compose_window(chat_window.main_chat_id(), 0, message_id().message_id, "");
+  } else if (info == "q") {
+    if (message->content_->get_id() == td::td_api::messageText::ID) {
+      auto ftext = clone_tl_object(*static_cast<const td::td_api::messageText &>(*message->content_).text_);
+
+      auto R = chat_window.run_request_sync(td::make_tl_object<td::td_api::getMarkdownText>(std::move(ftext)));
+
+      if (R.is_error()) {
+        return;
+      }
+
+      auto text = R.move_as_ok()->text_;
+      spawn_text_edit_window(chat_window, "select text to quote", text,
+                             [&chat_window, message_id = message_id()](td::Result<std::string> res) {
+                               if (res.is_error()) {
+                                 return;
+                               }
+                               chat_window.root()->open_compose_window(message_id.chat_id, 0, message_id.message_id,
+                                                                       res.move_as_ok());
+                             });
+    }
   } else if (info == "e") {
     if (message->is_outgoing_ && message->content_->get_id() == td::td_api::messageText::ID) {
       chat_window.root()->open_edit_window(message_id().chat_id, message_id().message_id);

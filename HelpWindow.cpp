@@ -22,7 +22,7 @@ void generate_help_info(Outputter &out) {
   out << "    f                 : choose folder\n";
   out << "  Chat window:\n";
   out << "    Enter/I           : open message actions window\n";
-  out << "    Escape/C-q/C-Q/q/Q: clear multiselection / clear search\n";
+  out << "    Escape/C-q/C-Q/Q  : clear multiselection / clear search\n";
   out << "    i                 : compose a message\n";
   out << "    :                 : activate command line\n";
   out << "    /                 : search chats\n";
@@ -37,6 +37,7 @@ void generate_help_info(Outputter &out) {
   out << "    f                 : forward messages\n";
   out << "    d                 : delete messages for all\n";
   out << "    D                 : delete messages for only for yourself\n";
+  out << "    q                 : select a quote and compose a reply\n";
   out << "  Compose window:\n";
   out << "    Alt-m             : toggle markdown parsing\n";
   out << "    Alt-s             : toggle no sound send\n";

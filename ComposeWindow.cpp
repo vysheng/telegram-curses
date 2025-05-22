@@ -3,6 +3,7 @@
 #include "ChatWindow.hpp"
 #include "AttachMenu.hpp"
 #include "ErrorWindow.hpp"
+#include "MenuWindowEdit.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
@@ -118,6 +119,24 @@ void ComposeWindow::send_message(std::string message) {
   td::tl_object_ptr<td::td_api::inputMessageReplyToMessage> reply;
   if (reply_message_id_) {
     reply = td::make_tl_object<td::td_api::inputMessageReplyToMessage>(reply_message_id_, nullptr);
+    if (quote_.size() > 0) {
+      if (enabled_markdown_) {
+        auto R = run_request_sync(
+            td::make_tl_object<td::td_api::parseMarkdown>(td::make_tl_object<td::td_api::formattedText>(
+                quote_, std::vector<td::tl_object_ptr<td::td_api::textEntity>>{})));
+        if (R.is_error()) {
+          root()->spawn_popup_view_window(PSTRING() << "failed to parse markdown: " << R.move_as_error(), 3);
+          return;
+        } else {
+          //@description Describes manually chosen quote from another message
+          //@text Text of the quote; 0-getOption("message_reply_quote_length_max") characters. Only Bold, Italic, Underline, Strikethrough, Spoiler, and CustomEmoji entities are allowed to be kept and must be kept in the quote
+          //@position Quote position in the original message in UTF-16 code units
+          //inputTextQuote text:formattedText position:int32 = InputTextQuote;
+          auto quote_text = R.move_as_ok();
+          reply->quote_ = td::make_tl_object<td::td_api::inputTextQuote>(std::move(quote_text), 0);
+        }
+      }
+    }
   }
 
   if (content.size() == 1) {
@@ -151,7 +170,7 @@ void ComposeWindow::send_message(std::string message) {
     });
   }
   editor_window_->clear();
-  set_reply_message_id(0);
+  set_reply_message_id(0, "");
   attach_type_ = AttachType::None;
   attach_files_.clear();
 }
@@ -221,6 +240,12 @@ void ComposeWindow::render(windows::WindowOutputter &rb, bool force) {
         break;
     }
 
+    if (quote_.size() > 0) {
+      out << "[+QUOTE]";
+    } else if (reply_message_id_ != 0) {
+      out << "[-QUOTE]";
+    }
+
     windows::TextEdit::render(rb, width(), out.as_cslice(), 0, out.markup(), false, false);
   }
   if (reply_message_id_) {
@@ -254,6 +279,16 @@ void ComposeWindow::handle_input(const windows::InputEvent &info) {
     create_menu_window<AttachMenu>(root(), root_actor_id(), chat_id_, editor_window_->export_data(), attach_type_,
                                    attach_files_, this, window_unique_id());
     set_need_refresh();
+    return;
+  }
+  if (info == "M-q" && reply_message_id_) {
+    spawn_text_edit_window(*this, "select text to quote", quote_,
+                           [self = this, reply_message_id = reply_message_id_](td::Result<std::string> res) mutable {
+                             if (res.is_error()) {
+                               return;
+                             }
+                             self->set_reply_message_id(reply_message_id, res.move_as_ok());
+                           });
     return;
   }
   editor_window_->handle_input(info);

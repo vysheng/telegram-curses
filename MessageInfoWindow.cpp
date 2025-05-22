@@ -539,7 +539,7 @@ void MessageInfoWindow::add_action_reactions(td::int64 chat_id, td::int64 messag
 
 void MessageInfoWindow::add_action_reply(td::int64 chat_id, td::int64 message_id) {
   add_element("reply", "create", {}, [chat_id, message_id, self = this]() {
-    self->root()->open_compose_window(chat_id, 0, message_id);
+    self->root()->open_compose_window(chat_id, 0, message_id, "");
     return true;
   });
 }

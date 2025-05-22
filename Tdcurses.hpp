@@ -193,7 +193,7 @@ class Tdcurses : public TdcursesInterface {
   }
   void open_chat(td::int64 chat_id);
   void seek_chat(td::int64 chat_id, td::int64 message_id);
-  void open_compose_window(td::int64 chat_id, td::int64 thread_id, td::int64 message_id);
+  void open_compose_window(td::int64 chat_id, td::int64 thread_id, td::int64 message_id, std::string quote);
   void open_edit_window(td::int64 chat_id, td::int64 message_id);
   void close_compose_window();
 

@@ -22,11 +22,13 @@ class ComposeWindow
   struct ComposeMode {};
   enum class Mode { Compose, Edit };
   ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, Mode mode, td::int64 chat_id, td::int64 thread_id,
-                std::string text, td::int64 reply_message_id, td::int64 edit_message_id, ChatWindow *chat_window)
+                std::string text, td::int64 reply_message_id, std::string quote, td::int64 edit_message_id,
+                ChatWindow *chat_window)
       : TdcursesWindowBase(root, std::move(root_actor))
       , chat_id_(chat_id)
       , thread_id_(thread_id)
       , reply_message_id_(reply_message_id)
+      , quote_(std::move(quote))
       , edit_message_id_(edit_message_id)
       , chat_window_(chat_window) {
     enabled_markdown_ = global_parameters().use_markdown();
@@ -36,17 +38,17 @@ class ComposeWindow
   }
   ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, ComposeMode, td::int64 chat_id, td::int64 thread_id,
                 std::string text, ChatWindow *chat_window)
-      : ComposeWindow(root, std::move(root_actor), Mode::Compose, chat_id, thread_id, std::move(text), 0, 0,
+      : ComposeWindow(root, std::move(root_actor), Mode::Compose, chat_id, thread_id, std::move(text), 0, "", 0,
                       chat_window) {
   }
   ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, ComposeMode, td::int64 chat_id, td::int64 thread_id,
-                std::string text, td::int64 reply_message_id, ChatWindow *chat_window)
+                std::string text, td::int64 reply_message_id, std::string quote, ChatWindow *chat_window)
       : ComposeWindow(root, std::move(root_actor), Mode::Compose, chat_id, thread_id, std::move(text), reply_message_id,
-                      0, chat_window) {
+                      std::move(quote), 0, chat_window) {
   }
   ComposeWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, EditMode, td::int64 chat_id, td::int64 message_id,
                 std::string text, ChatWindow *chat_window)
-      : ComposeWindow(root, std::move(root_actor), Mode::Edit, chat_id, 0, std::move(text), 0, message_id,
+      : ComposeWindow(root, std::move(root_actor), Mode::Edit, chat_id, 0, std::move(text), 0, "", message_id,
                       chat_window) {
   }
 
@@ -71,8 +73,9 @@ class ComposeWindow
     return t;
   }
   void handle_input(const windows::InputEvent &info) override;
-  void set_reply_message_id(td::int64 reply_message_id) {
+  void set_reply_message_id(td::int64 reply_message_id, std::string quote) {
     reply_message_id_ = reply_message_id;
+    quote_ = std::move(quote);
     editor_window_->resize(reply_message_id_ ? height() - 2 : height() - 1, width());
     editor_window_->move_yx(reply_message_id_ ? 2 : 1, 0);
     set_need_refresh();
@@ -92,6 +95,7 @@ class ComposeWindow
   td::int64 chat_id_;
   td::int64 thread_id_;
   td::int64 reply_message_id_{0};
+  std::string quote_;
   td::int64 edit_message_id_{0};
   ChatWindow *chat_window_{nullptr};
   std::shared_ptr<windows::EditorWindow> editor_window_;
