@@ -26,7 +26,8 @@ class YesNoWindow
   YesNoWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::string text,
               std::vector<windows::MarkupElement> markup, std::unique_ptr<Callback> callback, bool default_value = true)
       : MenuWindow(root, std::move(root_actor)), callback_(std::move(callback)), ok_(default_value) {
-    view_window_ = std::make_shared<windows::ViewWindow>(std::move(text), std::move(markup), nullptr);
+    view_window_ = std::make_shared<windows::ViewWindow>(windows::ViewWindow::no_progress{}, std::move(text),
+                                                         std::move(markup), nullptr);
   }
   void on_resize(td::int32 old_height, td::int32 old_width, td::int32 new_height, td::int32 new_width) override {
     view_window_->resize(new_height - 2, new_width);
@@ -45,7 +46,7 @@ class YesNoWindow
     return 40;
   }
   td::int32 best_height() override {
-    return 6;
+    return view_window_->best_height() + 2;
   }
 
   void render(windows::WindowOutputter &rb, bool force) override {
