@@ -2,6 +2,7 @@
 
 #include "FileManager.hpp"
 #include "MenuWindow.hpp"
+#include "GlobalParameters.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "windows/Input.hpp"
@@ -66,11 +67,16 @@ class ChatPhotoWindow
     auto dir = windows::SavedRenderedImagesDirectory(std::move(saved_images_));
     Outputter out;
     if (photo_->local_->is_downloading_completed_) {
-      Outputter::Photo p;
-      p.path = photo_->local_->path_;
-      p.height = height_;
-      p.width = width_;
-      out << p;
+      if (!global_parameters().image_path_is_allowed(photo_->local_->path_)) {
+        out << "IMAGES ARE DISABLED IN SETTINGS MENU";
+      } else {
+        Outputter::Photo p;
+        p.path = photo_->local_->path_;
+        p.height = height_;
+        p.width = width_;
+        p.allow_pixel = global_parameters().show_pixel_images();
+        out << p;
+      }
     } else {
       out << "LOADING ";
       download();

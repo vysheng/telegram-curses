@@ -13,7 +13,10 @@ class ChatSettingsWindow : public MenuWindowCommon {
   void enabled_disable();
 
  private:
-  std::shared_ptr<ElInfo> enabled_el_;
+  std::shared_ptr<ElInfo> markdown_enabled_el_;
+  std::shared_ptr<ElInfo> show_images_enabled_el_;
+  std::shared_ptr<ElInfo> show_pixel_images_enabled_el_;
+  std::shared_ptr<ElInfo> allowed_image_extensions_el_;
 };
 
 }  // namespace tdcurses

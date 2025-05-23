@@ -4,12 +4,15 @@
 #include "auto/td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/Slice-decl.h"
+#include "td/utils/StringBuilder.h"
 #include "td/utils/common.h"
+#include "td/utils/misc.h"
 #include "td/utils/overloaded.h"
 #include "td/utils/port/Stat.h"
 #include "windows/Markup.hpp"
 #include "windows/Output.hpp"
 #include <map>
+#include <set>
 #include <array>
 #include <vector>
 
@@ -248,6 +251,22 @@ class GlobalParameters {
     use_markdown_ = value;
   }
 
+  bool show_images() const {
+    return show_images_;
+  }
+
+  void set_show_images(bool value) {
+    show_images_ = value;
+  }
+
+  bool show_pixel_images() const {
+    return show_pixel_images_;
+  }
+
+  void set_show_pixel_images(bool value) {
+    show_pixel_images_ = value;
+  }
+
   td::CSlice control_key() {
     return "C-a";
   }
@@ -258,6 +277,50 @@ class GlobalParameters {
 
   const auto &default_dir() const {
     return default_dir_;
+  }
+
+  void remove_allowed_image_extensions(std::string list) {
+    auto f = td::full_split(td::Slice(list), ',');
+    for (auto &x : f) {
+      allowed_image_extensions_.erase(x.str());
+    }
+  }
+  void add_allowed_image_extensions(std::string list) {
+    auto f = td::full_split(td::Slice(list), ',');
+    for (auto &x : f) {
+      allowed_image_extensions_.insert(x.str());
+    }
+  }
+
+  void replace_allowed_image_extensions(std::string list) {
+    allowed_image_extensions_.clear();
+    auto f = td::full_split(td::Slice(list), ',');
+    for (auto &x : f) {
+      allowed_image_extensions_.insert(x.str());
+    }
+  }
+
+  bool image_extension_is_allowed(const std::string &ext) const {
+    return show_images_ && allowed_image_extensions_.count(ext) > 0;
+  }
+
+  bool image_path_is_allowed(td::Slice path) const {
+    auto x = path.rfind('.');
+    if (x == td::Slice::npos) {
+      return false;
+    }
+    return image_extension_is_allowed(path.remove_prefix(x + 1).str());
+  }
+
+  std::string export_allowed_image_extensions() const {
+    td::StringBuilder sb;
+    for (const auto &x : allowed_image_extensions_) {
+      if (sb.size() > 0) {
+        sb << ',';
+      }
+      sb << x;
+    }
+    return sb.as_cslice().str();
   }
 
  private:
@@ -294,7 +357,10 @@ class GlobalParameters {
   td::int64 my_user_id_{0};
 
   bool notifications_enabled_{true};
-  bool use_markdown_;
+  bool use_markdown_{true};
+  bool show_images_{true};
+  bool show_pixel_images_{true};
+  std::set<std::string> allowed_image_extensions_;
 
   std::string tdlib_version_;
   std::string backend_type_;

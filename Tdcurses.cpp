@@ -1506,6 +1506,18 @@ class TdcursesImpl : public Tdcurses {
       CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
       auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
       global_parameters().set_use_markdown(value);
+    } else if (update.name_ == "X-show-images-enabled") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
+      auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
+      global_parameters().set_show_images(value);
+    } else if (update.name_ == "X-show-pixel-images-enabled") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
+      auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
+      global_parameters().set_show_pixel_images(value);
+    } else if (update.name_ == "X-allowed-image-extensions") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueString::ID);
+      auto value = static_cast<const td::td_api::optionValueString &>(*update.value_).value_;
+      global_parameters().replace_allowed_image_extensions(value);
     }
   }
 
@@ -2453,6 +2465,8 @@ int main(int argc, char **argv) {
   bool use_test_dc = false;
   bool vs16_makes_wide = true;
   bool use_markdown = true;
+  bool show_images = true;
+  bool show_pixel_images = true;
 
   bool log_window_enabled = false;
   td::int32 dialog_list_window_width = 10;
@@ -2497,6 +2511,8 @@ int main(int argc, char **argv) {
     iface.add("log_window_height", libconfig::Setting::TypeInt) = log_window_height;
     iface.add("compose_window_height", libconfig::Setting::TypeInt) = compose_window_height;
     iface.add("use_markdown", libconfig::Setting::TypeBoolean) = use_markdown;
+    iface.add("show_images", libconfig::Setting::TypeBoolean) = show_images;
+    iface.add("show_pixel_images", libconfig::Setting::TypeBoolean) = show_pixel_images;
     auto &utf8 = root.add("utf8", libconfig::Setting::Type::TypeGroup);
     utf8.add("vs16_makes_wide", libconfig::Setting::TypeBoolean) = vs16_makes_wide;
     auto &widecode = utf8.add("codepoints_override", libconfig::Setting::TypeList);
@@ -2543,6 +2559,8 @@ int main(int argc, char **argv) {
   config.lookupValue("backend_type_str", backend_type_str);
 
   config.lookupValue("iface.use_markdown", use_markdown);
+  config.lookupValue("iface.show_images", show_images);
+  config.lookupValue("iface.show_pixel_images", show_pixel_images);
   config.lookupValue("iface.log_window_enabled", log_window_enabled);
   config.lookupValue("iface.dialog_list_window_width", dialog_list_window_width);
   config.lookupValue("iface.log_window_height", log_window_height);
@@ -2651,7 +2669,11 @@ int main(int argc, char **argv) {
   tdcurses::global_parameters().set_file_open_command(file_open_command);
   tdcurses::global_parameters().set_backend_type(backend_type_str);
   tdcurses::global_parameters().set_use_markdown(use_markdown);
+  tdcurses::global_parameters().set_show_images(show_images);
+  tdcurses::global_parameters().set_show_pixel_images(show_pixel_images);
   tdcurses::global_parameters().set_default_dir(tdcurses::detect_default_dir());
+  auto image_extensions = "jpg,jpeg,webp,webm,png,tgs,mp4";
+  tdcurses::global_parameters().add_allowed_image_extensions(image_extensions);
 
   [&]() -> td::Status {
     TRY_RESULT(from_file, td::FileFd::open("/sys/devices/virtual/dmi/id/product_version", td::FileFd::Read));

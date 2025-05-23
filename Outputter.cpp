@@ -142,24 +142,24 @@ Outputter &Outputter::operator<<(const RightPad &x) {
 Outputter &Outputter::operator<<(const Photo &obj) {
   windows::MarkupElementPos from(sb_.as_cslice().size(), markup_idx_++);
   windows::MarkupElementPos to(sb_.as_cslice().size(), markup_idx_++);
-  markup_.push_back(
-      std::make_shared<windows::MarkupElementImage>(from, to, obj.path.str(), obj.height, obj.width, 20, 1000, true));
+  markup_.push_back(std::make_shared<windows::MarkupElementImage>(from, to, obj.path.str(), obj.height, obj.width, 20,
+                                                                  1000, obj.allow_pixel));
   return *this;
 }
 
 Outputter &Outputter::operator<<(const UserpicPhoto &obj) {
   windows::MarkupElementPos from(sb_.as_cslice().size(), markup_idx_++);
   windows::MarkupElementPos to(sb_.as_cslice().size(), markup_idx_++);
-  markup_.push_back(
-      std::make_shared<windows::MarkupElementImage>(from, to, obj.path.str(), obj.height, obj.width, 2, 4, true));
+  markup_.push_back(std::make_shared<windows::MarkupElementImage>(from, to, obj.path.str(), obj.height, obj.width, 2, 4,
+                                                                  obj.allow_pixel));
   return *this;
 }
 
 Outputter &Outputter::operator<<(const UserpicPhotoData &obj) {
   windows::MarkupElementPos from(sb_.as_cslice().size(), markup_idx_++);
   windows::MarkupElementPos to(sb_.as_cslice().size(), markup_idx_++);
-  markup_.push_back(
-      std::make_shared<windows::MarkupElementImageData>(from, to, obj.data.str(), obj.height, obj.width, 2, 4, true));
+  markup_.push_back(std::make_shared<windows::MarkupElementImageData>(from, to, obj.data.str(), obj.height, obj.width,
+                                                                      2, 4, obj.allow_pixel));
   return *this;
 }
 

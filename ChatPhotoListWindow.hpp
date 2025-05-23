@@ -3,6 +3,7 @@
 #include "FileManager.hpp"
 #include "MenuWindow.hpp"
 #include "ErrorWindow.hpp"
+#include "GlobalParameters.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
@@ -116,11 +117,16 @@ class ChatPhotoListWindow
     Outputter out;
     out << (pos_ + 1) << "/" << total_photos_ << " " << Outputter::Date{photo.date} << "\n";
     if (photo.file->local_->is_downloading_completed_) {
-      Outputter::Photo p;
-      p.path = photo.file->local_->path_;
-      p.height = height_;
-      p.width = width_;
-      out << p;
+      if (!global_parameters().image_path_is_allowed(photo.file->local_->path_)) {
+        out << "IMAGES ARE DISABLED IN SETTINGS MENU";
+      } else {
+        Outputter::Photo p;
+        p.path = photo.file->local_->path_;
+        p.height = height_;
+        p.width = width_;
+        p.allow_pixel = global_parameters().show_pixel_images();
+        out << p;
+      }
     } else {
       out << "LOADING...";
       download();

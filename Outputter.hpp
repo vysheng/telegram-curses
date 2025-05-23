@@ -179,16 +179,19 @@ class Outputter {
     td::CSlice path;
     td::int32 width;
     td::int32 height;
+    bool allow_pixel;
   };
   struct UserpicPhoto {
     td::CSlice path;
     td::int32 width;
     td::int32 height;
+    bool allow_pixel;
   };
   struct UserpicPhotoData {
     td::Slice data;
     td::int32 width;
     td::int32 height;
+    bool allow_pixel;
   };
 
   Outputter &operator<<(const Photo &);

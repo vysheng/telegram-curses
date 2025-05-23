@@ -66,16 +66,6 @@ void add_color(Outputter &out, const td::td_api::MessageSender &x, ColorScheme::
   out << r;
 }
 
-bool supported_image(td::CSlice path) {
-  auto p = path.rfind('.');
-  if (p == td::Slice::npos) {
-    return false;
-  }
-  auto ext = path.remove_prefix(p);
-  return ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".webm" || ext == ".png" || ext == ".tgs" ||
-         ext == ".mp4";
-}
-
 bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {
   if (!f) {
     return false;
@@ -83,7 +73,7 @@ bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {
   if (!f->local_->is_downloading_completed_) {
     return false;
   }
-  return supported_image(f->local_->path_);
+  return global_parameters().image_path_is_allowed(f->local_->path_);
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::message &message) {
@@ -737,6 +727,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::animation &content) {
     r.path = content.animation_->local_->path_;
     r.width = content.width_;
     r.height = content.height_;
+    r.allow_pixel = global_parameters().show_pixel_images();
     return out << r;
   }
   return out;
@@ -753,6 +744,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::document &content) {
     r.path = content.document_->local_->path_;
     r.width = 0;
     r.height = 0;
+    r.allow_pixel = global_parameters().show_pixel_images();
     return out << r;
   }
   return out;
@@ -775,6 +767,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::photoSize &content) {
   r.path = content.photo_->local_->path_;
   r.width = content.width_;
   r.height = content.height_;
+  r.allow_pixel = global_parameters().show_pixel_images();
   return out << r;
 }
 
@@ -785,6 +778,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::sticker &content) {
     r.path = content.sticker_->local_->path_;
     r.width = content.width_;
     r.height = content.height_;
+    r.allow_pixel = global_parameters().show_pixel_images();
     return out << r;
   }
   return out;
