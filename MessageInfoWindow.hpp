@@ -159,6 +159,8 @@ class MessageInfoWindow : public MenuWindowCommon {
   void add_action_read_date(td::int64 chat_id, td::int64 message_id);
   void add_action_message_viewers(td::int64 chat_id, td::int64 message_id);
   void add_action_get_message_link(td::int64 chat_id, td::int64 message_id);
+  void add_action_pin_unpin(td::int64 chat_id, td::int64 message_id);
+  void add_action_reply_markup(td::int64 chat_id, td::int64 message_id);
 
   void handle_file_update(const td::td_api::updateFile &);
 
@@ -172,6 +174,7 @@ class MessageInfoWindow : public MenuWindowCommon {
   td::tl_object_ptr<td::td_api::messageViewers> message_viewers_;
   std::map<td::int64, std::pair<td::int64, std::shared_ptr<ElInfo>>> subscription_ids_;
   std::shared_ptr<ElInfo> open_file_el_;
+  std::shared_ptr<ElInfo> pin_unpin_el_;
 };
 
 }  // namespace tdcurses

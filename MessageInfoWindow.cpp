@@ -7,6 +7,7 @@
 #include "GlobalParameters.hpp"
 #include "FileManager.hpp"
 #include "TdObjectsOutput.h"
+#include "td/telegram/DownloadManagerCallback.h"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"
@@ -257,6 +258,11 @@ void MessageInfoWindow::process_message() {
 
   if (message_properties_ && message_properties_->can_get_link_) {
     add_action_get_message_link(message_->chat_id_, message_->id_);
+  }
+
+  auto C = chat_manager().get_chat(message_->chat_id_);
+  if (C->permissions()->can_pin_messages_ && message_properties_->can_be_pinned_) {
+    add_action_pin_unpin(message_->chat_id_, message_->id_);
   }
 
   set_need_refresh();
@@ -660,6 +666,51 @@ void MessageInfoWindow::add_action_get_message_link(td::int64 chat_id, td::int64
   });
 }
 
+void MessageInfoWindow::add_action_pin_unpin(td::int64 chat_id, td::int64 message_id) {
+  bool is_pinned = message_->is_pinned_;
+  Outputter out;
+  if (is_pinned) {
+    out << "pinned" << Outputter::RightPad{"<unpin>"};
+  } else {
+    out << "unpinned" << Outputter::RightPad{"<pin>"};
+  }
+  pin_unpin_el_ = add_element("pin", out.as_str(), out.markup(), [chat_id, message_id, self = this]() mutable -> bool {
+    auto is_pinned = self->message_->is_pinned_;
+    if (!is_pinned) {
+      self->send_request(td::make_tl_object<td::td_api::pinChatMessage>(chat_id, message_id, false, false),
+                         [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                           DROP_IF_DELETED(R);
+                           if (R.is_error()) {
+                             LOG(ERROR) << "failed to pin message: " << R.move_as_error();
+                           } else {
+                             self->message_->is_pinned_ = false;
+                             auto r = R.move_as_ok();
+                             Outputter out;
+                             out << "pinned" << Outputter::RightPad{"<unpin>"};
+                             self->pin_unpin_el_->menu_element()->data = out.as_str();
+                             self->pin_unpin_el_->menu_element()->markup = out.markup();
+                           }
+                         });
+    } else {
+      self->send_request(td::make_tl_object<td::td_api::unpinChatMessage>(chat_id, message_id),
+                         [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+                           DROP_IF_DELETED(R);
+                           if (R.is_error()) {
+                             LOG(ERROR) << "failed to pin message: " << R.move_as_error();
+                           } else {
+                             self->message_->is_pinned_ = true;
+                             auto r = R.move_as_ok();
+                             Outputter out;
+                             out << "pinned" << Outputter::RightPad{"<unpin>"};
+                             self->pin_unpin_el_->menu_element()->data = out.as_str();
+                             self->pin_unpin_el_->menu_element()->markup = out.markup();
+                           }
+                         });
+    }
+    return false;
+  });
+}
+
 void MessageInfoWindow::handle_file_update(const td::td_api::updateFile &f) {
   auto it = subscription_ids_.find(f.file_->id_);
   if (it != subscription_ids_.end()) {
@@ -678,6 +729,17 @@ void MessageInfoWindow::handle_file_update(const td::td_api::updateFile &f) {
       change_element(el, [&]() { el->menu_element()->data = PSTRING() << "document (downloaded " << percent << "%)"; });
     }
   }
+}
+
+void MessageInfoWindow::add_action_reply_markup(td::int64 chat_id, td::int64 message_id) {
+  if (!message_->reply_markup_) {
+    return;
+  }
+  td::td_api::downcast_call(*message_->reply_markup_,
+                            td::overloaded([&](const td::td_api::replyMarkupRemoveKeyboard &) {},
+                                           [&](const td::td_api::replyMarkupForceReply &) {},
+                                           [&](const td::td_api::replyMarkupShowKeyboard &m) {},
+                                           [&](const td::td_api::replyMarkupInlineKeyboard &m) {}));
 }
 
 }  // namespace tdcurses

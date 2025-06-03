@@ -29,7 +29,9 @@ class ErrorWindow
   };
   ErrorWindow(Tdcurses *root, td::ActorId<Tdcurses> root_actor, std::string text,
               std::vector<windows::MarkupElement> markup, std::unique_ptr<Callback> callback)
-      : MenuWindow(root, root_actor), windows::ViewWindow(std::move(text), std::move(markup), std::move(callback)) {
+      : MenuWindow(root, root_actor)
+      , windows::ViewWindow(windows::ViewWindow::no_progress{}, std::move(text), std::move(markup),
+                            std::move(callback)) {
   }
   std::shared_ptr<windows::Window> get_window(std::shared_ptr<MenuWindow> value) override {
     return std::static_pointer_cast<ErrorWindow>(std::move(value));
