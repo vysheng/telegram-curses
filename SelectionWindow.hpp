@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
 #include "td/utils/Promise.h"
 #include "windows/EditorWindow.hpp"
 #include "windows/Markup.hpp"

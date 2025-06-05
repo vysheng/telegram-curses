@@ -7,7 +7,7 @@
 #include "TdcursesWindowBase.hpp"
 #include "windows/Output.hpp"
 #include "windows/Window.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "AttachType.h"
 #include <memory>
 #include <vector>

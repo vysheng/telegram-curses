@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
 
 namespace tdcurses {
 

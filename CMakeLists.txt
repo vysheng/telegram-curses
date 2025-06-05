@@ -183,14 +183,38 @@ target_sources(telegram-curses PRIVATE
   windows/WindowLayout.cpp
   windows/WindowLayout.hpp
 
+  common-windows/Action.hpp
+  common-windows/ErrorWindow.hpp
+  common-windows/FieldEditWindow.hpp
+  common-windows/FileSelectionWindow.hpp
+  common-windows/LoadingWindow.hpp
+  common-windows/MenuWindow.cpp
+  common-windows/MenuWindow.hpp
+  common-windows/MenuWindowPad.hpp
+  common-windows/MenuWindowEdit.hpp
+  common-windows/MenuWindowView.hpp
+  common-windows/MenuWindowCommon.cpp
+  common-windows/MenuWindowCommon.hpp
+  common-windows/YesNoWindow.hpp
+
+  managers/ChatManager.cpp
+  managers/ChatManager.hpp
+  managers/FileManager.cpp
+  managers/FileManager.hpp
+  managers/GlobalParameters.cpp
+  managers/GlobalParameters.hpp
+  managers/NotificationManager.cpp
+  managers/NotificationManager.hpp
+  managers/StickerManager.cpp
+  managers/StickerManager.hpp
+
+
   AttachMenu.cpp
   AttachMenu.hpp
   AttachDocumentMenu.cpp
   AttachDocumentMenu.hpp
   ChatInfoWindow.cpp
   ChatInfoWindow.hpp
-  ChatManager.cpp
-  ChatManager.hpp
   ChatSearchWindow.cpp
   ChatSearchWindow.hpp
   ChatWindow.cpp
@@ -210,28 +234,15 @@ target_sources(telegram-curses PRIVATE
   DebugInfoWindow.hpp
   DialogListWindow.cpp
   DialogListWindow.hpp
-  FieldEditWindow.hpp
-  FileManager.cpp
-  FileManager.hpp
   FolderSelectionWindow.hpp
-  GlobalParameters.cpp
-  GlobalParameters.hpp
   GroupMembersWindow.cpp
   GroupMembersWindow.hpp
   HelpWindow.cpp
   HelpWindow.hpp
-  MenuWindow.cpp
-  MenuWindow.hpp
-  MenuWindowCommon.cpp
-  MenuWindowCommon.hpp
-  MenuWindowPad.hpp
-  MenuWindowView.hpp
   MessageInfoWindow.cpp
   MessageInfoWindow.hpp
   MessageProcess.cpp
   MessageProcess.hpp
-  NotificationManager.cpp
-  NotificationManager.hpp
   Outputter.cpp
   Outputter.hpp
   PollWindow.cpp
@@ -241,8 +252,6 @@ target_sources(telegram-curses PRIVATE
   ReactionSelectionWindowNew.cpp
   ReactionSelectionWindowNew.hpp
   StatusLineWindow.hpp
-  StickerManager.cpp
-  StickerManager.hpp
   Tdcurses.cpp
   Tdcurses.hpp
   TdcursesLayout.cpp
@@ -251,7 +260,6 @@ target_sources(telegram-curses PRIVATE
   TdcursesWindowBase.hpp
   TdObjectsOutput.cpp
   TdObjectsOutput.h
-  YesNoWindow.hpp
   
   settings-menu/AboutWindow.cpp
   settings-menu/AboutWindow.hpp

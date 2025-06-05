@@ -2,9 +2,9 @@
 #include "td/utils/common.h"
 #include "td/utils/StringBuilder.h"
 #include "td/utils/format.h"
-#include "FileManager.hpp"
+#include "managers/FileManager.hpp"
 #include "td/telegram/Version.h"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "td/utils/SliceBuilder.h"
 
 #include <notcurses/notcurses.h>

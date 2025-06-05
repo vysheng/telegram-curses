@@ -12,10 +12,10 @@
 #include "td/utils/utf8.h"
 
 #include "TdObjectsOutput.h"
-#include "StickerManager.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/StickerManager.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "ColorScheme.hpp"
-#include "FileManager.hpp"
+#include "managers/FileManager.hpp"
 
 #include "utf8proc.h"
 

@@ -1,5 +1,5 @@
 #include "ActiveSessionsWindow.hpp"
-#include "ErrorWindow.hpp"
+#include "common-windows/ErrorWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"

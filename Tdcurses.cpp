@@ -37,7 +37,7 @@
 #include "windows/unicode.h"
 
 //#include "telegram-cli-output.h"
-#include "StickerManager.hpp"
+#include "managers/StickerManager.hpp"
 #include "Tdcurses.hpp"
 #include "Outputter.hpp"
 #include "TdObjectsOutput.h"
@@ -47,17 +47,17 @@
 #include "ComposeWindow.hpp"
 #include "ConfigWindow.hpp"
 #include "DialogListWindow.hpp"
-#include "FileManager.hpp"
+#include "managers/FileManager.hpp"
 #include "ChatInfoWindow.hpp"
 #include "StatusLineWindow.hpp"
 #include "TdcursesLayout.hpp"
 #include "windows/LogWindow.hpp"
-#include "GlobalParameters.hpp"
-#include "FileSelectionWindow.hpp"
-#include "YesNoWindow.hpp"
-#include "NotificationManager.hpp"
+#include "managers/GlobalParameters.hpp"
+#include "common-windows/FileSelectionWindow.hpp"
+#include "common-windows/YesNoWindow.hpp"
+#include "managers/NotificationManager.hpp"
 #include "MessageProcess.hpp"
-#include "MenuWindowView.hpp"
+#include "common-windows/MenuWindowView.hpp"
 
 #include "qrcodegen/qrcodegen.hpp"
 
@@ -220,13 +220,12 @@ class TdcursesImpl : public Tdcurses {
     tdlib_parameters_->system_version_ = version;
   }
 
-  void start(td::tl_object_ptr<td::td_api::setTdlibParameters> tdlib_parameters,
-             std::unique_ptr<TdcursesParameters> tdcurses_params) {
+  void start(td::tl_object_ptr<td::td_api::setTdlibParameters> tdlib_parameters) {
     self_ = actor_id(this);
     tdlib_parameters_ = std::move(tdlib_parameters);
     starting_ = true;
 
-    start_curses(*tdcurses_params);
+    start_curses();
 
     td_ = td::create_actor<td::ClientActor>("ClientActor", make_td_callback());
 
@@ -1518,6 +1517,31 @@ class TdcursesImpl : public Tdcurses {
       CHECK(update.value_->get_id() == td::td_api::optionValueString::ID);
       auto value = static_cast<const td::td_api::optionValueString &>(*update.value_).value_;
       global_parameters().replace_allowed_image_extensions(value);
+    } else if (update.name_ == "X-log-window-enabled") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueBoolean::ID);
+      auto value = static_cast<const td::td_api::optionValueBoolean &>(*update.value_).value_;
+      global_parameters().set_log_window_enabled(value);
+      update_layout_parameters();
+    } else if (update.name_ == "X-log-window-height") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueInteger::ID);
+      auto value = static_cast<const td::td_api::optionValueInteger &>(*update.value_).value_;
+      global_parameters().set_log_window_height((td::int32)value);
+      update_layout_parameters();
+    } else if (update.name_ == "X-dialog-list-window-width") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueInteger::ID);
+      auto value = static_cast<const td::td_api::optionValueInteger &>(*update.value_).value_;
+      global_parameters().set_dialog_list_window_width((td::int32)value);
+      update_layout_parameters();
+    } else if (update.name_ == "X-compose-window-height") {
+      CHECK(update.value_->get_id() == td::td_api::optionValueInteger::ID);
+      auto value = static_cast<const td::td_api::optionValueInteger &>(*update.value_).value_;
+      global_parameters().set_compose_window_height((td::int32)value);
+      update_layout_parameters();
+    } else if (update.name_.size() >= 2 && update.name_[0] == 'X' && update.name_[1] == '-') {
+      LOG(ERROR) << "unhandled option " << update.name_;
+      send_request(
+          td::make_tl_object<td::td_api::setOption>(update.name_, td::make_tl_object<td::td_api::optionValueEmpty>()),
+          {});
     }
   }
 
@@ -2011,6 +2035,7 @@ class TdcursesImpl : public Tdcurses {
   }
 
   void update_status_line() override;
+  void update_layout_parameters() override;
 
  private:
   std::map<td::uint64, td::Promise<td::tl_object_ptr<td::td_api::Object>>> handlers_;
@@ -2018,7 +2043,7 @@ class TdcursesImpl : public Tdcurses {
   td::int32 unread_chats_{0};
 };
 
-void Tdcurses::start_curses(TdcursesParameters &params) {
+void Tdcurses::start_curses() {
   auto backend_type_str = global_parameters().backend_type();
   windows::Screen::BackendType backend_type = windows::Screen::BackendType::Auto;
   if (backend_type_str == "Tickit") {
@@ -2058,7 +2083,8 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   loop();
   layout_ = std::make_shared<TdcursesLayout>(this, actor_id(this));
   log_window_ = std::make_shared<windows::LogWindow>();
-  log_interface_ = std::make_unique<windows::WindowLogInterface<Tdcurses>>(log_window_, actor_id(this));
+  log_interface_ =
+      std::make_unique<windows::WindowLogInterface<Tdcurses>>(log_window_, actor_id(this), td::log_interface);
   dialog_list_window_ = std::make_shared<DialogListWindow>(this, actor_id(this));
   status_line_window_ = std::make_shared<StatusLineWindow>();
   class CommandLineCallback : public CommandLineWindow::Callback {
@@ -2113,16 +2139,16 @@ void Tdcurses::start_curses(TdcursesParameters &params) {
   status_line_window_->replace_text(
       "", {std::make_shared<windows::MarkupElementBgColor>(windows::MarkupElementPos(0, 1),
                                                            windows::MarkupElementPos(1000, 1), windows::Color::Grey)});
-  //td::log_interface = log_interface_.get();
+  td::log_interface = log_interface_.get();
   screen_->change_layout(layout_);
   layout_->replace_log_window(log_window_);
   layout_->replace_dialog_list_window(dialog_list_window_);
   layout_->replace_status_line_window(status_line_window_);
   layout_->replace_command_line_window(command_line_window_);
-  layout_->initialize_sizes(params);
+  layout_->initialize_sizes(global_parameters().log_window_enabled(), global_parameters().log_window_height(),
+                            global_parameters().dialog_list_window_width(),
+                            global_parameters().compose_window_height());
   screen_->refresh(true);
-
-  initialize_options(params);
 
   LOG(INFO) << "starting";
 }
@@ -2257,19 +2283,6 @@ void Tdcurses::tear_down() {
   td::Scheduler::unsubscribe(poll_fd_.get_pollable_fd_ref());
 }
 
-void Tdcurses::initialize_options(TdcursesParameters &params) {
-  options_ = {{"log_window",
-               {"enabled", "disabled"},
-               [&](std::string val) {
-                 if (val == "enabled") {
-                   layout_->enable_log_window();
-                 } else {
-                   layout_->disable_log_window();
-                 }
-               },
-               params.log_window_enabled ? 0U : 1U}};
-}
-
 void TdcursesImpl::update_status_line() {
   auto w = status_line_window();
   if (w) {
@@ -2376,6 +2389,12 @@ void Tdcurses::run_exit() {
                            });
       },
       true);
+}
+
+void TdcursesImpl::update_layout_parameters() {
+  layout()->initialize_sizes(global_parameters().log_window_enabled(), global_parameters().log_window_height(),
+                             global_parameters().dialog_list_window_width(),
+                             global_parameters().compose_window_height());
 }
 
 }  // namespace tdcurses
@@ -2658,11 +2677,10 @@ int main(int argc, char **argv) {
   tdlib_parameters->use_secret_chats_ = use_secret_chats;
   tdlib_parameters->use_test_dc_ = use_test_dc;
 
-  auto tdcurses_params = std::make_unique<tdcurses::TdcursesParameters>();
-  tdcurses_params->log_window_enabled = log_window_enabled;
-  tdcurses_params->dialog_list_window_width = dialog_list_window_width;
-  tdcurses_params->log_window_height = log_window_height;
-  tdcurses_params->compose_window_height = compose_window_height;
+  tdcurses::global_parameters().set_log_window_enabled(log_window_enabled);
+  tdcurses::global_parameters().set_log_window_height(log_window_height);
+  tdcurses::global_parameters().set_dialog_list_window_width(dialog_list_window_width);
+  tdcurses::global_parameters().set_compose_window_height(compose_window_height);
 
   tdcurses::global_parameters().set_copy_command(copy_command);
   tdcurses::global_parameters().set_link_open_command(link_open_command);
@@ -2692,8 +2710,7 @@ int main(int argc, char **argv) {
   scheduler.start();
   {
     auto guard = scheduler.get_main_guard();
-    td::send_closure_later(act.get(), &tdcurses::TdcursesImpl::start, std::move(tdlib_parameters),
-                           std::move(tdcurses_params));
+    td::send_closure_later(act.get(), &tdcurses::TdcursesImpl::start, std::move(tdlib_parameters));
   }
   while (scheduler.run_main(100)) {
     if (db_closed) {

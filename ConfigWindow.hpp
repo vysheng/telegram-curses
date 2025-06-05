@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
 #include <functional>
 #include <memory>
 #include <vector>

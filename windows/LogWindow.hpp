@@ -65,17 +65,36 @@ class LogWindow : public windows::PadWindow {
 template <typename ActorType>
 class WindowLogInterface : public td::LogInterface {
  public:
-  WindowLogInterface(std::shared_ptr<LogWindow> window, td::ActorId<ActorType> root)
-      : window_(std::move(window)), root_(std::move(root)) {
+  WindowLogInterface(std::shared_ptr<LogWindow> window, td::ActorId<ActorType> root, td::LogInterface *next)
+      : window_(std::move(window)), root_(std::move(root)), next_(next) {
   }
+
   void do_append(int log_level, td::CSlice slice) override {
+    if (next_) {
+      next_->do_append(log_level, slice);
+    }
     window_->add_log_el(slice.str());
     td::send_closure(root_, &td::Actor::loop);
+  }
+
+  void after_rotation() override {
+    if (next_) {
+      next_->after_rotation();
+    }
+  }
+
+  td::vector<td::string> get_file_paths() override {
+    if (next_) {
+      return next_->get_file_paths();
+    } else {
+      return {};
+    }
   }
 
  private:
   std::shared_ptr<LogWindow> window_;
   td::ActorId<ActorType> root_;
+  td::LogInterface *next_{nullptr};
 };
 
 }  // namespace windows

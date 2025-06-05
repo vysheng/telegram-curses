@@ -323,6 +323,33 @@ class GlobalParameters {
     return sb.as_cslice().str();
   }
 
+  bool log_window_enabled() const {
+    return log_window_enabled_;
+  }
+
+  void set_log_window_enabled(bool value) {
+    log_window_enabled_ = value;
+  }
+
+  auto log_window_height() const {
+    return log_window_height_;
+  }
+  void set_log_window_height(td::int32 value) {
+    log_window_height_ = value;
+  }
+  auto dialog_list_window_width() const {
+    return dialog_list_window_width_;
+  }
+  void set_dialog_list_window_width(td::int32 value) {
+    dialog_list_window_width_ = value;
+  }
+  auto compose_window_height() const {
+    return compose_window_height_;
+  }
+  void set_compose_window_height(td::int32 value) {
+    compose_window_height_ = value;
+  }
+
  private:
   std::array<td::tl_object_ptr<td::td_api::scopeNotificationSettings>, NotificationScopeCount>
       scope_notification_settings_{};
@@ -361,6 +388,11 @@ class GlobalParameters {
   bool show_images_{true};
   bool show_pixel_images_{true};
   std::set<std::string> allowed_image_extensions_;
+
+  bool log_window_enabled_{false};
+  td::int32 log_window_height_{10};
+  td::int32 dialog_list_window_width_{10};
+  td::int32 compose_window_height_{10};
 
   std::string tdlib_version_;
   std::string backend_type_;

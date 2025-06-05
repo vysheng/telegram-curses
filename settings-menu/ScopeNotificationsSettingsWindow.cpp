@@ -1,10 +1,10 @@
 #include "ScopeNotificationsSettingsWindow.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "ChangeScopeNotificationsSettingsWindow.hpp"
-#include "ChatManager.hpp"
-#include "LoadingWindow.hpp"
+#include "managers/ChatManager.hpp"
+#include "common-windows/LoadingWindow.hpp"
 #include "SelectionWindow.hpp"
-#include "ErrorWindow.hpp"
+#include "common-windows/ErrorWindow.hpp"
 #include "td/telegram/td_api.h"
 
 namespace tdcurses {

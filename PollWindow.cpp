@@ -1,6 +1,6 @@
 #include "PollWindow.hpp"
-#include "LoadingWindow.hpp"
-#include "ErrorWindow.hpp"
+#include "common-windows/LoadingWindow.hpp"
+#include "common-windows/ErrorWindow.hpp"
 #include "TdObjectsOutput.h"
 #include "auto/td/telegram/td_api.hpp"
 #include "td/telegram/td_api.h"

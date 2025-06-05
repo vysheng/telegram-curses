@@ -1,6 +1,6 @@
 #include "MainSettingsWindow.hpp"
 #include "TdObjectsOutput.h"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "AccountSettingsWindow.hpp"
 #include "NotificationsSettingsWindow.hpp"
 #include "ChatSettingsWindow.hpp"

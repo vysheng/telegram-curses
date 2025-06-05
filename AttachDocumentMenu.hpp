@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
-#include "FileSelectionWindow.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
+#include "common-windows/FileSelectionWindow.hpp"
 #include "AttachType.h"
 #include <memory>
 #include <vector>

@@ -2,10 +2,10 @@
 
 #include "TdcursesWindowBase.hpp"
 #include "ChatWindow.hpp"
-#include "StickerManager.hpp"
+#include "managers/StickerManager.hpp"
 #include "Outputter.hpp"
-#include "MenuWindowCommon.hpp"
-#include "MenuWindowView.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
+#include "common-windows/MenuWindowView.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"

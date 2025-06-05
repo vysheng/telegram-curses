@@ -27,13 +27,6 @@ class StatusLineWindow;
 class CommandLineWindow;
 class TdcursesWindowBase;
 
-struct TdcursesParameters {
-  bool log_window_enabled{false};
-  td::int32 log_window_height{10};
-  td::int32 dialog_list_window_width{10};
-  td::int32 compose_window_height{10};
-};
-
 class TdcursesInterface : public td::Actor {
  private:
   template <typename T>
@@ -126,7 +119,6 @@ class Tdcurses : public TdcursesInterface {
     }
   };
 
-  void initialize_options(TdcursesParameters &params);
   void update_cpu_stat(td::CpuStat stat);
 
   auto self_id() const {
@@ -159,7 +151,7 @@ class Tdcurses : public TdcursesInterface {
   Tdcurses() {
   }
 
-  void start_curses(TdcursesParameters &params);
+  void start_curses();
 
   bool window_exists(td::int64 id);
 
@@ -238,6 +230,7 @@ class Tdcurses : public TdcursesInterface {
   void unregister_alive_window(TdcursesWindowBase *window);
 
   virtual void update_status_line() = 0;
+  virtual void update_layout_parameters() = 0;
   td::PollableFdInfo poll_fd_;
 
   const auto &relaxed_cpu_stat() const {

@@ -1,6 +1,6 @@
 #include "AboutWindow.hpp"
 #include "Outputter.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "rlottie/inc/rlottie.h"
 
 #include <notcurses/notcurses.h>

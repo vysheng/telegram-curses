@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"

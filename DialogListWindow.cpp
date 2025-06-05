@@ -1,6 +1,6 @@
 #include "DialogListWindow.hpp"
 #include "ChatSearchWindow.hpp"
-#include "StickerManager.hpp"
+#include "managers/StickerManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"

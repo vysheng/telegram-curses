@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
-#include "GlobalParameters.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
+#include "managers/GlobalParameters.hpp"
 
 namespace tdcurses {
 

@@ -2,8 +2,8 @@
 
 #include "td/tl/TlObject.h"
 #include "TdcursesWindowBase.hpp"
-#include "ChatManager.hpp"
-#include "MenuWindow.hpp"
+#include "managers/ChatManager.hpp"
+#include "common-windows/MenuWindow.hpp"
 #include "windows/OneLineInputWindow.hpp"
 #include "td/utils/Promise.h"
 #include "windows/Output.hpp"

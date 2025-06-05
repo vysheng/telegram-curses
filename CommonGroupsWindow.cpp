@@ -1,6 +1,6 @@
 #include "CommonGroupsWindow.hpp"
 #include "ChatInfoWindow.hpp"
-#include "ChatManager.hpp"
+#include "managers/ChatManager.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"

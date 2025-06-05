@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MenuWindowPad.hpp"
-#include "ChatManager.hpp"
+#include "common-windows/MenuWindowPad.hpp"
+#include "managers/ChatManager.hpp"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
 #include <memory>

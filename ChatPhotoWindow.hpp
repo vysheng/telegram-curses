@@ -1,8 +1,8 @@
 #pragma once
 
-#include "FileManager.hpp"
-#include "MenuWindow.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/FileManager.hpp"
+#include "common-windows/MenuWindow.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "windows/Input.hpp"

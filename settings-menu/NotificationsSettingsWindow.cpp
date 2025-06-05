@@ -1,6 +1,6 @@
 #include "NotificationsSettingsWindow.hpp"
 #include "ScopeNotificationsSettingsWindow.hpp"
-#include "LoadingWindow.hpp"
+#include "common-windows/LoadingWindow.hpp"
 
 namespace tdcurses {
 

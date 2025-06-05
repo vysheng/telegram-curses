@@ -9,7 +9,7 @@
 #include "Debug.hpp"
 #include "settings-menu/MainSettingsWindow.hpp"
 #include "ChatInfoWindow.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include <memory>
 
 namespace tdcurses {
@@ -78,8 +78,11 @@ class TdcursesLayout
     command_line_->resize(1, width());
     command_line_->move_yx(h + 1, 0);
     if (log_window_enabled_) {
-      log_window_->resize(height() - 1 - h - 2, width());
-      log_window_->move_yx(h + 3, 0);
+      log_window_->resize(height() - h - 2, width());
+      log_window_->move_yx(h + 2, 0);
+    } else {
+      log_window_->resize(3, width());
+      log_window_->move_yx(new_height, 0);
     }
   }
 
@@ -164,11 +167,12 @@ class TdcursesLayout
     }
   }
 
-  void initialize_sizes(TdcursesParameters &params) {
-    log_window_enabled_ = params.log_window_enabled;
-    dialog_list_window_height_ = 1.0 - 0.01 * params.log_window_height;
-    dialog_list_window_width_ = 0.01 * params.dialog_list_window_width;
-    chat_window_height_ = 1.0 - 0.01 * params.compose_window_height;
+  void initialize_sizes(bool log_window_enabled, td::int32 log_window_height, td::int32 dialog_list_window_width,
+                        td::int32 compose_window_height) {
+    log_window_enabled_ = log_window_enabled;
+    dialog_list_window_height_ = 1.0 - 0.01 * log_window_height;
+    dialog_list_window_width_ = 0.01 * dialog_list_window_width;
+    chat_window_height_ = 1.0 - 0.01 * compose_window_height;
 
     on_resize(height(), width(), height(), width());
     set_need_refresh();

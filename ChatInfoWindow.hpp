@@ -6,8 +6,8 @@
 #include "windows/Output.hpp"
 #include "windows/PadWindow.hpp"
 #include "TdcursesWindowBase.hpp"
-#include "ChatManager.hpp"
-#include "MenuWindowCommon.hpp"
+#include "managers/ChatManager.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
 #include <functional>
 #include <memory>
 #include <vector>

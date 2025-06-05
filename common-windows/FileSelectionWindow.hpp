@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MenuWindowPad.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "td/telegram/PromoDataManager.h"
 #include "td/utils/Promise.h"
 #include "td/utils/Slice.h"

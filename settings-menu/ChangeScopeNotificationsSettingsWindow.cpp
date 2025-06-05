@@ -1,8 +1,8 @@
 #include "ChangeScopeNotificationsSettingsWindow.hpp"
-#include "ChatManager.hpp"
+#include "managers/ChatManager.hpp"
 #include "SelectionWindow.hpp"
-#include "LoadingWindow.hpp"
-#include "ErrorWindow.hpp"
+#include "common-windows/LoadingWindow.hpp"
+#include "common-windows/ErrorWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 

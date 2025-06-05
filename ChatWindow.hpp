@@ -9,7 +9,7 @@
 #include "td/generate/auto/td/telegram/td_api.h"
 #include "td/generate/auto/td/telegram/td_api.hpp"
 #include "TdcursesWindowBase.hpp"
-#include "MenuWindow.hpp"
+#include "common-windows/MenuWindow.hpp"
 #include <memory>
 #include <set>
 #include <vector>

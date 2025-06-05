@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
-#include "ChatManager.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
+#include "managers/ChatManager.hpp"
 #include "AttachType.h"
 #include "AttachDocumentMenu.hpp"
 #include "td/tl/TlObject.h"

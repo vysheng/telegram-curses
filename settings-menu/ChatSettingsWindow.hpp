@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MenuWindowCommon.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
 
 namespace tdcurses {
 
@@ -17,6 +17,10 @@ class ChatSettingsWindow : public MenuWindowCommon {
   std::shared_ptr<ElInfo> show_images_enabled_el_;
   std::shared_ptr<ElInfo> show_pixel_images_enabled_el_;
   std::shared_ptr<ElInfo> allowed_image_extensions_el_;
+  std::shared_ptr<ElInfo> log_window_enabled_el_;
+  std::shared_ptr<ElInfo> log_window_height_el_;
+  std::shared_ptr<ElInfo> dialog_list_window_width_el_;
+  std::shared_ptr<ElInfo> compose_window_height_el_;
 };
 
 }  // namespace tdcurses

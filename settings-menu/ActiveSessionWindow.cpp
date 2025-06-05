@@ -1,6 +1,6 @@
 #include "ActiveSessionWindow.hpp"
-#include "Action.hpp"
-#include "ErrorWindow.hpp"
+#include "common-windows/Action.hpp"
+#include "common-windows/ErrorWindow.hpp"
 #include "td/telegram/td_api.h"
 #include "td/telegram/td_api.hpp"
 #include "td/tl/TlObject.h"

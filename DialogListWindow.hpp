@@ -9,7 +9,7 @@
 #include "td/generate/auto/td/telegram/td_api.h"
 #include "td/generate/auto/td/telegram/td_api.hpp"
 #include "TdcursesWindowBase.hpp"
-#include "ChatManager.hpp"
+#include "managers/ChatManager.hpp"
 #include "CommandLineWindow.hpp"
 #include <memory>
 

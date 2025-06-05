@@ -1,8 +1,8 @@
 #pragma once
 
-#include "MenuWindow.hpp"
-#include "MenuWindowCommon.hpp"
-#include "ErrorWindow.hpp"
+#include "common-windows/MenuWindow.hpp"
+#include "common-windows/MenuWindowCommon.hpp"
+#include "common-windows/ErrorWindow.hpp"
 #include "auto/td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include <set>

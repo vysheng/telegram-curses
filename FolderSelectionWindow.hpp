@@ -1,8 +1,8 @@
 #pragma once
 
-#include "MenuWindowPad.hpp"
+#include "common-windows/MenuWindowPad.hpp"
 #include "DialogListWindow.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "TdObjectsOutput.h"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"

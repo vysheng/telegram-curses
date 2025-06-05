@@ -1,9 +1,9 @@
 #pragma once
 
-#include "FileManager.hpp"
-#include "MenuWindow.hpp"
-#include "ErrorWindow.hpp"
-#include "GlobalParameters.hpp"
+#include "managers/FileManager.hpp"
+#include "common-windows/MenuWindow.hpp"
+#include "common-windows/ErrorWindow.hpp"
+#include "managers/GlobalParameters.hpp"
 #include "td/telegram/td_api.h"
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
