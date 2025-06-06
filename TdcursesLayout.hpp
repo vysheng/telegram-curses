@@ -4,7 +4,6 @@
 #include "windows/EmptyWindow.hpp"
 #include "windows/BorderedWindow.hpp"
 #include "TdcursesWindowBase.hpp"
-#include "ConfigWindow.hpp"
 #include "HelpWindow.hpp"
 #include "Debug.hpp"
 #include "settings-menu/MainSettingsWindow.hpp"
@@ -120,10 +119,7 @@ class TdcursesLayout
   }
 
   void handle_input(const windows::InputEvent &info) override {
-    if (info == "T-F9") {
-      root()->show_config_window();
-      return;
-    } else if (info == "T-F8") {
+    if (info == "T-F8") {
       auto user = chat_manager().get_user(global_parameters().my_user_id());
       if (user) {
         create_menu_window<ChatInfoWindow>(root(), root_actor_id(), user);

@@ -189,8 +189,6 @@ class Tdcurses : public TdcursesInterface {
   void open_edit_window(td::int64 chat_id, td::int64 message_id);
   void close_compose_window();
 
-  void show_config_window();
-
   void loop() override;
   void refresh();
   void tear_down() override;

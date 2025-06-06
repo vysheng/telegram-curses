@@ -226,8 +226,6 @@ target_sources(telegram-curses PRIVATE
   CommonGroupsWindow.hpp
   ComposeWindow.cpp
   ComposeWindow.hpp
-  ConfigWindow.cpp
-  ConfigWindow.hpp
   Debug.cpp
   Debug.hpp
   DebugInfoWindow.cpp

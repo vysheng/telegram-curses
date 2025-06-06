@@ -45,7 +45,6 @@
 #include "ChatWindow.hpp"
 #include "CommandLineWindow.hpp"
 #include "ComposeWindow.hpp"
-#include "ConfigWindow.hpp"
 #include "DialogListWindow.hpp"
 #include "managers/FileManager.hpp"
 #include "ChatInfoWindow.hpp"
@@ -1489,6 +1488,7 @@ class TdcursesImpl : public Tdcurses {
   //@value The new option value
   //updateOption name:string value:OptionValue = Update;
   void process_update(td::td_api::updateOption &update) {
+    //LOG(ERROR) << update.name_;
     if (update.name_ == "my_id") {
       CHECK(update.value_->get_id() == td::td_api::optionValueInteger::ID);
       auto id = static_cast<const td::td_api::optionValueInteger &>(*update.value_).value_;
@@ -1539,9 +1539,6 @@ class TdcursesImpl : public Tdcurses {
       update_layout_parameters();
     } else if (update.name_.size() >= 2 && update.name_[0] == 'X' && update.name_[1] == '-') {
       LOG(ERROR) << "unhandled option " << update.name_;
-      send_request(
-          td::make_tl_object<td::td_api::setOption>(update.name_, td::make_tl_object<td::td_api::optionValueEmpty>()),
-          {});
     }
   }
 
@@ -2231,10 +2228,6 @@ void Tdcurses::open_edit_window(td::int64 chat_id, td::int64 message_id) {
                                                     message_id, text, chat_window_.get());
   layout_->replace_compose_window(compose_window_);
   layout_->activate_subwindow(compose_window_);
-}
-
-void Tdcurses::show_config_window() {
-  create_menu_window<ConfigWindow>(this, actor_id(this), options_);
 }
 
 void Tdcurses::close_compose_window() {

@@ -12,7 +12,6 @@ void generate_help_info(Outputter &out) {
   out << "    F1                : show this help\n";
   out << "    F7                : open settings\n";
   out << "    F8                : open current user profile\n";
-  out << "    F9                : open config\n";
   out << "    F12               : open debug info window\n";
   out << "  Dialog list:\n";
   out << "    I                 : open chat info window\n";
