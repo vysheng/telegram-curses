@@ -33,9 +33,6 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::W
   } else {
     out << "  ";
   }
-  if (is_pinned(dialog_list_window.cur_sublist())) {
-    out << "🔒";
-  }
   out << title();
   if (chat_type() == ChatType::User) {
     auto user = chat_manager().get_user(this->chat_base_id());
@@ -62,6 +59,9 @@ td::int32 DialogListWindow::Element::render(windows::PadWindow &root, windows::W
                                       }
                                     }));
     }
+  }
+  if (is_pinned(dialog_list_window.cur_sublist())) {
+    out << Outputter::RightPad{"📌"};
   }
   if (unknown_custom_emoji_ids.size() > 0) {
     if (unknown_custom_emoji_ids.size() > 200) {

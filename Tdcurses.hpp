@@ -2,6 +2,7 @@
 
 #include "td/utils/Promise.h"
 #include "td/utils/port/Stat.h"
+#include "windows/Markup.hpp"
 #include "windows/Screen.hpp"
 #include "windows/LogWindow.hpp"
 #include "windows/Window.hpp"
@@ -236,6 +237,7 @@ class Tdcurses : public TdcursesInterface {
   }
 
   void run_exit();
+  void add_event(std::string text, std::vector<windows::MarkupElement> markup);
 };
 
 }  // namespace tdcurses

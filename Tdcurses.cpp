@@ -65,6 +65,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cmath>
+#include <ctime>
 #include <limits>
 #include <memory>
 #include <ostream>
@@ -1099,6 +1100,20 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateSavedMessagesTopicCount &update) {
   }
 
+  //@description Basic information about a topic in a channel direct messages chat administered by the current user has changed. This update is guaranteed to come before the topic identifier is returned to the application
+  //@topic New data about the topic
+  //updateDirectMessagesChatTopic topic:directMessagesChatTopic = Update;
+  void process_update(td::td_api::updateDirectMessagesChatTopic &update) {
+  }
+
+  //@description Number of messages in a topic has changed; for Saved Messages and channel direct messages chat topics only
+  //@chat_id Identifier of the chat in topic of which the number of messages has changed
+  //@topic_id Identifier of the topic
+  //@message_count Approximate number of messages in the topics
+  //updateTopicMessageCount chat_id:int53 topic_id:MessageTopic message_count:int32 = Update;
+  void process_update(td::td_api::updateTopicMessageCount &update) {
+  }
+
   //@description Basic information about a quick reply shortcut has changed. This update is guaranteed to come before the quick shortcut name is returned to the application
   //@shortcut New data about the shortcut
   //updateQuickReplyShortcut shortcut:quickReplyShortcut = Update;
@@ -1220,6 +1235,47 @@ class TdcursesImpl : public Tdcurses {
     auto c = chat_window();
     if (c && c->main_chat_id() == update.chat_id_) {
       c->process_update(update);
+    }
+
+    {
+      auto ts = std::time(NULL);
+      Outputter out;
+      out << Outputter::Date{(int)ts} << " ";
+      outputter_add_message_sender_color(out, *update.sender_id_);
+      out << update.sender_id_;
+      out << Color::Revert;
+      td::td_api::downcast_call(
+          *update.action_,
+          td::overloaded(
+              [&](const td::td_api::chatActionTyping &action) { out << " is typing"; },
+              [&](const td::td_api::chatActionRecordingVideo &action) { out << " is recording a video"; },
+              [&](const td::td_api::chatActionUploadingVideo &action) {
+                out << " is uploading a video (" << action.progress_ << ")";
+              },
+              [&](const td::td_api::chatActionRecordingVideoNote &action) { out << " is recording a video note"; },
+              [&](const td::td_api::chatActionUploadingVideoNote &action) {
+                out << " is uploading a video note (" << action.progress_ << ")";
+              },
+              [&](const td::td_api::chatActionRecordingVoiceNote &action) { out << " is recording a voice note"; },
+              [&](const td::td_api::chatActionUploadingVoiceNote &action) {
+                out << " is uploading a voice note (" << action.progress_ << ")";
+              },
+              [&](const td::td_api::chatActionUploadingPhoto &action) {
+                out << " is uploading a photo (" << action.progress_ << ")";
+              },
+              [&](const td::td_api::chatActionUploadingDocument &action) {
+                out << " is uploading a document (" << action.progress_ << ")";
+              },
+              [&](const td::td_api::chatActionChoosingSticker &action) { out << " is choosing a sticker"; },
+              [&](const td::td_api::chatActionChoosingLocation &action) { out << " is choosing a location"; },
+              [&](const td::td_api::chatActionChoosingContact &action) { out << " is choosing a contact"; },
+              [&](const td::td_api::chatActionStartPlayingGame &action) { out << " is playing a game"; },
+              [&](const td::td_api::chatActionWatchingAnimations &action) { out << " is watching an emoji animation"; },
+              [&](const td::td_api::chatActionCancel &action) { out << " cancelled action"; }));
+
+      auto C = chat_manager().get_chat(update.chat_id_);
+      out << " in chat " << C;
+      add_event(out.as_str(), out.markup());
     }
   }
 
@@ -2382,6 +2438,12 @@ void Tdcurses::run_exit() {
                            });
       },
       true);
+}
+
+void Tdcurses::add_event(std::string text, std::vector<windows::MarkupElement> markup) {
+  if (log_window_) {
+    log_window_->add_log_el(std::move(text), std::move(markup));
+  }
 }
 
 void TdcursesImpl::update_layout_parameters() {

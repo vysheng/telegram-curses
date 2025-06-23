@@ -92,6 +92,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGift &con
 Outputter &operator<<(Outputter &out, const td::td_api::messageRefundedUpgradedGift &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMessagesRefunded &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMessagePriceChanged &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageDirectMessagePriceChanged &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUsersShared &content);
@@ -137,4 +138,7 @@ Outputter &operator<<(Outputter &, const td::td_api::chatPhoto &file);
 
 Outputter &operator<<(Outputter &, const td::td_api::birthdate &birthdate);
 Outputter &operator<<(Outputter &, const td::td_api::profilePhoto &content);
+
+void outputter_add_message_sender_color(Outputter &, const td::td_api::MessageSender &sender);
+
 }  // namespace tdcurses

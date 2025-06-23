@@ -205,11 +205,11 @@ void ChatWindow::request_bottom_elements_ex(td::int32 message_id) {
         });
       },
       [&](const ModeSearch &m) {
-        //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
+        //searchChatMessages chat_id:int53 topic_id:MessageTopic query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter = FoundChatMessages;
         auto req = td::make_tl_object<td::td_api::searchChatMessages>(
-            max_message_id.chat_id, m.search_pattern, /* sender_id */ nullptr,
+            max_message_id.chat_id, /* topic_id */ nullptr, m.search_pattern, /* sender_id */ nullptr,
             /* from_message_id */ max_message_id.message_id, /* offset */ -10, /* limit */ 11,
-            /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
+            /*filter */ nullptr);
         send_request(std::move(req), [self = this, pivot_message_id = max_message_id.message_id](
                                          td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
           self->received_bottom_search_elements(std::move(R), pivot_message_id);
@@ -303,11 +303,11 @@ void ChatWindow::request_top_elements_ex(td::int32 message_id) {
         });
       },
       [&](const ModeSearch &m) {
-        //searchChatMessages chat_id:int53 query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter message_thread_id:int53 saved_messages_topic_id:int53 = FoundChatMessages;
+        //searchChatMessages chat_id:int53 topic_id:MessageTopic query:string sender_id:MessageSender from_message_id:int53 offset:int32 limit:int32 filter:SearchMessagesFilter = FoundChatMessages;
         auto req = td::make_tl_object<td::td_api::searchChatMessages>(
-            min_message_id.chat_id, m.search_pattern, /* sender_id */ nullptr,
+            min_message_id.chat_id, /*topic_id*/ nullptr, m.search_pattern, /* sender_id */ nullptr,
             /* from_message_id */ min_message_id.message_id, /* offset */ 0, /* limit */ 10,
-            /*filter */ nullptr, /* message_thread_id */ 0, /* message_topic_id */ 0);
+            /*filter */ nullptr);
         send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::foundChatMessages>> R) {
           received_top_search_elements(std::move(R));
         });

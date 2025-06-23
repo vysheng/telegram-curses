@@ -66,6 +66,10 @@ void add_color(Outputter &out, const td::td_api::MessageSender &x, ColorScheme::
   out << r;
 }
 
+void outputter_add_message_sender_color(Outputter &out, const td::td_api::MessageSender &sender) {
+  add_color(out, sender, ColorScheme::Mode::NormalForeground);
+}
+
 bool show_image(const td::tl_object_ptr<td::td_api::file> &f) {
   if (!f) {
     return false;
@@ -551,6 +555,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMessagesRefun
 
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaidMessagePriceChanged &content) {
   return out << "[paid message price changed to " << content.paid_message_star_count_ << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageDirectMessagePriceChanged &content) {
+  return out << "[paid direct price changed to " << content.paid_message_star_count_ << "]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {

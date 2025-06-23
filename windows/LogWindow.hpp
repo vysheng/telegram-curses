@@ -4,11 +4,13 @@
 #include "PadWindow.hpp"
 
 #include "td/utils/logging.h"
+#include "windows/Markup.hpp"
 
 #include <memory>
 #include <mutex>
 #include <list>
 #include <string>
+#include <vector>
 
 namespace windows {
 
@@ -17,16 +19,16 @@ class LogWindow : public windows::PadWindow {
   LogWindow() {
     scroll_last_line();
   }
-  void add_log_el(std::string el) {
+  void add_log_el(std::string el, std::vector<MarkupElement> markup) {
     {
       std::lock_guard<std::mutex> lock(mutex);
-      unprocessed_log_.push_back(el);
+      unprocessed_log_.emplace_back(el, std::move(markup));
     }
     set_need_refresh();
   }
 
   void render(WindowOutputter &rb, bool force) override {
-    std::list<std::string> r;
+    std::list<std::pair<std::string, std::vector<MarkupElement>>> r;
     {
       std::lock_guard<std::mutex> lock(mutex);
       r = std::move(unprocessed_log_);
@@ -34,12 +36,13 @@ class LogWindow : public windows::PadWindow {
     for (auto &e : r) {
       class E : public windows::PadWindowElement {
        public:
-        E(std::string text, td::int64 id) : text_(std::move(text)), id_(id) {
+        E(std::string text, std::vector<MarkupElement> markup, td::int64 id)
+            : text_(std::move(text)), markup_(std::move(markup)), id_(id) {
         }
 
         td::int32 render(PadWindow &root, WindowOutputter &rb, windows::SavedRenderedImagesDirectory &dir,
                          bool is_selected) override {
-          return render_plain_text(rb, text_, width(), 1, is_selected, &dir);
+          return render_plain_text(rb, text_, markup_, width(), 1, is_selected, &dir);
         }
 
         bool is_less(const PadWindowElement &el) const override {
@@ -48,18 +51,28 @@ class LogWindow : public windows::PadWindow {
 
        private:
         std::string text_;
+        std::vector<MarkupElement> markup_;
         td::int64 id_;
       };
 
-      add_element(std::make_shared<E>(std::move(e), ++last_id_));
+      auto l = std::make_shared<E>(std::move(e.first), e.second, ++last_id_);
+      add_element(l);
+      elements_.push_back(std::move(l));
+    }
+    while (elements_.size() > max_size_) {
+      auto l = elements_.front();
+      elements_.pop_front();
+      delete_element(l.get());
     }
     PadWindow::render(rb, force);
   }
 
  private:
   std::mutex mutex;
-  std::list<std::string> unprocessed_log_;
+  std::list<std::pair<std::string, std::vector<MarkupElement>>> unprocessed_log_;
+  std::list<std::shared_ptr<windows::PadWindowElement>> elements_;
   td::int64 last_id_{0};
+  size_t max_size_{1000};
 };
 
 template <typename ActorType>
@@ -73,7 +86,10 @@ class WindowLogInterface : public td::LogInterface {
     if (next_) {
       next_->do_append(log_level, slice);
     }
-    window_->add_log_el(slice.str());
+    std::vector<MarkupElement> markup;
+    markup.push_back(std::make_shared<MarkupElementFgColor>(MarkupElementPos{0, 0},
+                                                            MarkupElementPos{slice.size() + 5, 0}, Color::Grey));
+    window_->add_log_el(PSTRING() << " *** " << slice.str(), std::move(markup));
     td::send_closure(root_, &td::Actor::loop);
   }
 

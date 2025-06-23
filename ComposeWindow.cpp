@@ -69,8 +69,8 @@ void ComposeWindow::send_message(std::string message) {
     return;
   }
 
-  //messageSendOptions disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
-  auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(!no_sound_, false, false, false, 0, false,
+  //messageSendOptions direct_messages_chat_topic_id:int53 disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
+  auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(0, !no_sound_, false, false, false, 0, false,
                                                                          nullptr, 0, 0, false);
 
   std::vector<td::tl_object_ptr<td::td_api::InputMessageContent>> content;
