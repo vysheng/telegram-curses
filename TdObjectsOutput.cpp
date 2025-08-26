@@ -338,6 +338,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageStory &content) {
   return out << "[story " << content.story_id_ << "]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageChecklist &content) {
+  return out << "[" << content.list_ << "]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageInvoice &content) {
   return out << "[invoice " << (content.total_amount_ / 100) << "." << (content.total_amount_ % 100)
              << content.currency_ << "]";
@@ -561,8 +565,41 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageDirectMessagePric
   return out << "[paid direct price changed to " << content.paid_message_star_count_ << "]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageChecklistTasksDone &content) {
+  return out << "[checked " << content.marked_as_done_task_ids_.size() << " and unchecked "
+             << content.marked_as_not_done_task_ids_.size() << " tasks in checklist]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChecklistTasksAdded &content) {
+  out << "[added checklist tasks";
+  for (auto &opt : content.tasks_) {
+    out << " '" << opt->text_ << "'";
+  }
+  return out << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostApprovalFailed &content) {
+  return out << "[suggested post approval failed]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostApproved &content) {
+  return out << "[suggested post approved]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostDeclined &content) {
+  return out << "[suggested post declined]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostPaid &content) {
+  return out << "[suggested post paid]";
+}
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostRefunded &content) {
+  return out << "[suggested post refunded]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content) {
   return out << "[gifted " << content.amount_ << " stars]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedTon &content) {
+  return out << "[gifted " << content.ton_amount_ << " TON]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content) {
@@ -860,6 +897,19 @@ Outputter &operator<<(Outputter &out, const td::td_api::poll &content) {
     if (opt->is_being_chosen_ || opt->is_chosen_) {
       out << Color::Revert;
     }
+  }
+  return out;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::checklist &content) {
+  out << "checklist " << content.title_ << "\n";
+  for (auto &opt : content.tasks_) {
+    if (opt->completed_by_user_id_) {
+      out << " ✔ ";
+    } else {
+      out << "   ";
+    }
+    out << opt->text_ << "\n";
   }
   return out;
 }

@@ -784,6 +784,18 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
+  //@description Information about suggested post of a message was changed
+  //@chat_id Chat identifier
+  //@message_id Message identifier
+  //@suggested_post_info The new information about the suggested post
+  //updateMessageSuggestedPostInfo chat_id:int53 message_id:int53 suggested_post_info:suggestedPostInfo = Update;
+  void process_update(td::td_api::updateMessageSuggestedPostInfo &update) {
+    auto c = chat_window();
+    if (c) {
+      c->process_update(update);
+    }
+  }
+
   //@description A message with a live location was viewed. When the update is received, the application is supposed to update the live location
   //@chat_id Identifier of the chat with the live location message
   //@message_id Identifier of the message with live location
@@ -1792,6 +1804,12 @@ class TdcursesImpl : public Tdcurses {
   //@star_count The new number of Telegram Stars owned
   //updateOwnedStarCount star_count:int53 = Update;
   void process_update(td::td_api::updateOwnedStarCount &update) {
+    global_parameters().process_update(update);
+  }
+
+  //@description The number of Toncoins owned by the current user has changed @ton_amount The new amount of owned Toncoins; in the smallest units of the cryptocurrency
+  //updateOwnedTonCount ton_amount:int53 = Update;
+  void process_update(td::td_api::updateOwnedTonCount &update) {
     global_parameters().process_update(update);
   }
 

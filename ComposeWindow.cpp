@@ -69,9 +69,12 @@ void ComposeWindow::send_message(std::string message) {
     return;
   }
 
-  //messageSendOptions direct_messages_chat_topic_id:int53 disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
-  auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(0, !no_sound_, false, false, false, 0, false,
-                                                                         nullptr, 0, 0, false);
+  //messageSendOptions direct_messages_chat_topic_id:int53 suggested_post_info:inputSuggestedPostInfo disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
+  auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(
+      /*direct_messages_chat_topic_id*/ 0, /*suggested_post_info*/ nullptr, /*disable_notification*/ !no_sound_,
+      /*from_background*/ false, /*protect_content*/ false, /*allow_paid_broadcast*/ false,
+      /*paid_message_star_count*/ 0, /*update_order_of_installed_sticker_sets*/ false, /*scheduling_state*/ nullptr,
+      /*effect_id*/ 0, /*sending_id*/ 0, /*only_preview*/ false);
 
   std::vector<td::tl_object_ptr<td::td_api::InputMessageContent>> content;
   switch (attach_type_) {
@@ -118,7 +121,9 @@ void ComposeWindow::send_message(std::string message) {
   }
   td::tl_object_ptr<td::td_api::inputMessageReplyToMessage> reply;
   if (reply_message_id_) {
-    reply = td::make_tl_object<td::td_api::inputMessageReplyToMessage>(reply_message_id_, nullptr);
+    //inputMessageReplyToMessage message_id:int53 quote:inputTextQuote checklist_task_id:int32 = InputMessageReplyTo;
+    reply = td::make_tl_object<td::td_api::inputMessageReplyToMessage>(/*message_id*/ reply_message_id_,
+                                                                       /*quote*/ nullptr, /*checklist_task_id*/ 0);
     if (quote_.size() > 0) {
       if (enabled_markdown_) {
         auto R = run_request_sync(
@@ -181,8 +186,8 @@ void ComposeWindow::set_draft(std::string message) {
       td::make_tl_object<td::td_api::formattedText>(message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
   //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
   auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, false);
-  //draftMessage reply_to:InputMessageReplyTo date:int32 input_message_text:InputMessageContent effect_id:int64 = DraftMessage;
-  auto draft = td::make_tl_object<td::td_api::draftMessage>(nullptr, 0, std::move(content), 0);
+  //draftMessage reply_to:InputMessageReplyTo date:int32 input_message_text:InputMessageContent effect_id:int64 suggested_post_info:inputSuggestedPostInfo = DraftMessage;
+  auto draft = td::make_tl_object<td::td_api::draftMessage>(nullptr, 0, std::move(content), 0, nullptr);
   //setChatDraftMessage chat_id:int53 message_thread_id:int53 draft_message:draftMessage = Ok;
   auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, thread_id_, std::move(draft));
 

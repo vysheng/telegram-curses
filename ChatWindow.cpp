@@ -547,6 +547,20 @@ void ChatWindow::process_update(td::td_api::updateMessageFactCheck &update) {
   }
 }
 
+//@description Information about suggested post of a message was changed
+//@chat_id Chat identifier
+//@message_id Message identifier
+//@suggested_post_info The new information about the suggested post
+//updateMessageSuggestedPostInfo chat_id:int53 message_id:int53 suggested_post_info:suggestedPostInfo = Update;
+void ChatWindow::process_update(td::td_api::updateMessageSuggestedPostInfo &update) {
+  auto id = build_message_id(update.chat_id_, update.message_id_);
+  auto it = messages_.find(id);
+  if (it != messages_.end()) {
+    it->second->message->suggested_post_info_ = std::move(update.suggested_post_info_);
+    change_element(it->second.get());
+  }
+}
+
 //@description The list of unread reactions added to a message was changed @chat_id Chat identifier @message_id Message identifier @unread_reactions The new list of unread reactions @unread_reaction_count The new number of messages with unread reactions left in the chat
 //updateMessageUnreadReactions chat_id:int53 message_id:int53 unread_reactions:vector<unreadReaction> unread_reaction_count:int32 = Update;
 void ChatWindow::process_update(td::td_api::updateMessageUnreadReactions &update) {
