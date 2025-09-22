@@ -146,7 +146,7 @@ class Chat {
   }
 
   const auto &theme_name() const {
-    return chat_->theme_name_;
+    return chat_->theme_;
   }
 
   const auto &action_bar() const {
@@ -396,7 +396,7 @@ class Chat {
   //@theme_name The new name of the chat theme; may be empty if theme was reset to default
   //updateChatTheme chat_id:int53 theme_name:string = Update;
   void process_update(td::td_api::updateChatTheme &update) {
-    chat_->theme_name_ = std::move(update.theme_name_);
+    chat_->theme_ = std::move(update.theme_);
   }
 
   //@description The chat unread_mention_count has changed
@@ -554,8 +554,8 @@ class User {
   auto is_support() const {
     return user_->is_support_;
   }
-  const auto &restriction_reason() const {
-    return user_->restriction_reason_;
+  const auto &restriction_info() const {
+    return user_->restriction_info_;
   }
   auto have_access() const {
     return user_->have_access_;
@@ -678,17 +678,14 @@ class Supergroup {
   const auto &verification_status() const {
     return group_->verification_status_;
   }
-  const auto &restriction_reason() const {
-    return group_->restriction_reason_;
+  const auto &restriction_info() const {
+    return group_->restriction_info_;
   }
   auto has_active_stories() const {
     return group_->has_active_stories_;
   }
   auto has_unread_active_stories() const {
     return group_->has_unread_active_stories_;
-  }
-  bool has_sensitive_content() const {
-    return group_->has_sensitive_content_;
   }
 
   void full_update(td::tl_object_ptr<td::td_api::supergroup> group) {

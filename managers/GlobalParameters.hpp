@@ -66,8 +66,8 @@ class GlobalParameters {
     (update.for_dark_theme_ ? default_dark_background_ : default_light_background_) = std::move(update.background_);
   }
 
-  void process_update(td::td_api::updateChatThemes &update) {
-    chat_themes_ = std::move(update.chat_themes_);
+  void process_update(td::td_api::updateEmojiChatThemes &update) {
+    emoji_chat_themes_ = std::move(update.chat_themes_);
   }
 
   void process_update(td::td_api::updateAccentColors &update) {
@@ -131,6 +131,10 @@ class GlobalParameters {
   }
 
   void process_update(td::td_api::updateAutosaveSettings &update) {
+  }
+
+  void process_update(td::td_api::updateAgeVerificationParameters &update) {
+    age_verification_parameters_ = std::move(update.parameters_);
   }
 
   const auto &chat_folders() const {
@@ -362,7 +366,7 @@ class GlobalParameters {
   std::vector<td::int32> saved_animations_;
   td::tl_object_ptr<td::td_api::background> default_dark_background_;
   td::tl_object_ptr<td::td_api::background> default_light_background_;
-  std::vector<td::tl_object_ptr<td::td_api::chatTheme>> chat_themes_;
+  std::vector<td::tl_object_ptr<td::td_api::emojiChatTheme>> emoji_chat_themes_;
   std::map<td::int32, td::tl_object_ptr<td::td_api::accentColor>> accent_colors_;
   std::vector<td::int32> available_accent_color_ids_;
   std::vector<td::tl_object_ptr<td::td_api::profileAccentColor>> profile_accent_colors_;
@@ -381,6 +385,7 @@ class GlobalParameters {
   std::string animation_search_provider_;
   std::vector<std::string> animation_search_suggested_emojis_;
   std::map<td::int64, td::tl_object_ptr<td::td_api::notificationSound>> notification_sounds_;
+  td::tl_object_ptr<td::td_api::ageVerificationParameters> age_verification_parameters_;
 
   std::string copy_command_;
   std::string link_open_command_;

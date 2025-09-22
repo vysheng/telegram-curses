@@ -485,7 +485,7 @@ class TdcursesImpl : public Tdcurses {
     class QrWindow : public windows::ViewWindow {
      public:
       QrWindow(std::string text, std::vector<windows::MarkupElement> markup, td::int32 size)
-          : windows::ViewWindow(std::move(text), std::move(markup), nullptr), size_(size){};
+          : windows::ViewWindow(std::move(text), std::move(markup), nullptr), size_(size) {};
 
       td::int32 min_width() override {
         return 2 * size_ + 4;
@@ -1671,10 +1671,9 @@ class TdcursesImpl : public Tdcurses {
     global_parameters().process_update(update);
   }
 
-  //@description The list of available chat themes has changed
-  //@chat_themes The new list of chat themes
-  //updateChatThemes chat_themes:vector<chatTheme> = Update;
-  void process_update(td::td_api::updateChatThemes &update) {
+  //@description The list of available emoji chat themes has changed @chat_themes The new list of emoji chat themes
+  //updateEmojiChatThemes chat_themes:vector<emojiChatTheme> = Update;
+  void process_update(td::td_api::updateEmojiChatThemes &update) {
     global_parameters().process_update(update);
   }
 
@@ -1729,6 +1728,13 @@ class TdcursesImpl : public Tdcurses {
     }
     //global_parameters().process_update(update);
     update_status_line();
+  }
+
+  //@description The parameters for age verification of the current user's account has changed
+  //@parameters Parameters for the age verification; may be null if age verification isn't needed
+  //updateAgeVerificationParameters parameters:ageVerificationParameters = Update;
+  void process_update(td::td_api::updateAgeVerificationParameters &update) {
+    global_parameters().process_update(update);
   }
 
   //@description New terms of service must be accepted by the user. If the terms of service are declined, then the deleteAccount method must be called with the reason "Decline ToS update" @terms_of_service_id Identifier of the terms of service
@@ -1826,6 +1832,12 @@ class TdcursesImpl : public Tdcurses {
   //@status New Telegram Star revenue status
   //updateStarRevenueStatus owner_id:MessageSender status:starRevenueStatus = Update;
   void process_update(td::td_api::updateStarRevenueStatus &update) {
+  }
+
+  //@description The Toncoin revenue earned by the current user has changed. If Toncoin transaction screen of the chat is opened, then getTonTransactions may be called to fetch new transactions
+  //@status New Toncoin revenue status
+  //updateTonRevenueStatus status:tonRevenueStatus = Update;
+  void process_update(td::td_api::updateTonRevenueStatus &update) {
   }
 
   //@description The parameters of speech recognition without Telegram Premium subscription has changed

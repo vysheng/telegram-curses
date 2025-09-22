@@ -459,7 +459,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetBackground
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetTheme &content) {
-  return out << "[set theme " << content.theme_name_ << "]";
+  return out << "[set theme]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatSetMessageAutoDeleteTime &content) {
