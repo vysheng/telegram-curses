@@ -1291,6 +1291,16 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
+  //@description A new pending text message was received in a chat with a bot. The message must be shown in the chat for at most getOption("pending_text_message_period") seconds,
+  //-replace any other pending message with the same draft_id, and be deleted whenever any incoming message from the bot in the message thread is received
+  //@chat_id Chat identifier
+  //@forum_topic_id The forum topic identifier in which the message will be sent; 0 if none
+  //@draft_id Unique identifier of the message draft within the message thread
+  //@text Text of the pending message
+  //updatePendingTextMessage chat_id:int53 forum_topic_id:int32 draft_id:int64 text:formattedText = Update;
+  void process_update(td::td_api::updatePendingTextMessage &update) {
+  }
+
   //@description The user went online or offline
   //@user_id User identifier
   //@status New status of the user
@@ -1468,6 +1478,14 @@ class TdcursesImpl : public Tdcurses {
   //@emojis Group call state fingerprint represented as 4 emoji; may be empty if the state isn't verified yet
   //updateGroupCallVerificationState group_call_id:int32 generation:int32 emojis:vector<string> = Update;
   void process_update(td::td_api::updateGroupCallVerificationState &update) {
+  }
+
+  //@description A new message was received in a group call. It must be shown for at most getOption("group_call_message_show_time_max") seconds after receiving
+  //@group_call_id Identifier of the group call
+  //@sender_id Identifier of the sender of the message
+  //@text Text of the message
+  //updateGroupCallNewMessage group_call_id:int32 sender_id:MessageSender text:formattedText = Update;
+  void process_update(td::td_api::updateGroupCallNewMessage &update) {
   }
 
   //@description New call signaling data arrived

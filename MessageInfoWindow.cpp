@@ -211,6 +211,7 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageForumTopicIsClosedToggled &content) {},
             [&](const td::td_api::messageForumTopicIsHiddenToggled &content) {},
             [&](const td::td_api::messageSuggestProfilePhoto &content) {},
+            [&](const td::td_api::messageSuggestBirthdate &content) {},
             [&](const td::td_api::messageCustomServiceAction &content) {},
             [&](const td::td_api::messageGameScore &content) {},
             [&](const td::td_api::messagePaymentSuccessful &content) {},
@@ -478,7 +479,8 @@ void MessageInfoWindow::add_action_forward(td::int64 chat_id, td::int64 message_
           //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
           //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool replace_video_start_timestamp:Bool new_video_start_timestamp:int32 copy_options:messageCopyOptions = InputMessageContent;
           auto req = td::make_tl_object<td::td_api::sendMessage>(
-              dst->chat_id(), 0, nullptr /*replay_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
+              dst->chat_id(), nullptr /*thread_id*/, nullptr /*replay_to*/, nullptr /*options*/,
+              nullptr /*reply_markup*/,
               td::make_tl_object<td::td_api::inputMessageForwarded>(chat_id, message_id, false, false, 0, nullptr));
           self->send_request(std::move(req),
                              [self, chat_id = dst->chat_id()](td::Result<td::tl_object_ptr<td::td_api::message>> R) {

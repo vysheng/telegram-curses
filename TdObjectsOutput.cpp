@@ -490,6 +490,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestProfilePho
   return out << "[profile photo suggested " << content.photo_->animation_->file_ << "]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestBirthdate &content) {
+  return out << "[birthday suggested " << *content.birthdate_ << "]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageCustomServiceAction &content) {
   return out << "[service " << content.text_ << "]";
 }

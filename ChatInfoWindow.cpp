@@ -75,9 +75,9 @@ static std::shared_ptr<MenuWindow> spawn_rename_private_chat_window(ChatInfoWind
         }
 
         auto user = chat_manager().get_user(user_id);
-        auto contact = td::make_tl_object<td::td_api::contact>(user ? user->phone_number() : "", first_name, last_name,
-                                                               "", user_id);
-        auto req = td::make_tl_object<td::td_api::addContact>(std::move(contact), false);
+        auto contact = td::make_tl_object<td::td_api::importedContact>(user ? user->phone_number() : "", first_name,
+                                                                       last_name, nullptr);
+        auto req = td::make_tl_object<td::td_api::addContact>(user_id, std::move(contact), false);
 
         loading_window_send_request(*self, "renaming chat", {}, std::move(req),
                                     [self, first_name = std::move(first_name), last_name = std::move(last_name)](

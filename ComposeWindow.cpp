@@ -69,9 +69,9 @@ void ComposeWindow::send_message(std::string message) {
     return;
   }
 
-  //messageSendOptions direct_messages_chat_topic_id:int53 suggested_post_info:inputSuggestedPostInfo disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
+  //messageSendOptions suggested_post_info:inputSuggestedPostInfo disable_notification:Bool from_background:Bool protect_content:Bool allow_paid_broadcast:Bool paid_message_star_count:int53 update_order_of_installed_sticker_sets:Bool scheduling_state:MessageSchedulingState effect_id:int64 sending_id:int32 only_preview:Bool = MessageSendOptions;
   auto send_options = td::make_tl_object<td::td_api::messageSendOptions>(
-      /*direct_messages_chat_topic_id*/ 0, /*suggested_post_info*/ nullptr, /*disable_notification*/ !no_sound_,
+      /*suggested_post_info*/ nullptr, /*disable_notification*/ !no_sound_,
       /*from_background*/ false, /*protect_content*/ false, /*allow_paid_broadcast*/ false,
       /*paid_message_star_count*/ 0, /*update_order_of_installed_sticker_sets*/ false, /*scheduling_state*/ nullptr,
       /*effect_id*/ 0, /*sending_id*/ 0, /*only_preview*/ false);
@@ -146,7 +146,7 @@ void ComposeWindow::send_message(std::string message) {
 
   if (content.size() == 1) {
     //sendMessage chat_id:int53 message_thread_id:int53 reply_to:MessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
-    auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, thread_id_, std::move(reply),
+    auto req = td::make_tl_object<td::td_api::sendMessage>(chat_id_, /*thread_id*/ nullptr, std::move(reply),
                                                            std::move(send_options), nullptr, std::move(content[0]));
 
     chat_window_->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::message>> R) {
@@ -159,7 +159,7 @@ void ComposeWindow::send_message(std::string message) {
     });
   } else {
     //sendMessageAlbum chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions input_message_contents:vector<InputMessageContent> = Messages;
-    auto req = td::make_tl_object<td::td_api::sendMessageAlbum>(chat_id_, thread_id_, std::move(reply),
+    auto req = td::make_tl_object<td::td_api::sendMessageAlbum>(chat_id_, /*thread_id*/ nullptr, std::move(reply),
                                                                 std::move(send_options), std::move(content));
 
     chat_window_->send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {
@@ -189,7 +189,7 @@ void ComposeWindow::set_draft(std::string message) {
   //draftMessage reply_to:InputMessageReplyTo date:int32 input_message_text:InputMessageContent effect_id:int64 suggested_post_info:inputSuggestedPostInfo = DraftMessage;
   auto draft = td::make_tl_object<td::td_api::draftMessage>(nullptr, 0, std::move(content), 0, nullptr);
   //setChatDraftMessage chat_id:int53 message_thread_id:int53 draft_message:draftMessage = Ok;
-  auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, thread_id_, std::move(draft));
+  auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, /*thread_id*/ nullptr, std::move(draft));
 
   send_request(std::move(req), [&](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {});
   editor_window_->clear();

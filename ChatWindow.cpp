@@ -136,7 +136,8 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
       //sendMessage chat_id:int53 message_thread_id:int53 reply_to:InputMessageReplyTo options:messageSendOptions reply_markup:ReplyMarkup input_message_content:InputMessageContent = Message;
       //inputMessageForwarded from_chat_id:int53 message_id:int53 in_game_share:Bool copy_options:messageCopyOptions = InputMessageContent;
       auto req = td::make_tl_object<td::td_api::sendMessage>(
-          self->main_chat_id(), 0, nullptr /*reply_to*/, nullptr /*options*/, nullptr /*reply_markup*/,
+          self->main_chat_id(), nullptr /*topic_id*/, nullptr /*reply_to*/, nullptr /*options*/,
+          nullptr /*reply_markup*/,
           td::make_tl_object<td::td_api::inputMessageDocument>(
               td::make_tl_object<td::td_api::inputFileLocal>(fname), nullptr /* thumbnail */,
               false /* disable type detection */, nullptr /* caption */));
@@ -374,12 +375,16 @@ void ChatWindow::process_update(td::td_api::updateNewMessage &update) {
     return;
   }
   bool need_drop = false;
-  mode_.visit(td::overloaded([&](const ModeDefault &) { need_drop = (update.message_->chat_id_ != main_chat_id_); },
-                             [&](const ModeSearch &) { need_drop = true; },
-                             [&](const ModeComments &m) {
-                               need_drop = (update.message_->chat_id_ != m.message_id.chat_id) ||
-                                           (update.message_->message_thread_id_ != m.thread_id);
-                             }));
+  mode_.visit(td::overloaded(
+      [&](const ModeDefault &) { need_drop = (update.message_->chat_id_ != main_chat_id_); },
+      [&](const ModeSearch &) { need_drop = true; },
+      [&](const ModeComments &m) {
+        need_drop =
+            (update.message_->chat_id_ != m.message_id.chat_id) || !update.message_->topic_id_ ||
+            update.message_->topic_id_->get_id() != td::td_api::messageTopicThread::ID ||
+            static_cast<const td::td_api::messageTopicThread *>(update.message_->topic_id_.get())->message_thread_id_ !=
+                m.thread_id;
+      }));
   if (need_drop) {
     return;
   }
@@ -401,12 +406,15 @@ void ChatWindow::process_update_sent_message(td::tl_object_ptr<td::td_api::messa
     return;
   }
   bool need_drop = false;
-  mode_.visit(td::overloaded([&](const ModeDefault &) { need_drop = (message->chat_id_ != main_chat_id_); },
-                             [&](const ModeSearch &) { need_drop = true; },
-                             [&](const ModeComments &m) {
-                               need_drop = (message->chat_id_ != m.message_id.chat_id) ||
-                                           (message->message_thread_id_ != m.thread_id);
-                             }));
+  mode_.visit(td::overloaded(
+      [&](const ModeDefault &) { need_drop = (message->chat_id_ != main_chat_id_); },
+      [&](const ModeSearch &) { need_drop = true; },
+      [&](const ModeComments &m) {
+        need_drop = (message->chat_id_ != m.message_id.chat_id) || !message->topic_id_ ||
+                    message->topic_id_->get_id() != td::td_api::messageTopicThread::ID ||
+                    static_cast<const td::td_api::messageTopicThread *>(message->topic_id_.get())->message_thread_id_ !=
+                        m.thread_id;
+      }));
   if (need_drop) {
     return;
   }
@@ -779,8 +787,8 @@ void ChatWindow::Element::handle_input(PadWindow &root, const windows::InputEven
           out << "forward " << mids.size() << " messages to chat " << dst;
 
           //forwardMessages chat_id:int53 message_thread_id:int53 from_chat_id:int53 message_ids:vector<int53> options:messageSendOptions send_copy:Bool remove_caption:Bool = Messages;
-          auto req = td::make_tl_object<td::td_api::forwardMessages>(dst->chat_id(), 0, from_chat_id, std::move(mids),
-                                                                     nullptr, false, false);
+          auto req = td::make_tl_object<td::td_api::forwardMessages>(dst->chat_id(), nullptr, from_chat_id,
+                                                                     std::move(mids), nullptr, false, false);
           spawn_yes_no_window_and_loading_windows(
               *self, out.as_str(), out.markup(), true, "forwarding...", {}, std::move(req),
               [dst, curses = self->root(), self](td::Result<td::tl_object_ptr<td::td_api::messages>> R) {

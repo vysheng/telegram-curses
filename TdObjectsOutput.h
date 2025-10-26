@@ -76,6 +76,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicEdited 
 Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicIsClosedToggled &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageForumTopicIsHiddenToggled &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestProfilePhoto &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestBirthdate &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageCustomServiceAction &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGameScore &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messagePaymentSuccessful &content);
