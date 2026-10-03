@@ -55,24 +55,24 @@ void ActiveSessionWindow::build_menu() {
   }
   {
     Outputter out;
-    td::td_api::downcast_call(*session_->type_,
-                              td::overloaded([&](td::td_api::sessionTypeAndroid &) { out << "Android"; },
-                                             [&](td::td_api::sessionTypeApple &) { out << "Apple"; },
-                                             [&](td::td_api::sessionTypeBrave &) { out << "Brave"; },
-                                             [&](td::td_api::sessionTypeChrome &) { out << "Chrome"; },
-                                             [&](td::td_api::sessionTypeEdge &) { out << "Edge"; },
-                                             [&](td::td_api::sessionTypeFirefox &) { out << "Firefox"; },
-                                             [&](td::td_api::sessionTypeIpad &) { out << "Ipad"; },
-                                             [&](td::td_api::sessionTypeIphone &) { out << "Iphone"; },
-                                             [&](td::td_api::sessionTypeLinux &) { out << "Linux"; },
-                                             [&](td::td_api::sessionTypeMac &) { out << "Mac"; },
-                                             [&](td::td_api::sessionTypeOpera &) { out << "Opera"; },
-                                             [&](td::td_api::sessionTypeSafari &) { out << "Safari"; },
-                                             [&](td::td_api::sessionTypeUbuntu &) { out << "Ubuntu"; },
-                                             [&](td::td_api::sessionTypeUnknown &) { out << "Unknown"; },
-                                             [&](td::td_api::sessionTypeVivaldi &) { out << "Vivaldi"; },
-                                             [&](td::td_api::sessionTypeWindows &) { out << "Windows"; },
-                                             [&](td::td_api::sessionTypeXbox &) { out << "Xbox"; }));
+    td::td_api::downcast_call(*session_->device_type_,
+                              td::overloaded([&](td::td_api::sessionDeviceTypeAndroid &) { out << "Android"; },
+                                             [&](td::td_api::sessionDeviceTypeApple &) { out << "Apple"; },
+                                             [&](td::td_api::sessionDeviceTypeBrave &) { out << "Brave"; },
+                                             [&](td::td_api::sessionDeviceTypeChrome &) { out << "Chrome"; },
+                                             [&](td::td_api::sessionDeviceTypeEdge &) { out << "Edge"; },
+                                             [&](td::td_api::sessionDeviceTypeFirefox &) { out << "Firefox"; },
+                                             [&](td::td_api::sessionDeviceTypeIpad &) { out << "Ipad"; },
+                                             [&](td::td_api::sessionDeviceTypeIphone &) { out << "Iphone"; },
+                                             [&](td::td_api::sessionDeviceTypeLinux &) { out << "Linux"; },
+                                             [&](td::td_api::sessionDeviceTypeMac &) { out << "Mac"; },
+                                             [&](td::td_api::sessionDeviceTypeOpera &) { out << "Opera"; },
+                                             [&](td::td_api::sessionDeviceTypeSafari &) { out << "Safari"; },
+                                             [&](td::td_api::sessionDeviceTypeUbuntu &) { out << "Ubuntu"; },
+                                             [&](td::td_api::sessionDeviceTypeUnknown &) { out << "Unknown"; },
+                                             [&](td::td_api::sessionDeviceTypeVivaldi &) { out << "Vivaldi"; },
+                                             [&](td::td_api::sessionDeviceTypeWindows &) { out << "Windows"; },
+                                             [&](td::td_api::sessionDeviceTypeXbox &) { out << "Xbox"; }));
     add_element("type", out.as_str(), out.markup());
   }
   {

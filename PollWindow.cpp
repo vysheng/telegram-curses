@@ -7,6 +7,7 @@
 #include "td/tl/TlObject.h"
 #include "td/utils/Status.h"
 #include "td/utils/overloaded.h"
+#include <algorithm>
 #include <vector>
 
 namespace tdcurses {
@@ -38,15 +39,8 @@ void PollWindow::update_poll(td::tl_object_ptr<td::td_api::poll> poll) {
   }
   already_voted_ = already_voted;
 
-  td::td_api::downcast_call(*poll_->type_, td::overloaded(
-                                               [&](const td::td_api::pollTypeRegular &o) {
-                                                 is_quiz_ = false;
-                                                 allow_multichoise_ = o.allow_multiple_answers_;
-                                               },
-                                               [&](const td::td_api::pollTypeQuiz &o) {
-                                                 is_quiz_ = true;
-                                                 allow_multichoise_ = false;
-                                               }));
+  is_quiz_ = poll_->type_->get_id() == td::td_api::pollTypeQuiz::ID;
+  allow_multichoise_ = poll_->allows_multiple_answers_;
 }
 
 void PollWindow::process_message() {
@@ -67,10 +61,9 @@ void PollWindow::process_message() {
         out << Outputter::Reverse{true};
         if (!is_quiz_) {
           out << Color::Yellow;
-        } else if (static_cast<const td::td_api::pollTypeQuiz &>(*poll_->type_).correct_option_id_ == idx) {
-          out << Color::Green;
         } else {
-          out << Color::Red;
+          const auto &ids = static_cast<const td::td_api::pollTypeQuiz &>(*poll_->type_).correct_option_ids_;
+          out << (std::find(ids.begin(), ids.end(), idx) != ids.end() ? Color::Green : Color::Red);
         }
       }
     } else {

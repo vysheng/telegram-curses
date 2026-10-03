@@ -84,7 +84,7 @@ const td::td_api::formattedText *message_get_formatted_text(const td::td_api::me
           [&](const td::td_api::messageSuggestedPostDeclined &content) {},
           [&](const td::td_api::messageSuggestedPostPaid &content) {},
           [&](const td::td_api::messageSuggestedPostRefunded &content) {},
-          [&](const td::td_api::messageGiftedStars &content) {}, [&](const td::td_api::messageGiftedTon &content) {},
+          [&](const td::td_api::messageGiftedStars &content) {}, [&](const td::td_api::messageGiftedGrams &content) {},
           [&](const td::td_api::messageContactRegistered &content) {},
           [&](const td::td_api::messageUsersShared &content) {}, [&](const td::td_api::messageChatShared &content) {},
           [&](const td::td_api::messageBotWriteAccessAllowed &content) {},
@@ -93,6 +93,21 @@ const td::td_api::formattedText *message_get_formatted_text(const td::td_api::me
           [&](const td::td_api::messagePassportDataSent &content) {},
           [&](const td::td_api::messagePassportDataReceived &content) {},
           [&](const td::td_api::messageProximityAlertTriggered &content) {},
+          [&](const td::td_api::messageChatAddedToCommunity &content) {},
+          [&](const td::td_api::messageChatHasProtectedContentDisableRequested &content) {},
+          [&](const td::td_api::messageChatHasProtectedContentToggled &content) {},
+          [&](const td::td_api::messageChatJoinFromCommunity &content) {},
+          [&](const td::td_api::messageChatOwnerChanged &content) {},
+          [&](const td::td_api::messageChatOwnerLeft &content) {},
+          [&](const td::td_api::messageChatRemovedFromCommunity &content) {},
+          [&](const td::td_api::messageLiveLocation &content) {},
+          [&](const td::td_api::messageManagedBotCreated &content) {},
+          [&](const td::td_api::messagePollOptionAdded &content) {},
+          [&](const td::td_api::messagePollOptionDeleted &content) {},
+          [&](const td::td_api::messageRichMessage &content) {},
+          [&](const td::td_api::messageStakeDice &content) {},
+          [&](const td::td_api::messageUpgradedGiftPurchaseOffer &content) {},
+          [&](const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {},
           [&](const td::td_api::messageUnsupported &content) {}));
   return res;
 }
@@ -164,12 +179,27 @@ td::tl_object_ptr<td::td_api::file> *message_get_file_object_ref(td::td_api::mes
           [&](td::td_api::messageSuggestedPostDeclined &content) {},
           [&](td::td_api::messageSuggestedPostPaid &content) {},
           [&](td::td_api::messageSuggestedPostRefunded &content) {}, [&](td::td_api::messageGiftedStars &content) {},
-          [&](td::td_api::messageGiftedTon &content) {}, [&](td::td_api::messageContactRegistered &content) {},
+          [&](td::td_api::messageGiftedGrams &content) {}, [&](td::td_api::messageContactRegistered &content) {},
           [&](td::td_api::messageUsersShared &content) {}, [&](td::td_api::messageChatShared &content) {},
           [&](td::td_api::messageBotWriteAccessAllowed &content) {}, [&](td::td_api::messageWebAppDataSent &content) {},
           [&](td::td_api::messageWebAppDataReceived &content) {}, [&](td::td_api::messagePassportDataSent &content) {},
           [&](td::td_api::messagePassportDataReceived &content) {},
           [&](td::td_api::messageProximityAlertTriggered &content) {},
+          [&](td::td_api::messageChatAddedToCommunity &content) {},
+          [&](td::td_api::messageChatHasProtectedContentDisableRequested &content) {},
+          [&](td::td_api::messageChatHasProtectedContentToggled &content) {},
+          [&](td::td_api::messageChatJoinFromCommunity &content) {},
+          [&](td::td_api::messageChatOwnerChanged &content) {},
+          [&](td::td_api::messageChatOwnerLeft &content) {},
+          [&](td::td_api::messageChatRemovedFromCommunity &content) {},
+          [&](td::td_api::messageLiveLocation &content) {},
+          [&](td::td_api::messageManagedBotCreated &content) {},
+          [&](td::td_api::messagePollOptionAdded &content) {},
+          [&](td::td_api::messagePollOptionDeleted &content) {},
+          [&](td::td_api::messageRichMessage &content) {},
+          [&](td::td_api::messageStakeDice &content) {},
+          [&](td::td_api::messageUpgradedGiftPurchaseOffer &content) {},
+          [&](td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {},
           [&](td::td_api::messageUnsupported &content) {}));
   return res;
 }
@@ -211,6 +241,18 @@ td::tl_object_ptr<td::td_api::textEntityTypeMediaTimestamp> clone_tl_object(
     const td::td_api::textEntityTypeMediaTimestamp &obj) {
   //textEntityTypeMediaTimestamp media_timestamp:int32 = TextEntityType;
   return td::make_tl_object<td::td_api::textEntityTypeMediaTimestamp>(obj.media_timestamp_);
+}
+
+td::tl_object_ptr<td::td_api::dateTimeFormattingTypeAbsolute> clone_tl_object(
+    const td::td_api::dateTimeFormattingTypeAbsolute &obj) {
+  return td::make_tl_object<td::td_api::dateTimeFormattingTypeAbsolute>(
+      obj.time_precision_ ? clone_tl_object(*obj.time_precision_) : nullptr,
+      obj.date_precision_ ? clone_tl_object(*obj.date_precision_) : nullptr, obj.show_day_of_week_);
+}
+
+td::tl_object_ptr<td::td_api::textEntityTypeDateTime> clone_tl_object(const td::td_api::textEntityTypeDateTime &obj) {
+  return td::make_tl_object<td::td_api::textEntityTypeDateTime>(
+      obj.unix_time_, obj.formatting_type_ ? clone_tl_object(*obj.formatting_type_) : nullptr);
 }
 
 td::tl_object_ptr<td::td_api::textEntity> clone_tl_object(const td::td_api::textEntity &obj) {

@@ -602,8 +602,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &cont
   return out << "[gifted " << content.amount_ << " stars]";
 }
 
-Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedTon &content) {
-  return out << "[gifted " << content.ton_amount_ << " TON]";
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedGrams &content) {
+  return out << "[gifted " << content.gram_amount_ << " grams]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content) {
@@ -640,6 +640,66 @@ Outputter &operator<<(Outputter &out, const td::td_api::messagePassportDataRecei
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageProximityAlertTriggered &content) {
   return out << "[near " << content.traveler_id_ << ", distance " << content.distance_ << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatAddedToCommunity &content) {
+  return out << "[chat added to community]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatHasProtectedContentDisableRequested &content) {
+  return out << "[chat content protection removal requested]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatHasProtectedContentToggled &content) {
+  return out << "[chat content protection changed]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatJoinFromCommunity &content) {
+  return out << "[joined from community]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatOwnerChanged &content) {
+  return out << "[chat owner changed]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatOwnerLeft &content) {
+  return out << "[chat owner left]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatRemovedFromCommunity &content) {
+  return out << "[chat removed from community]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageLiveLocation &content) {
+  return out << "[live location]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageManagedBotCreated &content) {
+  return out << "[managed bot created]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePollOptionAdded &content) {
+  return out << "[poll option added]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messagePollOptionDeleted &content) {
+  return out << "[poll option deleted]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageRichMessage &content) {
+  return out << "[rich message]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageStakeDice &content) {
+  return out << "[stake dice]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurchaseOffer &content) {
+  return out << "[gift purchase offer]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {
+  return out << "[gift purchase offer rejected]";
 }
 
 Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &content) {
@@ -715,7 +775,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
             },
             [&](const td::td_api::textEntityTypeMentionName &) { out << (enable ? Color::Red : Color::Revert); },
             [&](const td::td_api::textEntityTypeCustomEmoji &) {},
-            [&](const td::td_api::textEntityTypeMediaTimestamp &) {}));
+            [&](const td::td_api::textEntityTypeMediaTimestamp &) {},
+            [&](const td::td_api::textEntityTypeDateTime &) {}));
   };
   std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> en;
   std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> dis;
@@ -908,7 +969,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::poll &content) {
 Outputter &operator<<(Outputter &out, const td::td_api::checklist &content) {
   out << "checklist " << content.title_ << "\n";
   for (auto &opt : content.tasks_) {
-    if (opt->completed_by_user_id_) {
+    if (opt->completed_by_) {
       out << " ✔ ";
     } else {
       out << "   ";

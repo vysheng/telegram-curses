@@ -980,8 +980,8 @@ class TdcursesImpl : public Tdcurses {
 
   //@description The default chat reply markup was changed. Can occur because new messages with reply markup were received or because an old reply markup was hidden by the user
   //@chat_id Chat identifier
-  //@reply_markup_message_id Identifier of the message from which reply markup needs to be used; 0 if there is no default custom reply markup in the chat
-  //updateChatReplyMarkup chat_id:int53 reply_markup_message_id:int53 = Update;
+  //@reply_markup_message Message from which reply markup needs to be used; may be null
+  //updateChatReplyMarkup chat_id:int53 reply_markup_message:message = Update;
   void process_update(td::td_api::updateChatReplyMarkup &update) {
     dialog_list_window()->process_update(update);
   }
@@ -1291,14 +1291,16 @@ class TdcursesImpl : public Tdcurses {
     }
   }
 
-  //@description A new pending text message was received in a chat with a bot. The message must be shown in the chat for at most getOption("pending_text_message_period") seconds,
-  //-replace any other pending message with the same draft_id, and be deleted whenever any incoming message from the bot in the message thread is received
+  //@description A new pending text or rich message was received in a chat with a bot. The message must be shown in the chat for at most getOption("pending_text_message_period") seconds,
+  //-replace any other pending message with the same draft_id with animation, and be deleted whenever any incoming message or a pending message with another draft_id is received in the message thread
   //@chat_id Chat identifier
   //@forum_topic_id The forum topic identifier in which the message will be sent; 0 if none
   //@draft_id Unique identifier of the message draft within the message thread
-  //@text Text of the pending message
-  //updatePendingTextMessage chat_id:int53 forum_topic_id:int32 draft_id:int64 text:formattedText = Update;
-  void process_update(td::td_api::updatePendingTextMessage &update) {
+  //@can_stop True, if a button that calls stopPendingMessage to stop further message generation must be shown
+  //@keep_on_stop True, if the pending message must not be automatically deleted when the user presses the Stop button
+  //@content Content of the message; always of the type messageText or messageRichMessage
+  //updatePendingMessage chat_id:int53 forum_topic_id:int32 draft_id:int64 can_stop:Bool keep_on_stop:Bool content:MessageContent = Update;
+  void process_update(td::td_api::updatePendingMessage &update) {
   }
 
   //@description The user went online or offline
@@ -1480,12 +1482,9 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateGroupCallVerificationState &update) {
   }
 
-  //@description A new message was received in a group call. It must be shown for at most getOption("group_call_message_show_time_max") seconds after receiving
-  //@group_call_id Identifier of the group call
-  //@sender_id Identifier of the sender of the message
-  //@text Text of the message
-  //updateGroupCallNewMessage group_call_id:int32 sender_id:MessageSender text:formattedText = Update;
-  void process_update(td::td_api::updateGroupCallNewMessage &update) {
+  //@description A new message was received in a group call @group_call_id Identifier of the group call @message The message
+  //updateNewGroupCallMessage group_call_id:int32 message:groupCallMessage = Update;
+  void process_update(td::td_api::updateNewGroupCallMessage &update) {
   }
 
   //@description New call signaling data arrived
@@ -1831,9 +1830,9 @@ class TdcursesImpl : public Tdcurses {
     global_parameters().process_update(update);
   }
 
-  //@description The number of Toncoins owned by the current user has changed @ton_amount The new amount of owned Toncoins; in the smallest units of the cryptocurrency
-  //updateOwnedTonCount ton_amount:int53 = Update;
-  void process_update(td::td_api::updateOwnedTonCount &update) {
+  //@description The number of TON Grams owned by the current user has changed @gram_amount The new amount of owned Grams; in the smallest units of the cryptocurrency
+  //updateOwnedGramCount gram_amount:int53 = Update;
+  void process_update(td::td_api::updateOwnedGramCount &update) {
     global_parameters().process_update(update);
   }
 
@@ -1852,10 +1851,10 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateStarRevenueStatus &update) {
   }
 
-  //@description The Toncoin revenue earned by the current user has changed. If Toncoin transaction screen of the chat is opened, then getTonTransactions may be called to fetch new transactions
-  //@status New Toncoin revenue status
-  //updateTonRevenueStatus status:tonRevenueStatus = Update;
-  void process_update(td::td_api::updateTonRevenueStatus &update) {
+  //@description The TON Gram revenue earned by the current user has changed. If Gram transaction screen of the chat is opened, then getTonTransactions may be called to fetch new transactions
+  //@status New Gram revenue status
+  //updateGramRevenueStatus status:gramRevenueStatus = Update;
+  void process_update(td::td_api::updateGramRevenueStatus &update) {
   }
 
   //@description The parameters of speech recognition without Telegram Premium subscription has changed
@@ -2123,6 +2122,82 @@ class TdcursesImpl : public Tdcurses {
   //updateMessageReactions chat_id:int53 message_id:int53 date:int32 reactions:vector<messageReaction> = Update;
   void process_update(td::td_api::updateMessageReactions &update) {
     UNREACHABLE();
+  }
+
+  // Updates for features that do not currently have a curses interface.
+  void process_update(td::td_api::testUseUpdate &update) {
+  }
+
+  void process_update(td::td_api::updateActiveGiftAuctions &update) {
+  }
+
+  void process_update(td::td_api::updateChatHasWelcomeMessages &update) {
+  }
+
+  void process_update(td::td_api::updateChatJoinResult &update) {
+  }
+
+  void process_update(td::td_api::updateChatUnreadPollVoteCount &update) {
+  }
+
+  void process_update(td::td_api::updateChatWelcomeMessages &update) {
+  }
+
+  void process_update(td::td_api::updateCommunity &update) {
+  }
+
+  void process_update(td::td_api::updateCommunityFullInfo &update) {
+  }
+
+  void process_update(td::td_api::updateGiftAuctionState &update) {
+  }
+
+  void process_update(td::td_api::updateGroupCallMessageLevels &update) {
+  }
+
+  void process_update(td::td_api::updateGroupCallMessageSendFailed &update) {
+  }
+
+  void process_update(td::td_api::updateGroupCallMessagesDeleted &update) {
+  }
+
+  void process_update(td::td_api::updateLiveStoryTopDonors &update) {
+  }
+
+  void process_update(td::td_api::updateManagedBot &update) {
+  }
+
+  void process_update(td::td_api::updateMessageContainsUnreadPollVotes &update) {
+  }
+
+  void process_update(td::td_api::updateMessageEphemeralContent &update) {
+  }
+
+  void process_update(td::td_api::updateNewGroupCallPaidReaction &update) {
+  }
+
+  void process_update(td::td_api::updateNewGuestQuery &update) {
+  }
+
+  void process_update(td::td_api::updateNewOauthRequest &update) {
+  }
+
+  void process_update(td::td_api::updateStakeDiceState &update) {
+  }
+
+  void process_update(td::td_api::updateStopMessageDraft &update) {
+  }
+
+  void process_update(td::td_api::updateTextCompositionStyles &update) {
+  }
+
+  void process_update(td::td_api::updateTrustedMiniAppBots &update) {
+  }
+
+  void process_update(td::td_api::updateUserSubscription &update) {
+  }
+
+  void process_update(td::td_api::updateWebBrowserSettings &update) {
   }
 
   void do_send_request(td::tl_object_ptr<td::td_api::Function> func,

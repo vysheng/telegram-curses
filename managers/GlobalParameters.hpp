@@ -117,8 +117,8 @@ class GlobalParameters {
     stars_owned_ = std::move(update.star_amount_);
   }
 
-  void process_update(td::td_api::updateOwnedTonCount &update) {
-    tons_owned_ = std::move(update.ton_amount_);
+  void process_update(td::td_api::updateOwnedGramCount &update) {
+    grams_owned_ = std::move(update.gram_amount_);
   }
 
   void process_update(td::td_api::updateDiceEmojis &update) {
@@ -380,7 +380,7 @@ class GlobalParameters {
   td::tl_object_ptr<td::td_api::ReactionType> default_reaction_type_;
   td::tl_object_ptr<td::td_api::PaidReactionType> default_paid_reaction_type_;
   td::tl_object_ptr<td::td_api::starAmount> stars_owned_;
-  td::int64 tons_owned_{0};
+  td::int64 grams_owned_{0};
   std::vector<std::string> dice_emojis_;
   std::string animation_search_provider_;
   std::vector<std::string> animation_search_suggested_emojis_;

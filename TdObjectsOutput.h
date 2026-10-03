@@ -103,7 +103,7 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostDecl
 Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostPaid &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageSuggestedPostRefunded &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedStars &content);
-Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedTon &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageGiftedGrams &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageContactRegistered &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUsersShared &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageChatShared &content);
@@ -113,6 +113,21 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageWebAppDataReceive
 Outputter &operator<<(Outputter &out, const td::td_api::messagePassportDataSent &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messagePassportDataReceived &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageProximityAlertTriggered &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatAddedToCommunity &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatHasProtectedContentDisableRequested &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatHasProtectedContentToggled &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatJoinFromCommunity &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatOwnerChanged &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatOwnerLeft &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageChatRemovedFromCommunity &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageLiveLocation &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageManagedBotCreated &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messagePollOptionAdded &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messagePollOptionDeleted &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageRichMessage &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageStakeDice &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurchaseOffer &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &content);
 
 Outputter &operator<<(Outputter &, const td::td_api::formattedText &content);

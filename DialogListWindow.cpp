@@ -135,7 +135,7 @@ void DialogListWindow::request_bottom_elements() {
                      [&](td::Result<td::tl_object_ptr<td::td_api::ok>> R) { received_bottom_elements(std::move(R)); });
       },
       [&](const SublistSearch &sublist) {
-        send_request(td::make_tl_object<td::td_api::searchChats>(sublist.search_pattern_, 50),
+        send_request(td::make_tl_object<td::td_api::searchChats>(sublist.search_pattern_, nullptr, 50),
                      [&](td::Result<td::tl_object_ptr<td::td_api::chats>> R) { received_bottom_chats(std::move(R)); });
       }));
 }

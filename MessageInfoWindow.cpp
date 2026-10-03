@@ -123,7 +123,8 @@ void MessageInfoWindow::process_message() {
                 add_action_user_chat_info(e.user_id_, us.str());
               },
               [&](const td::td_api::textEntityTypeCustomEmoji &) {},
-              [&](const td::td_api::textEntityTypeMediaTimestamp &) {}));
+              [&](const td::td_api::textEntityTypeMediaTimestamp &) {},
+              [&](const td::td_api::textEntityTypeDateTime &) {}));
     }
   };
 
@@ -236,7 +237,7 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageSuggestedPostDeclined &content) {},
             [&](const td::td_api::messageSuggestedPostPaid &content) {},
             [&](const td::td_api::messageSuggestedPostRefunded &content) {},
-            [&](const td::td_api::messageGiftedStars &content) {}, [&](const td::td_api::messageGiftedTon &content) {},
+            [&](const td::td_api::messageGiftedStars &content) {}, [&](const td::td_api::messageGiftedGrams &content) {},
             [&](const td::td_api::messageContactRegistered &content) {},
             [&](const td::td_api::messageUsersShared &content) {}, [&](const td::td_api::messageChatShared &content) {},
             [&](const td::td_api::messageBotWriteAccessAllowed &content) {},
@@ -245,6 +246,21 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messagePassportDataSent &content) {},
             [&](const td::td_api::messagePassportDataReceived &content) {},
             [&](const td::td_api::messageProximityAlertTriggered &content) {},
+            [&](const td::td_api::messageChatAddedToCommunity &content) {},
+            [&](const td::td_api::messageChatHasProtectedContentDisableRequested &content) {},
+            [&](const td::td_api::messageChatHasProtectedContentToggled &content) {},
+            [&](const td::td_api::messageChatJoinFromCommunity &content) {},
+            [&](const td::td_api::messageChatOwnerChanged &content) {},
+            [&](const td::td_api::messageChatOwnerLeft &content) {},
+            [&](const td::td_api::messageChatRemovedFromCommunity &content) {},
+            [&](const td::td_api::messageLiveLocation &content) {},
+            [&](const td::td_api::messageManagedBotCreated &content) {},
+            [&](const td::td_api::messagePollOptionAdded &content) {},
+            [&](const td::td_api::messagePollOptionDeleted &content) {},
+            [&](const td::td_api::messageRichMessage &content) {},
+            [&](const td::td_api::messageStakeDice &content) {},
+            [&](const td::td_api::messageUpgradedGiftPurchaseOffer &content) {},
+            [&](const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {},
             [&](const td::td_api::messageUnsupported &content) {}));
   }
 
@@ -660,7 +676,7 @@ void MessageInfoWindow::add_action_get_message_link(td::int64 chat_id, td::int64
   Outputter out;
   out << "generate link" << Outputter::RightPad{"<view>"};
   add_element("link", out.as_str(), out.markup(), [chat_id, message_id, self = this]() -> bool {
-    self->send_request(td::make_tl_object<td::td_api::getMessageLink>(chat_id, message_id, 0, false, false),
+    self->send_request(td::make_tl_object<td::td_api::getMessageLink>(chat_id, message_id, 0, 0, "", false, false),
                        [self](td::Result<td::tl_object_ptr<td::td_api::messageLink>> R) {
                          DROP_IF_DELETED(R);
                          if (R.is_error()) {

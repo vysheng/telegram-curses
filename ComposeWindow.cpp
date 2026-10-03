@@ -84,32 +84,36 @@ void ComposeWindow::send_message(std::string message) {
       break;
     case AttachType::Photo:
       for (auto &f : attach_files_) {
-        //inputMessagePhoto photo:InputFile thumbnail:inputThumbnail added_sticker_file_ids:vector<int32> width:int32 height:int32 caption:formattedText show_caption_above_media:Bool self_destruct_type:MessageSelfDestructType has_spoiler:Bool = InputMessageContent;
+        //inputMessagePhoto photo:inputPhoto caption:formattedText show_caption_above_media:Bool self_destruct_type:MessageSelfDestructType has_spoiler:Bool = InputMessageContent;
         content.push_back(td::make_tl_object<td::td_api::inputMessagePhoto>(
-            td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, std::vector<td::int32>{}, 0, 0, std::move(text),
-            false, nullptr, false));
+            td::make_tl_object<td::td_api::inputPhoto>(
+                td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, nullptr, std::vector<td::int32>{}, 0, 0),
+            std::move(text), false, nullptr, false));
       }
       break;
     case AttachType::Audio:
       for (auto &f : attach_files_) {
-        //inputMessageAudio audio:InputFile album_cover_thumbnail:inputThumbnail duration:int32 title:string performer:string caption:formattedText = InputMessageContent;
+        //inputMessageAudio audio:inputAudio caption:formattedText = InputMessageContent;
         content.push_back(td::make_tl_object<td::td_api::inputMessageAudio>(
-            td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, 0, "", "", std::move(text)));
+            td::make_tl_object<td::td_api::inputAudio>(
+                td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, 0, "", ""), std::move(text)));
       }
       break;
     case AttachType::Video:
       for (auto &f : attach_files_) {
-        //inputMessageVideo video:InputFile thumbnail:inputThumbnail cover:InputFile start_timestamp:int32 added_sticker_file_ids:vector<int32> duration:int32 width:int32 height:int32 supports_streaming:Bool caption:formattedText show_caption_above_media:Bool self_destruct_type:MessageSelfDestructType has_spoiler:Bool = InputMessageContent;
+        //inputMessageVideo video:inputVideo caption:formattedText show_caption_above_media:Bool self_destruct_type:MessageSelfDestructType has_spoiler:Bool = InputMessageContent;
         content.push_back(td::make_tl_object<td::td_api::inputMessageVideo>(
-            td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, nullptr, 0, std::vector<td::int32>{}, 0, 0, 0,
-            true, std::move(text), false, nullptr, false));
+            td::make_tl_object<td::td_api::inputVideo>(
+                td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, nullptr, 0, std::vector<td::int32>{},
+                0, 0, 0, true), std::move(text), false, nullptr, false));
       }
       break;
     case AttachType::Doc:
       for (auto &f : attach_files_) {
-        //inputMessageDocument document:InputFile thumbnail:inputThumbnail disable_content_type_detection:Bool caption:formattedText = InputMessageContent;
+        //inputMessageDocument document:inputDocument caption:formattedText = InputMessageContent;
         content.push_back(td::make_tl_object<td::td_api::inputMessageDocument>(
-            td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, false, std::move(text)));
+            td::make_tl_object<td::td_api::inputDocument>(
+                td::make_tl_object<td::td_api::inputFileLocal>(f), nullptr, false), std::move(text)));
       }
       break;
     case AttachType::Geo:
@@ -121,9 +125,10 @@ void ComposeWindow::send_message(std::string message) {
   }
   td::tl_object_ptr<td::td_api::inputMessageReplyToMessage> reply;
   if (reply_message_id_) {
-    //inputMessageReplyToMessage message_id:int53 quote:inputTextQuote checklist_task_id:int32 = InputMessageReplyTo;
+    //inputMessageReplyToMessage message_id:int53 quote:inputTextQuote checklist_task_id:int32 poll_option_id:string = InputMessageReplyTo;
     reply = td::make_tl_object<td::td_api::inputMessageReplyToMessage>(/*message_id*/ reply_message_id_,
-                                                                       /*quote*/ nullptr, /*checklist_task_id*/ 0);
+                                                                  /*quote*/ nullptr, /*checklist_task_id*/ 0,
+                                                                  /*poll_option_id*/ "");
     if (quote_.size() > 0) {
       if (enabled_markdown_) {
         auto R = run_request_sync(
@@ -184,9 +189,9 @@ void ComposeWindow::set_draft(std::string message) {
   //formattedText text:string entities:vector<textEntity> = FormattedText;
   auto text =
       td::make_tl_object<td::td_api::formattedText>(message, std::vector<td::tl_object_ptr<td::td_api::textEntity>>());
-  //inputMessageText text:formattedText link_preview_options:linkPreviewOptions clear_draft:Bool = InputMessageContent;
-  auto content = td::make_tl_object<td::td_api::inputMessageText>(std::move(text), nullptr, false);
-  //draftMessage reply_to:InputMessageReplyTo date:int32 input_message_text:InputMessageContent effect_id:int64 suggested_post_info:inputSuggestedPostInfo = DraftMessage;
+  //draftMessageContentText text:formattedText link_preview_options:linkPreviewOptions = DraftMessageContent;
+  auto content = td::make_tl_object<td::td_api::draftMessageContentText>(std::move(text), nullptr);
+  //draftMessage reply_to:InputMessageReplyTo date:int32 content:DraftMessageContent effect_id:int64 suggested_post_info:inputSuggestedPostInfo = DraftMessage;
   auto draft = td::make_tl_object<td::td_api::draftMessage>(nullptr, 0, std::move(content), 0, nullptr);
   //setChatDraftMessage chat_id:int53 message_thread_id:int53 draft_message:draftMessage = Ok;
   auto req = td::make_tl_object<td::td_api::setChatDraftMessage>(chat_id_, /*thread_id*/ nullptr, std::move(draft));

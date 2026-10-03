@@ -69,13 +69,13 @@ std::string ChatWindow::draft_message_text() {
   if (!C->draft_message()) {
     return "";
   }
-  if (!C->draft_message()->input_message_text_) {
+  if (!C->draft_message()->content_) {
     return "";
   }
-  if (C->draft_message()->input_message_text_->get_id() != td::td_api::inputMessageText::ID) {
+  if (C->draft_message()->content_->get_id() != td::td_api::draftMessageContentText::ID) {
     return "";
   }
-  const auto &text = static_cast<const td::td_api::inputMessageText &>(*C->draft_message()->input_message_text_);
+  const auto &text = static_cast<const td::td_api::draftMessageContentText &>(*C->draft_message()->content_);
   if (!text.text_) {
     return "";
   }
@@ -139,8 +139,9 @@ void ChatWindow::handle_input(const windows::InputEvent &info) {
           self->main_chat_id(), nullptr /*topic_id*/, nullptr /*reply_to*/, nullptr /*options*/,
           nullptr /*reply_markup*/,
           td::make_tl_object<td::td_api::inputMessageDocument>(
-              td::make_tl_object<td::td_api::inputFileLocal>(fname), nullptr /* thumbnail */,
-              false /* disable type detection */, nullptr /* caption */));
+              td::make_tl_object<td::td_api::inputDocument>(
+                  td::make_tl_object<td::td_api::inputFileLocal>(fname), nullptr /* thumbnail */,
+                  false /* disable type detection */), nullptr /* caption */));
       self->send_request(std::move(req), [](td::Result<td::tl_object_ptr<td::td_api::message>> R) {});
     });
     return;

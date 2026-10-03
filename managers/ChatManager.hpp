@@ -375,12 +375,10 @@ class Chat {
     chat_->pending_join_requests_ = std::move(update.pending_join_requests_);
   }
 
-  //@description The default chat reply markup was changed. Can occur because new messages with reply markup were received or because an old reply markup was hidden by the user
-  //@chat_id Chat identifier
-  //@reply_markup_message_id Identifier of the message from which reply markup needs to be used; 0 if there is no default custom reply markup in the chat
-  //updateChatReplyMarkup chat_id:int53 reply_markup_message_id:int53 = Update;
+  //@description The chat reply markup was changed @chat_id Chat identifier @reply_markup_message The message from which the reply markup must be used; may be null if there is no default reply markup in the chat
+  //updateChatReplyMarkup chat_id:int53 reply_markup_message:message = Update;
   void process_update(td::td_api::updateChatReplyMarkup &update) {
-    chat_->reply_markup_message_id_ = update.reply_markup_message_id_;
+    chat_->reply_markup_message_id_ = update.reply_markup_message_ ? update.reply_markup_message_->id_ : 0;
   }
 
   //@description The chat background was changed
@@ -682,10 +680,11 @@ class Supergroup {
     return group_->restriction_info_;
   }
   auto has_active_stories() const {
-    return group_->has_active_stories_;
+    return group_->active_story_state_ != nullptr;
   }
   auto has_unread_active_stories() const {
-    return group_->has_unread_active_stories_;
+    return group_->active_story_state_ &&
+           group_->active_story_state_->get_id() == td::td_api::activeStoryStateUnread::ID;
   }
 
   void full_update(td::tl_object_ptr<td::td_api::supergroup> group) {

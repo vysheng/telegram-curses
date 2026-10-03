@@ -384,7 +384,7 @@ void ChatInfoWindow::add_chat_member_status_option(const td::tl_object_ptr<td::t
     spawn_yes_no_window_and_loading_windows(
         *self, PSTRING() << "Are you sure, you want to join chat '" << self->chat_->title() << "'?", {}, true,
         "joining chat....", {}, td::make_tl_object<td::td_api::joinChat>(chat_id),
-        [self](td::Result<td::tl_object_ptr<td::td_api::ok>> R) {
+        [self](td::Result<td::tl_object_ptr<td::td_api::ChatJoinResult>> R) {
           DROP_IF_DELETED(R);
           if (R.is_error()) {
             spawn_error_window(*self, PSTRING() << "joining chat failed: " << R.move_as_error(), {});
@@ -421,11 +421,7 @@ void ChatInfoWindow::add_chat_member_status_option(const td::tl_object_ptr<td::t
                                   cb = leave_cb;
                                 },
                                 [&](td::td_api::chatMemberStatusAdministrator &status) {
-                                  if (status.custom_title_.size() > 0) {
-                                    out << "administrator (title " << status.custom_title_ << ")";
-                                  } else {
-                                    out << "administrator";
-                                  }
+                                  out << "administrator";
                                 }));
   add_element("status", out.as_str(), out.markup(),
               [cb = std::move(cb)](MenuWindowCommon &w) { return cb(static_cast<ChatInfoWindow &>(w)); });

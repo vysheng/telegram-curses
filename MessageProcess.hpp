@@ -45,6 +45,14 @@ td::tl_object_ptr<td::td_api::textEntityTypeCustomEmoji> clone_tl_object(const t
 td::tl_object_ptr<td::td_api::textEntityTypeMediaTimestamp> clone_tl_object(
     const td::td_api::textEntityTypeMediaTimestamp &);
 
+DEFAULT_CLONE_TL_OBJECT(td::td_api::dateTimePartPrecisionNone);
+DEFAULT_CLONE_TL_OBJECT(td::td_api::dateTimePartPrecisionShort);
+DEFAULT_CLONE_TL_OBJECT(td::td_api::dateTimePartPrecisionLong);
+DEFAULT_CLONE_TL_OBJECT(td::td_api::dateTimeFormattingTypeRelative);
+td::tl_object_ptr<td::td_api::dateTimeFormattingTypeAbsolute> clone_tl_object(
+    const td::td_api::dateTimeFormattingTypeAbsolute &);
+td::tl_object_ptr<td::td_api::textEntityTypeDateTime> clone_tl_object(const td::td_api::textEntityTypeDateTime &);
+
 template <class T>
 std::enable_if_t<!std::is_constructible<T>::value && std::is_base_of<td::TlObject, T>::value, td::tl_object_ptr<T>>
 clone_tl_object(const T &X) {

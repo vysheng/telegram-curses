@@ -73,10 +73,10 @@ void ChatSearchWindow::try_run_request() {
       }
     });
     if (is_local) {
-      auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, height() - 1);
+      auto req = td::make_tl_object<td::td_api::searchChats>(last_request_text_, nullptr, height() - 1);
       send_request(std::move(req), std::move(P));
     } else {
-      auto req = td::make_tl_object<td::td_api::searchPublicChats>(last_request_text_);
+      auto req = td::make_tl_object<td::td_api::searchPublicChats>(last_request_text_, nullptr);
       send_request(std::move(req), std::move(P));
     }
   };
