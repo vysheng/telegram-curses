@@ -2778,21 +2778,31 @@ int main(int argc, char **argv) {
                << " - " << pex.getError();
   }
 
-  config.lookupValue("db_root", db_root);
+  // TDLib settings live in the "td" group. Root-level keys (and the old "app_id" spelling)
+  // are still accepted and take precedence, because they were the only ones read before.
+  auto lookup_td_value = [&](const char *name, auto &value) {
+    config.lookupValue(std::string("td.") + name, value);
+    config.lookupValue(name, value);
+  };
+  lookup_td_value("db_root", db_root);
   if (db_root == "") {
     db_root = tdcurses::detect_db_root_name();
   }
-  config.lookupValue("enable_storage_optimizer", enable_storage_optimizer);
-  config.lookupValue("app_id", api_id);
-  config.lookupValue("api_hash", api_hash);
-  config.lookupValue("ignore_file_names", ignore_file_names);
-  config.lookupValue("use_chat_info_database", use_chat_info_database);
-  config.lookupValue("use_file_database", use_file_database);
-  config.lookupValue("use_message_database", use_message_database);
-  config.lookupValue("use_secret_chats", use_secret_chats);
-  config.lookupValue("use_test_dc", use_test_dc);
+  if (db_root.back() != '/') {
+    db_root += '/';
+  }
+  lookup_td_value("enable_storage_optimizer", enable_storage_optimizer);
+  lookup_td_value("api_id", api_id);
+  lookup_td_value("app_id", api_id);
+  lookup_td_value("api_hash", api_hash);
+  lookup_td_value("ignore_file_names", ignore_file_names);
+  lookup_td_value("use_chat_info_database", use_chat_info_database);
+  lookup_td_value("use_file_database", use_file_database);
+  lookup_td_value("use_message_database", use_message_database);
+  lookup_td_value("use_secret_chats", use_secret_chats);
+  lookup_td_value("use_test_dc", use_test_dc);
+  lookup_td_value("backend_type_str", backend_type_str);
   config.lookupValue("utf8.vs16_makes_wide", vs16_makes_wide);
-  config.lookupValue("backend_type_str", backend_type_str);
 
   config.lookupValue("iface.use_markdown", use_markdown);
   config.lookupValue("iface.show_images", show_images);
