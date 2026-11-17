@@ -73,7 +73,15 @@
 #include <utility>
 #include <iostream>
 #include <vector>
-#include <libconfig.h++>
+#include <fstream>
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-literal-operator"
+#endif
+#include "tomlplusplus/toml.hpp"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #include <signal.h>
 #include <openssl/opensslv.h>
 
@@ -140,13 +148,19 @@ std::string detect_config_name() {
       e = e + "/";
     }
     td::mkdir(e + "telegram-curses").ensure();
-    return e + "telegram-curses/config";
+    return e + "telegram-curses/config.toml";
   } else {
     LOG(WARNING) << "XDG_CONFIG_HOME not defined";
     std::string e = detect_home_dir() + "/.config/";
     td::mkdir(e + "telegram-curses").ensure();
-    return e + "telegram-curses/config";
+    return e + "telegram-curses/config.toml";
   }
+}
+
+// libconfig-format file used before the switch to TOML
+std::string detect_legacy_config_name() {
+  auto name = detect_config_name();
+  return name.substr(0, name.size() - 5);
 }
 
 std::string detect_db_root_name() {
@@ -2724,143 +2738,161 @@ int main(int argc, char **argv) {
   };
   std::vector<CodepointInfo> force_wide_codepoints{{0x1F100, 0x1F1FF, 2, "*"}};
 
-  auto r = ::access(config_file_name.c_str(), F_OK);
-  if (r < 0) {
-    libconfig::Config conf;
-    auto &root = conf.getRoot();
-    auto &td = root.add("td", libconfig::Setting::Type::TypeGroup);
+  if (::access(config_file_name.c_str(), F_OK) < 0) {
     db_root = tdcurses::detect_db_root_name();
-    td.add("db_root", libconfig::Setting::TypeString) = db_root;
-    td.add("enable_storage_optimizer", libconfig::Setting::TypeBoolean) = enable_storage_optimizer;
-    td.add("api_id", libconfig::Setting::TypeInt) = api_id;
-    td.add("api_hash", libconfig::Setting::TypeString) = api_hash;
-    td.add("ignore_file_names", libconfig::Setting::TypeBoolean) = ignore_file_names;
-    td.add("use_chat_info_database", libconfig::Setting::TypeBoolean) = use_chat_info_database;
-    td.add("use_file_database", libconfig::Setting::TypeBoolean) = use_file_database;
-    td.add("use_message_database", libconfig::Setting::TypeBoolean) = use_message_database;
-    td.add("use_secret_chats", libconfig::Setting::TypeBoolean) = use_secret_chats;
-    td.add("use_test_dc", libconfig::Setting::TypeBoolean) = use_test_dc;
-    td.add("backend_type_str", libconfig::Setting::TypeString) = backend_type_str;
-    auto &iface = root.add("iface", libconfig::Setting::Type::TypeGroup);
-    iface.add("log_window_enabled", libconfig::Setting::TypeBoolean) = log_window_enabled;
-    iface.add("dialog_list_window_width", libconfig::Setting::TypeInt) = dialog_list_window_width;
-    iface.add("log_window_height", libconfig::Setting::TypeInt) = log_window_height;
-    iface.add("compose_window_height", libconfig::Setting::TypeInt) = compose_window_height;
-    iface.add("use_markdown", libconfig::Setting::TypeBoolean) = use_markdown;
-    iface.add("show_images", libconfig::Setting::TypeBoolean) = show_images;
-    iface.add("show_pixel_images", libconfig::Setting::TypeBoolean) = show_pixel_images;
-    auto &utf8 = root.add("utf8", libconfig::Setting::Type::TypeGroup);
-    utf8.add("vs16_makes_wide", libconfig::Setting::TypeBoolean) = vs16_makes_wide;
-    auto &widecode = utf8.add("codepoints_override", libconfig::Setting::TypeList);
-    for (auto &l : force_wide_codepoints) {
-      auto &g = widecode.add(libconfig::Setting::TypeGroup);
-      g.add("first", libconfig::Setting::TypeInt) = (td::int32)l.begin;
-      g.add("last", libconfig::Setting::TypeInt) = (td::int32)l.end;
-      g.add("width", libconfig::Setting::TypeInt) = (td::int32)l.width;
-      g.add("terms", libconfig::Setting::TypeString) = l.terms;
-    }
-    auto &os = root.add("os", libconfig::Setting::Type::TypeGroup);
-    os.add("copy_command", libconfig::Setting::TypeString) = copy_command;
-    os.add("link_open_command", libconfig::Setting::TypeString) = link_open_command;
-    os.add("file_open_command", libconfig::Setting::TypeString) = file_open_command;
 
-    conf.writeFile(config_file_name.c_str());
+    toml::array codepoints_override;
+    for (auto &l : force_wide_codepoints) {
+      codepoints_override.push_back(toml::table{
+          {"first", (td::int64)l.begin}, {"last", (td::int64)l.end}, {"width", l.width}, {"terms", l.terms}});
+    }
+
+    toml::table conf{
+        {"td", toml::table{{"db_root", db_root},
+                           {"enable_storage_optimizer", enable_storage_optimizer},
+                           {"api_id", api_id},
+                           {"api_hash", api_hash},
+                           {"ignore_file_names", ignore_file_names},
+                           {"use_chat_info_database", use_chat_info_database},
+                           {"use_file_database", use_file_database},
+                           {"use_message_database", use_message_database},
+                           {"use_secret_chats", use_secret_chats},
+                           {"use_test_dc", use_test_dc},
+                           {"backend_type_str", backend_type_str}}},
+        {"iface", toml::table{{"log_window_enabled", log_window_enabled},
+                              {"dialog_list_window_width", dialog_list_window_width},
+                              {"log_window_height", log_window_height},
+                              {"compose_window_height", compose_window_height},
+                              {"use_markdown", use_markdown},
+                              {"show_images", show_images},
+                              {"show_pixel_images", show_pixel_images}}},
+        {"utf8", toml::table{{"vs16_makes_wide", vs16_makes_wide},
+                             {"codepoints_override", std::move(codepoints_override)}}},
+        {"os", toml::table{{"copy_command", copy_command},
+                           {"link_open_command", link_open_command},
+                           {"file_open_command", file_open_command}}}};
+
+    std::ofstream out(config_file_name);
+    out << conf << "\n";
+    out.close();
+    if (!out) {
+      LOG(FATAL) << "failed to write default config to '" << config_file_name << "'";
+    }
+
+    auto legacy_config_file_name = tdcurses::detect_legacy_config_name();
+    if (::access(legacy_config_file_name.c_str(), F_OK) == 0) {
+      LOG(WARNING) << "config is now read from '" << config_file_name << "' (TOML); settings from the old '"
+                   << legacy_config_file_name << "' are ignored and must be moved manually";
+    }
   }
 
-  libconfig::Config config;
+  toml::table config;
 
   try {
-    config.readFile(config_file_name.c_str());
-  } catch (libconfig::FileIOException &e) {
-    LOG(FATAL) << "failed to read from config file '" << config_file_name << "'";
-  } catch (libconfig::ParseException &pex) {
-    LOG(FATAL) << "failed to parse config '" << config_file_name << "' at " << pex.getFile() << ":" << pex.getLine()
-               << " - " << pex.getError();
+    config = toml::parse_file(config_file_name);
+  } catch (const toml::parse_error &e) {
+    LOG(FATAL) << "failed to parse config '" << config_file_name << "' at line " << e.source().begin.line << ": "
+               << std::string(e.description());
   }
 
-  // TDLib settings live in the "td" group. Root-level keys (and the old "app_id" spelling)
-  // are still accepted and take precedence, because they were the only ones read before.
-  auto lookup_td_value = [&](const char *name, auto &value) {
-    config.lookupValue(std::string("td.") + name, value);
-    config.lookupValue(name, value);
+  // a missing key keeps the default, a key of a wrong type is an error
+  auto lookup_value = [&](const toml::table &table, td::CSlice section, const char *name, auto &value) {
+    auto node = table.get(name);
+    if (!node) {
+      return;
+    }
+    auto v = node->value_exact<std::decay_t<decltype(value)>>();
+    if (!v) {
+      LOG(FATAL) << "config '" << config_file_name << "': invalid type of '" << section << "." << name << "' at line "
+                 << node->source().begin.line;
+    }
+    value = std::move(*v);
   };
-  lookup_td_value("db_root", db_root);
+  auto lookup_section = [&](const char *section) -> const toml::table * {
+    auto node = config.get(section);
+    if (!node) {
+      return nullptr;
+    }
+    if (!node->is_table()) {
+      LOG(FATAL) << "config '" << config_file_name << "': '" << section << "' must be a table";
+    }
+    return node->as_table();
+  };
+
+  if (auto td = lookup_section("td")) {
+    td::int64 api_id_value = api_id;
+    lookup_value(*td, "td", "db_root", db_root);
+    lookup_value(*td, "td", "enable_storage_optimizer", enable_storage_optimizer);
+    lookup_value(*td, "td", "api_id", api_id_value);
+    lookup_value(*td, "td", "api_hash", api_hash);
+    lookup_value(*td, "td", "ignore_file_names", ignore_file_names);
+    lookup_value(*td, "td", "use_chat_info_database", use_chat_info_database);
+    lookup_value(*td, "td", "use_file_database", use_file_database);
+    lookup_value(*td, "td", "use_message_database", use_message_database);
+    lookup_value(*td, "td", "use_secret_chats", use_secret_chats);
+    lookup_value(*td, "td", "use_test_dc", use_test_dc);
+    lookup_value(*td, "td", "backend_type_str", backend_type_str);
+    api_id = td::narrow_cast<td::int32>(api_id_value);
+  }
   if (db_root == "") {
     db_root = tdcurses::detect_db_root_name();
   }
   if (db_root.back() != '/') {
     db_root += '/';
   }
-  lookup_td_value("enable_storage_optimizer", enable_storage_optimizer);
-  lookup_td_value("api_id", api_id);
-  lookup_td_value("app_id", api_id);
-  lookup_td_value("api_hash", api_hash);
-  lookup_td_value("ignore_file_names", ignore_file_names);
-  lookup_td_value("use_chat_info_database", use_chat_info_database);
-  lookup_td_value("use_file_database", use_file_database);
-  lookup_td_value("use_message_database", use_message_database);
-  lookup_td_value("use_secret_chats", use_secret_chats);
-  lookup_td_value("use_test_dc", use_test_dc);
-  lookup_td_value("backend_type_str", backend_type_str);
-  config.lookupValue("utf8.vs16_makes_wide", vs16_makes_wide);
 
-  config.lookupValue("iface.use_markdown", use_markdown);
-  config.lookupValue("iface.show_images", show_images);
-  config.lookupValue("iface.show_pixel_images", show_pixel_images);
-  config.lookupValue("iface.log_window_enabled", log_window_enabled);
-  config.lookupValue("iface.dialog_list_window_width", dialog_list_window_width);
-  config.lookupValue("iface.log_window_height", log_window_height);
-  config.lookupValue("iface.compose_window_height", compose_window_height);
+  if (auto iface = lookup_section("iface")) {
+    td::int64 dialog_list_window_width_value = dialog_list_window_width;
+    td::int64 log_window_height_value = log_window_height;
+    td::int64 compose_window_height_value = compose_window_height;
+    lookup_value(*iface, "iface", "use_markdown", use_markdown);
+    lookup_value(*iface, "iface", "show_images", show_images);
+    lookup_value(*iface, "iface", "show_pixel_images", show_pixel_images);
+    lookup_value(*iface, "iface", "log_window_enabled", log_window_enabled);
+    lookup_value(*iface, "iface", "dialog_list_window_width", dialog_list_window_width_value);
+    lookup_value(*iface, "iface", "log_window_height", log_window_height_value);
+    lookup_value(*iface, "iface", "compose_window_height", compose_window_height_value);
+    dialog_list_window_width = td::narrow_cast<td::int32>(dialog_list_window_width_value);
+    log_window_height = td::narrow_cast<td::int32>(log_window_height_value);
+    compose_window_height = td::narrow_cast<td::int32>(compose_window_height_value);
+  }
 
-  config.lookupValue("os.copy_command", copy_command);
-  config.lookupValue("os.link_open_command", link_open_command);
-  config.lookupValue("os.file_open_command", file_open_command);
+  if (auto os = lookup_section("os")) {
+    lookup_value(*os, "os", "copy_command", copy_command);
+    lookup_value(*os, "os", "link_open_command", link_open_command);
+    lookup_value(*os, "os", "file_open_command", file_open_command);
+  }
 
-  [&]() {
-    auto &root = config.getRoot();
-    if (!root.exists("utf8")) {
-      return;
+  if (auto utf8 = lookup_section("utf8")) {
+    lookup_value(*utf8, "utf8", "vs16_makes_wide", vs16_makes_wide);
+
+    if (auto wc_node = utf8->get("codepoints_override")) {
+      auto wc = wc_node->as_array();
+      if (!wc) {
+        LOG(FATAL) << "config '" << config_file_name << "': 'utf8.codepoints_override' must be an array of tables";
+      }
+      std::vector<CodepointInfo> r;
+      for (auto &el : *wc) {
+        auto x = el.as_table();
+        if (!x) {
+          LOG(FATAL) << "config '" << config_file_name << "': 'utf8.codepoints_override' must be an array of tables";
+        }
+        td::int64 begin = -1, end = -1, width = -1;
+        std::string term;
+        lookup_value(*x, "utf8.codepoints_override", "first", begin);
+        lookup_value(*x, "utf8.codepoints_override", "last", end);
+        lookup_value(*x, "utf8.codepoints_override", "width", width);
+        lookup_value(*x, "utf8.codepoints_override", "terms", term);
+        if (begin < 0 || begin > end || end > 0x10FFFF || width < 0 || width > 2 || term.empty()) {
+          LOG(WARNING) << "config '" << config_file_name << "': ignoring invalid 'utf8.codepoints_override' entry at line "
+                       << el.source().begin.line;
+          continue;
+        }
+        r.emplace_back((td::uint32)begin, (td::uint32)end, (td::int32)width, term);
+      }
+      force_wide_codepoints = std::move(r);
     }
-    auto &utf8 = root["utf8"];
-    if (utf8.getType() != libconfig::Setting::Type::TypeGroup) {
-      return;
-    }
-    if (!utf8.exists("codepoints_override")) {
-      return;
-    }
-    auto &wc = utf8["codepoints_override"];
-    if (wc.getType() != libconfig::Setting::Type::TypeList) {
-      return;
-    }
-    std::vector<CodepointInfo> r;
-    for (auto &x : wc) {
-      if (!x.exists("first") || !x.exists("last") || !x.exists("width") || !x.exists("terms")) {
-        continue;
-      }
-      td::int32 begin, end, width;
-      std::string term;
-      if (!x.lookupValue("first", begin)) {
-        continue;
-      }
-      if (!x.lookupValue("last", end)) {
-        continue;
-      }
-      if (!x.lookupValue("width", width)) {
-        continue;
-      }
-      if (!x.lookupValue("terms", term)) {
-        continue;
-      }
-      if (begin < 0 || begin > end) {
-        continue;
-      }
-      if (width < 0 || width > 2) {
-        continue;
-      }
-      r.emplace_back(begin, end, width, term);
-    }
-    force_wide_codepoints = std::move(r);
-  }();
+  }
 
   if (vs16_makes_wide) {
     enable_wide_emojis();

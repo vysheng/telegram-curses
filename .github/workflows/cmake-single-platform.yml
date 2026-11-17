@@ -51,7 +51,6 @@ jobs:
           libtermkey-dev \
           libunibilium-dev \
           libutf8proc-dev \
-          libconfig++-dev \
           libnotify-dev
 
     - name: Configure CMake
