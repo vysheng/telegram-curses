@@ -702,6 +702,30 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurch
   return out << "[gift purchase offer rejected]";
 }
 
+Outputter &operator<<(Outputter &out, const td::td_api::messageWidget &content) {
+  out << "[widget]";
+  if (content.caption_ && content.caption_->text_.size() > 0) {
+    out << " " << *content.caption_;
+  }
+  return out;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageTonWalletTransfer &content) {
+  out << "[ton transfer " << content.amount_ << " to " << content.peer_address_ << "]";
+  if (content.comment_.size() > 0 && !content.is_comment_encrypted_) {
+    out << " " << content.comment_;
+  }
+  return out;
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageTonConnectRequest &content) {
+  return out << "[ton connect request from " << content.dapp_name_ << "]";
+}
+
+Outputter &operator<<(Outputter &out, const td::td_api::messageUnpaidMessagesAllowedByLink &content) {
+  return out << "[unpaid messages allowed by link]";
+}
+
 Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &content) {
   return out << "[unsupported]";
 }
@@ -776,7 +800,8 @@ Outputter &operator<<(Outputter &out, const td::td_api::formattedText &content) 
             [&](const td::td_api::textEntityTypeMentionName &) { out << (enable ? Color::Red : Color::Revert); },
             [&](const td::td_api::textEntityTypeCustomEmoji &) {},
             [&](const td::td_api::textEntityTypeMediaTimestamp &) {},
-            [&](const td::td_api::textEntityTypeDateTime &) {}));
+            [&](const td::td_api::textEntityTypeDateTime &) {},
+            [&](const td::td_api::textEntityTypeTonAddress &) { out << Outputter::Underline(enable); }));
   };
   std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> en;
   std::vector<std::pair<size_t, const td::td_api::TextEntityType *>> dis;

@@ -128,6 +128,10 @@ Outputter &operator<<(Outputter &out, const td::td_api::messageRichMessage &cont
 Outputter &operator<<(Outputter &out, const td::td_api::messageStakeDice &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurchaseOffer &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageWidget &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageTonWalletTransfer &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageTonConnectRequest &content);
+Outputter &operator<<(Outputter &out, const td::td_api::messageUnpaidMessagesAllowedByLink &content);
 Outputter &operator<<(Outputter &out, const td::td_api::messageUnsupported &content);
 
 Outputter &operator<<(Outputter &, const td::td_api::formattedText &content);

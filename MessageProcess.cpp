@@ -108,6 +108,10 @@ const td::td_api::formattedText *message_get_formatted_text(const td::td_api::me
           [&](const td::td_api::messageStakeDice &content) {},
           [&](const td::td_api::messageUpgradedGiftPurchaseOffer &content) {},
           [&](const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {},
+          [&](const td::td_api::messageWidget &content) { res = content.caption_.get(); },
+          [&](const td::td_api::messageTonWalletTransfer &content) {},
+          [&](const td::td_api::messageTonConnectRequest &content) {},
+          [&](const td::td_api::messageUnpaidMessagesAllowedByLink &content) {},
           [&](const td::td_api::messageUnsupported &content) {}));
   return res;
 }
@@ -200,6 +204,10 @@ td::tl_object_ptr<td::td_api::file> *message_get_file_object_ref(td::td_api::mes
           [&](td::td_api::messageStakeDice &content) {},
           [&](td::td_api::messageUpgradedGiftPurchaseOffer &content) {},
           [&](td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {},
+          [&](td::td_api::messageWidget &content) {},
+          [&](td::td_api::messageTonWalletTransfer &content) {},
+          [&](td::td_api::messageTonConnectRequest &content) {},
+          [&](td::td_api::messageUnpaidMessagesAllowedByLink &content) {},
           [&](td::td_api::messageUnsupported &content) {}));
   return res;
 }

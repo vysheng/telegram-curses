@@ -2200,6 +2200,45 @@ class TdcursesImpl : public Tdcurses {
   void process_update(td::td_api::updateWebBrowserSettings &update) {
   }
 
+  void process_update(td::td_api::updateAllowedBotUsernamePremiumSuffixes &update) {
+  }
+
+  void process_update(td::td_api::updateWebProxyCarrierOpened &update) {
+  }
+
+  void process_update(td::td_api::updateWebProxyCarrierData &update) {
+  }
+
+  void process_update(td::td_api::updateWebProxyCarrierClosed &update) {
+  }
+
+  void process_update(td::td_api::updateTonWalletState &update) {
+  }
+
+  void process_update(td::td_api::updateTonWalletGaslessTransfersInfo &update) {
+  }
+
+  void process_update(td::td_api::updateTonWalletTonConnectSession &update) {
+  }
+
+  void process_update(td::td_api::updateTonWalletTonConnectSessionDisconnectRequired &update) {
+  }
+
+  void process_update(td::td_api::updateSpeechRecognitionInFile &update) {
+  }
+
+  void process_update(td::td_api::updateNewWidgetQuery &update) {
+    UNREACHABLE();
+  }
+
+  void process_update(td::td_api::updateNewInlineWidgetQuery &update) {
+    UNREACHABLE();
+  }
+
+  void process_update(td::td_api::updateNewWidgetCopyQuery &update) {
+    UNREACHABLE();
+  }
+
   void do_send_request(td::tl_object_ptr<td::td_api::Function> func,
                        td::Promise<td::tl_object_ptr<td::td_api::Object>> cb) override {
     auto id = ++last_query_id_;

@@ -52,6 +52,7 @@ DEFAULT_CLONE_TL_OBJECT(td::td_api::dateTimeFormattingTypeRelative);
 td::tl_object_ptr<td::td_api::dateTimeFormattingTypeAbsolute> clone_tl_object(
     const td::td_api::dateTimeFormattingTypeAbsolute &);
 td::tl_object_ptr<td::td_api::textEntityTypeDateTime> clone_tl_object(const td::td_api::textEntityTypeDateTime &);
+DEFAULT_CLONE_TL_OBJECT(td::td_api::textEntityTypeTonAddress);
 
 template <class T>
 std::enable_if_t<!std::is_constructible<T>::value && std::is_base_of<td::TlObject, T>::value, td::tl_object_ptr<T>>

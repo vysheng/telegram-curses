@@ -124,7 +124,8 @@ void MessageInfoWindow::process_message() {
               },
               [&](const td::td_api::textEntityTypeCustomEmoji &) {},
               [&](const td::td_api::textEntityTypeMediaTimestamp &) {},
-              [&](const td::td_api::textEntityTypeDateTime &) {}));
+              [&](const td::td_api::textEntityTypeDateTime &) {},
+              [&](const td::td_api::textEntityTypeTonAddress &) {}));
     }
   };
 
@@ -261,6 +262,10 @@ void MessageInfoWindow::process_message() {
             [&](const td::td_api::messageStakeDice &content) {},
             [&](const td::td_api::messageUpgradedGiftPurchaseOffer &content) {},
             [&](const td::td_api::messageUpgradedGiftPurchaseOfferRejected &content) {},
+            [&](const td::td_api::messageWidget &content) { process_formatted_text(*content.caption_); },
+            [&](const td::td_api::messageTonWalletTransfer &content) {},
+            [&](const td::td_api::messageTonConnectRequest &content) {},
+            [&](const td::td_api::messageUnpaidMessagesAllowedByLink &content) {},
             [&](const td::td_api::messageUnsupported &content) {}));
   }
 

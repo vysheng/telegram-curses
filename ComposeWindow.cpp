@@ -141,9 +141,10 @@ void ComposeWindow::send_message(std::string message) {
           //@description Describes manually chosen quote from another message
           //@text Text of the quote; 0-getOption("message_reply_quote_length_max") characters. Only Bold, Italic, Underline, Strikethrough, Spoiler, and CustomEmoji entities are allowed to be kept and must be kept in the quote
           //@position Quote position in the original message in UTF-16 code units
-          //inputTextQuote text:formattedText position:int32 = InputTextQuote;
+          //inputTextQuote text:formattedText rich_texts:vector<RichText> position:int32 = InputTextQuote;
           auto quote_text = R.move_as_ok();
-          reply->quote_ = td::make_tl_object<td::td_api::inputTextQuote>(std::move(quote_text), 0);
+          reply->quote_ = td::make_tl_object<td::td_api::inputTextQuote>(
+              std::move(quote_text), std::vector<td::tl_object_ptr<td::td_api::RichText>>{}, 0);
         }
       }
     }
